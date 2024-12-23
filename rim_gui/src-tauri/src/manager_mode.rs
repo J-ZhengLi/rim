@@ -174,7 +174,7 @@ fn handle_toolkit_install_click(url: String) -> Result<Vec<Component>> {
     let url_ = utils::force_parse_url(&url);
 
     // load the manifest for components information
-    let manifest = get_toolset_manifest(Some(&url_), false)?;
+    let manifest = get_toolset_manifest(Some(url_), false)?;
     let components = manifest.current_target_components(false)?;
 
     // cache the selected toolset manifest

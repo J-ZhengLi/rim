@@ -93,7 +93,7 @@
     "target": "target",
     "checking_manager_updates": "checking for manager updates...",
     "checking_toolkit_updates": "checking for toolkit updates...",
-    "no_available_updates": "no available updates",
+    "no_available_updates": "no available updates for toolkit '%{toolkit}'",
     "pre_update_note": "updating toolkit version to '%{target_version}' (currently '%{current_version}'), this will replace your current toolkit after installation.",
     "continue": "Continue",
     "back": "Back",
@@ -124,5 +124,7 @@
     "uninstall_toolkit_only": "Uninstall toolkit",
 
     "insecure_download": "skipping SSL certificate verification (requested by `--insecure` flag)",
-    "insecure_http_override": "using 'http' schema to skip SSL certificate verification (requested by `--insecure` flag)"
+    "insecure_http_override": "using 'http' schema to skip SSL certificate verification (requested by `--insecure` flag)",
+
+    "no_toolkit_installed": "unable to update because no toolkit was installed"
 }

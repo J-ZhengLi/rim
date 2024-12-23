@@ -43,7 +43,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     }
 
     let manifest_url = manifest_src.as_ref().map(|s| s.to_url()).transpose()?;
-    let mut manifest = get_toolset_manifest(manifest_url.as_ref(), *insecure)?;
+    let mut manifest = get_toolset_manifest(manifest_url, *insecure)?;
     manifest.adjust_paths()?;
 
     let component_list = manifest.current_target_components(true)?;

@@ -118,5 +118,7 @@
     "uninstall_toolkit_only": "卸载工具套件",
 
     "insecure_download": "跳过 SSL 证书验证（根据命令行选项 'insecure' 的要求）",
-    "insecure_http_override": "使用 “http” 跳过 SSL 证书验证（根据命令行选项 'insecure' 的要求）"
+    "insecure_http_override": "使用 “http” 跳过 SSL 证书验证（根据命令行选项 'insecure' 的要求）",
+
+    "no_toolkit_installed": "未安装工具套件, 无法更新"
 }
