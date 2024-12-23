@@ -14,10 +14,6 @@ gui = []
 name = "rim-cli"
 path = "src/bin/rim_cli.rs"
 
-[[bin]]
-name = "rim-dev"
-path = "rim_dev/src/main.rs"
-
 [workspace]
 members = [
     "rim_gui/src-tauri", 
