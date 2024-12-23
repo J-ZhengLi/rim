@@ -45,7 +45,7 @@ impl Toolkit {
     /// However, if `reload_cache` is `true`, the cache will be ignored, and will be
     /// updated once installed kit is being reloaded.
     pub fn installed(reload_cache: bool) -> Result<Option<&'static Mutex<Self>>> {
-        if !reload_cache {
+        if INSTALLED_KIT.get().is_some() && !reload_cache {
             return Ok(INSTALLED_KIT.get());
         }
 
@@ -126,14 +126,21 @@ fn toolkits_from_server(insecure: bool) -> Result<&'static [Toolkit]> {
     let cached =
         ALL_TOOLKITS.get_or_init(|| packages.into_iter().map(Toolkit::from).rev().collect());
     debug!(
-        "detected {} available toolkits by accessing server",
-        cached.len()
+        "detected {} available toolkits by accessing server:\n{}",
+        cached.len(),
+        cached
+            .iter()
+            .map(|tk| format!("\t{} ({})", &tk.name, &tk.version))
+            .collect::<Vec<_>>()
+            .join("\n"),
     );
     Ok(cached)
 }
 
 /// Return a list of all toolkits that are not currently installed.
 pub fn installable_toolkits(reload_cache: bool, insecure: bool) -> Result<Vec<&'static Toolkit>> {
+    info!("{}", t!("checking_toolkit_updates"));
+
     let all_toolkits = toolkits_from_server(insecure)?;
     let installable = if let Some(installed) = Toolkit::installed(reload_cache)? {
         all_toolkits
@@ -146,52 +153,48 @@ pub fn installable_toolkits(reload_cache: bool, insecure: bool) -> Result<Vec<&'
     Ok(installable)
 }
 
-/// Return the latest available toolkit if it's not already installed.
+/// Get available toolkits from server, then return the latest one if it has
+/// not been installed yet.
 pub fn latest_installable_toolkit(
-    reload_cache: bool,
+    installed: &Toolkit,
     insecure: bool,
 ) -> Result<Option<&'static Toolkit>> {
     info!("{}", t!("checking_toolkit_updates"));
 
     let all_toolkits = toolkits_from_server(insecure)?;
-    if let Some(installed) = Toolkit::installed(reload_cache)? {
-        let installed = &*installed.lock().unwrap();
-        let Some(maybe_latest) = all_toolkits
-            .iter()
-            // make sure they are the same **product**
-            .find(|tk| tk.name == installed.name)
-        else {
-            info!("{}", t!("no_available_updates"));
-            return Ok(None);
-        };
-        // For some reason, the version might contains prefixes such as "stable 1.80.1",
-        // therefore we need to trim them so that `semver` can be used to parse the actual
-        // version string.
-        // NB (J-ZhengLi): We might need another version field... one for display,
-        // one for the actual version.
-        let cur_ver = installed
-            .version
-            .trim_start_matches(|c| !char::is_ascii_digit(&c));
-        let target_ver = maybe_latest
-            .version
-            .trim_start_matches(|c| !char::is_ascii_digit(&c));
-        let cur_version: Version = cur_ver.parse()?;
-        let target_version: Version = target_ver.parse()?;
+    let Some(maybe_latest) = all_toolkits
+        .iter()
+        // make sure they are the same **product**
+        .find(|tk| tk.name == installed.name)
+    else {
+        info!("{}", t!("no_available_updates", toolkit = &installed.name));
+        return Ok(None);
+    };
+    // For some reason, the version might contains prefixes such as "stable 1.80.1",
+    // therefore we need to trim them so that `semver` can be used to parse the actual
+    // version string.
+    // NB (J-ZhengLi): We might need another version field... one for display,
+    // one for the actual version.
+    let cur_ver = installed
+        .version
+        .trim_start_matches(|c| !char::is_ascii_digit(&c));
+    let target_ver = maybe_latest
+        .version
+        .trim_start_matches(|c| !char::is_ascii_digit(&c));
+    let cur_version: Version = cur_ver.parse()?;
+    let target_version: Version = target_ver.parse()?;
 
-        if target_version > cur_version {
-            Ok(Some(maybe_latest))
-        } else {
-            info!(
-                "{}",
-                t!(
-                    "latest_toolkit_installed",
-                    name = installed.name,
-                    version = cur_version
-                )
-            );
-            Ok(None)
-        }
+    if target_version > cur_version {
+        Ok(Some(maybe_latest))
     } else {
-        Ok(all_toolkits.first())
+        info!(
+            "{}",
+            t!(
+                "latest_toolkit_installed",
+                name = installed.name,
+                version = cur_version
+            )
+        );
+        Ok(None)
     }
 }

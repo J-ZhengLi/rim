@@ -43,7 +43,7 @@ fn update_toolkit_(install_dir: &Path, insecure: bool) -> Result<()> {
     let installed = &*installed.lock().unwrap();
 
     // get possible update
-    let Some(latest_toolkit) = latest_installable_toolkit(false, insecure)? else {
+    let Some(latest_toolkit) = latest_installable_toolkit(installed, insecure)? else {
         return Ok(());
     };
     log::debug!(
@@ -63,7 +63,7 @@ fn update_toolkit_(install_dir: &Path, insecure: bool) -> Result<()> {
             must contains a valid `manifest_url`"
             )
         })?;
-    let manifest = get_toolset_manifest(Some(&manifest_url), insecure)?;
+    let manifest = get_toolset_manifest(Some(manifest_url), insecure)?;
     let new_components = manifest.current_target_components(false)?;
 
     // notify user that we will install the latest update to replace their current installation
