@@ -74,7 +74,7 @@ pub fn init_root(tmp_dir: Option<&'static str>) {
 /// Path to the current test home
 ///
 /// example: $RIM_TARGET_TMPDIR/rim/t0/home
-pub fn home() -> PathBuf {
+pub fn test_home() -> PathBuf {
     let mut path = test_root();
     path.push("home");
     path.mkdir_p();
@@ -90,6 +90,16 @@ pub fn assets_home() -> PathBuf {
     path.pop();
     path.push("tests");
     path.push("assets");
+    path
+}
+
+/// Path to the current project home
+///
+/// example: $CARGO_MANIFEST_DIR/rim_gui
+pub fn home() -> PathBuf {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.pop();
+    path.pop();
     path
 }
 
