@@ -2,8 +2,6 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use log::info;
-use log::warn;
 use url::Url;
 
 use super::directories::RimDir;

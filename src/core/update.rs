@@ -3,7 +3,6 @@ use std::path::Path;
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
-use log::{info, trace, warn};
 use semver::Version;
 use url::Url;
 

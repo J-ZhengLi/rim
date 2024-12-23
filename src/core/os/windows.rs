@@ -7,7 +7,6 @@ use crate::core::GlobalOpts;
 use crate::utils;
 use anyhow::Result;
 
-use log::{info, warn};
 pub(crate) use rustup::*;
 
 impl EnvConfig for InstallConfiguration<'_> {
@@ -85,7 +84,6 @@ pub(crate) mod rustup {
     use std::sync::OnceLock;
 
     use anyhow::{anyhow, Context, Result};
-    use log::warn;
     use winapi::shared::minwindef;
     use winapi::um::winuser;
     use winreg::enums::{RegType, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};

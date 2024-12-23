@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use log::info;
 use std::collections::HashSet;
 use std::path::Path;
 use url::Url;

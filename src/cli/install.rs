@@ -21,7 +21,6 @@ use super::common::{
 use super::{Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
-use log::warn;
 
 /// Perform installer actions.
 ///

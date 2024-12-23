@@ -1,6 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
 use flate2::read::GzDecoder;
-use log::info;
 use sevenz_rust::{Password, SevenZReader};
 use std::ffi::OsStr;
 use std::fs::File;

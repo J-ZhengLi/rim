@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context, Result};
 use indexmap::IndexMap;
-use log::trace;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::path::{Path, PathBuf};
 

@@ -18,7 +18,6 @@ use crate::{
     utils::{self, Extractable, Progress},
 };
 use anyhow::{anyhow, bail, Context, Result};
-use log::info;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},

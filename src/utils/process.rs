@@ -1,4 +1,3 @@
-use log::{error, info, warn};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, ExitStatus};
 use std::{env, io};

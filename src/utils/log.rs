@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 #[derive(Debug)]
 pub struct Logger {
     output_sender: Option<Sender<String>>,
-    dispatcher_: fern::Dispatch,
+    level: LevelFilter,
 }
 
 impl Default for Logger {
@@ -28,20 +28,20 @@ impl Logger {
 
         Self {
             output_sender: None,
-            dispatcher_: fern::Dispatch::new().level(level),
+            level,
         }
     }
     /// Set verbose output, this will print `trace!` messages as well.
     pub fn verbose(mut self, v: bool) -> Self {
         if v {
-            self.dispatcher_ = self.dispatcher_.level(LevelFilter::Trace);
+            self.level = LevelFilter::Trace;
         }
         self
     }
     /// Ignore most output, keep only the `error` messages.
     pub fn quiet(mut self, q: bool) -> Self {
         if q {
-            self.dispatcher_ = self.dispatcher_.level(LevelFilter::Error);
+            self.level = LevelFilter::Error;
         }
         self
     }
@@ -61,7 +61,8 @@ impl Logger {
     pub fn setup(self) -> Result<()> {
         // decide if `Sender` or `Stdout` should be used as message medium.
         let output = if let Some(sender) = self.output_sender {
-            self.dispatcher_
+            fern::Dispatch::new()
+                .level(self.level)
                 .format(|out, msg, rec| {
                     out.finish(format_args!(
                         "{}: {msg}",
@@ -70,7 +71,8 @@ impl Logger {
                 })
                 .chain(sender)
         } else {
-            self.dispatcher_
+            fern::Dispatch::new()
+                .level(self.level)
                 .format(|out, msg, rec| {
                     out.finish(format_args!(
                         "{}: {msg}",
