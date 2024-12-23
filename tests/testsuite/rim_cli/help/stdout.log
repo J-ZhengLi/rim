@@ -22,6 +22,9 @@ Options:
           
           Note that the installation might not work as intended if some of the variables are missing (such as CARGO_HOME, RUSTUP_DIST_SERVER, etc.). Do NOT use this if you don't know what you're doing.
 
+  -k, --insecure
+          Allow insecure connections when download packages from server
+
   -l, --lang <LANG>
           Specify another language to display
           

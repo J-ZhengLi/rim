@@ -1,5 +1,0 @@
-
-Download packages that are specified in `resource/packages.txt`
-
-Usage: cargo dev vendor
-

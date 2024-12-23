@@ -1,5 +1,0 @@
-vd
-vd/1010-01-01
-vd/1010-01-01/a.tar.xz@http://static.rust-lang.org/dist/cargo-1.81.0-x86_64-pc-windows-gnu.tar.xz
-vd/1010-01-01/b.tar.xz@http://static.rust-lang.org/dist/cargo-1.81.0-x86_64-pc-windows-msvc.tar.xz
-vd/1010-01-01/cc.tar.xz@http://static.rust-lang.org/dist/cargo-1.81.0-x86_64-unknown-linux-gnu.tar.xz
