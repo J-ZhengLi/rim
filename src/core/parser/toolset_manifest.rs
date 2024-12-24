@@ -7,7 +7,6 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
-use log::debug;
 use serde::{Deserialize, Serialize};
 use url::Url;
 

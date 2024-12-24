@@ -17,6 +17,7 @@ pub(crate) const MESSAGE_UPDATE_EVENT: &str = "update-message";
 pub(crate) const PROGRESS_UPDATE_EVENT: &str = "update-progress";
 pub(crate) const ON_COMPLETE_EVENT: &str = "on-complete";
 pub(crate) const ON_FAILED_EVENT: &str = "on-failed";
+pub(crate) const BLOCK_EXIT_EVENT: &str = "toggle-exit-blocker";
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs accrossing threads.
@@ -64,6 +65,8 @@ pub(crate) fn install_toolkit_in_new_thread(
         // we sent in this thread. But it feels very wrong, there has to be better way.
         thread::sleep(Duration::from_millis(500));
 
+        window.emit(BLOCK_EXIT_EVENT, true)?;
+
         // Initialize a progress sender.
         let pos_cb =
             |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
@@ -80,6 +83,7 @@ pub(crate) fn install_toolkit_in_new_thread(
 
         // 安装完成后，发送安装完成事件
         window.emit(ON_COMPLETE_EVENT, ())?;
+        window.emit(BLOCK_EXIT_EVENT, false)?;
 
         Ok(())
     });

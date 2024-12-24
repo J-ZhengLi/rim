@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    common::{self, ON_COMPLETE_EVENT, PROGRESS_UPDATE_EVENT},
+    common::{self, BLOCK_EXIT_EVENT, ON_COMPLETE_EVENT, PROGRESS_UPDATE_EVENT},
     error::Result,
 };
 use anyhow::Context;
@@ -102,6 +102,8 @@ fn uninstall_toolkit(window: tauri::Window, remove_self: bool) -> Result<()> {
         // we sent in this thread. But it feels very wrong, there has to be better way.
         thread::sleep(Duration::from_millis(500));
 
+        window.emit(BLOCK_EXIT_EVENT, true)?;
+
         let pos_cb =
             |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
         let progress = Progress::new(&pos_cb);
@@ -110,6 +112,7 @@ fn uninstall_toolkit(window: tauri::Window, remove_self: bool) -> Result<()> {
         config.uninstall(remove_self)?;
 
         window.emit(ON_COMPLETE_EVENT, ())?;
+        window.emit(BLOCK_EXIT_EVENT, false)?;
         Ok(())
     });
 

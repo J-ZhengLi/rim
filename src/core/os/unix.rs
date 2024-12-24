@@ -7,7 +7,6 @@ use crate::core::GlobalOpts;
 use crate::utils;
 use anyhow::{Context, Result};
 use indexmap::IndexSet;
-use log::{info, warn};
 
 impl EnvConfig for InstallConfiguration<'_> {
     // On linux, persistent env vars needs to be written in `.profile`, `.bash_profile`, etc.

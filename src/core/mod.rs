@@ -85,9 +85,14 @@ impl GlobalOpts {
     /// Will panic if `Self` has not been initialized, make sure [`GlobalOpts::new`] is called
     /// prior to this call.
     pub(crate) fn get() -> &'static Self {
-        GLOBAL_OPTS
-            .get()
-            .expect("internal error: global options has not been initialized yet")
+        if let Some(opts) = GLOBAL_OPTS.get() {
+            opts
+        } else {
+            GLOBAL_OPTS.get_or_init(|| {
+                warn!("no running options set, fallback to using default options");
+                GlobalOpts::default()
+            })
+        }
     }
 }
 

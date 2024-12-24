@@ -2,6 +2,7 @@
 import { invokeCommand } from "@/utils";
 import { appWindow } from "@tauri-apps/api/window";
 import { onMounted, Ref, ref } from "vue";
+import { event } from "@tauri-apps/api";
 
 const { title } = defineProps({
     title: {
@@ -16,6 +17,7 @@ interface Language {
 }
 
 const languages: Ref<Language[]> = ref([]);
+const exitDisabled = ref(false);
 // const showLangs = ref(false);
 
 function minimize() { appWindow.minimize(); }
@@ -32,7 +34,13 @@ onMounted(() => {
         if (Array.isArray(list) && list.every((item) => "id" in item && "name" in item)) {
             languages.value = list;
         }
-    })
+    });
+    
+    event.listen('toggle-exit-blocker', (event) => {
+        if (typeof event.payload === 'boolean') {
+            exitDisabled.value = event.payload;
+        }
+    });
 })
 </script>
 
@@ -73,7 +81,7 @@ onMounted(() => {
                 </svg>
             </div>
 
-            <div class="titlebar-button" id="titlebar-close" @click="close">
+            <div class="titlebar-button" id="titlebar-close" @click="close" v-if="!exitDisabled">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16">
                     <path fill="white" fill-rule="evenodd"
                         d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94z"

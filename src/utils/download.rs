@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use indicatif::ProgressBar;
-use log::warn;
 use reqwest::blocking::{Client, ClientBuilder};
 use url::Url;
 

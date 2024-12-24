@@ -1,6 +1,5 @@
 use anyhow::bail;
 use anyhow::{anyhow, Context, Result};
-use log::warn;
 use std::env;
 use std::fs;
 use std::io::Write;
