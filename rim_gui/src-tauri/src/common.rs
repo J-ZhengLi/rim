@@ -18,6 +18,8 @@ pub(crate) const PROGRESS_UPDATE_EVENT: &str = "update-progress";
 pub(crate) const ON_COMPLETE_EVENT: &str = "on-complete";
 pub(crate) const ON_FAILED_EVENT: &str = "on-failed";
 pub(crate) const BLOCK_EXIT_EVENT: &str = "toggle-exit-blocker";
+pub(crate) const LOADING_TEXT: &str = "loading-text";
+pub(crate) const LOADING_FINISHED: &str = "loading-finished";
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs accrossing threads.

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { managerConf } from '@/utils';
 import KitCard from './components/KitCard.vue';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import Pagination from '@/components/Pagination.vue';
 import { usePagination } from '@/utils/pagination';
+import { event } from '@tauri-apps/api';
 
 const installedKit = computed(() => managerConf.getInstalled())
 const kits = computed(() => managerConf.getKits());
@@ -11,9 +12,27 @@ const { current, size, total, list } = usePagination({
   data: kits.value,
   size: 6,
 });
+const loadingText = ref('');
+const loaded = ref(false);
+
+onMounted(() => {
+  event.listen('loading-text', (event) => {
+    if (typeof event.payload === 'string') {
+      loadingText.value = event.payload;
+    }
+  });
+
+  event.listen('loading-finished', (event) => {
+    if (typeof event.payload === 'boolean') {
+      loaded.value = event.payload;
+    }
+  });
+})
+
 </script>
 
 <template>
+  <loading-mask v-if="loadingText.length > 0" :text="loadingText" :finished="loaded"/>
   <h2 mx="12px">更新和卸载</h2>
   <h3 mx="12px">已安装</h3>
   <kit-card
