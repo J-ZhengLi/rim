@@ -5,7 +5,10 @@ use std::{
 };
 
 use crate::{
-    common::{self, BLOCK_EXIT_EVENT, ON_COMPLETE_EVENT, PROGRESS_UPDATE_EVENT},
+    common::{
+        self, BLOCK_EXIT_EVENT, LOADING_FINISHED, LOADING_TEXT, ON_COMPLETE_EVENT,
+        PROGRESS_UPDATE_EVENT,
+    },
     error::Result,
 };
 use anyhow::Context;
@@ -144,9 +147,10 @@ fn maybe_self_update(app: AppHandle) -> Result<()> {
     let Some(new_ver) = update_kind.newer_version() else {
         return Ok(());
     };
+    let window_arc = Arc::new(app.get_window("manager_window"));
 
     dialog::ask(
-        app.get_focused_window().as_ref(),
+        window_arc.clone().as_ref().as_ref(),
         t!("update_available"),
         t!(
             "ask_self_update",
@@ -154,12 +158,27 @@ fn maybe_self_update(app: AppHandle) -> Result<()> {
             current = env!("CARGO_PKG_VERSION")
         ),
         move |yes| {
-            if yes {
-                if let Ok(true) = UpdateOpt::new().self_update() {
-                    // FIXME: find a way to block main windows interaction
-                    app.restart();
-                }
+            if !yes {
+                return;
             }
+            let Some(win) = window_arc.as_ref() else {
+                return;
+            };
+
+            // block UI interaction, and show loading toast
+            _ = win.emit(LOADING_TEXT, t!("self_update_in_progress"));
+            // do self update
+            if let Ok(true) = UpdateOpt::new().self_update() {
+                app.restart();
+            }
+            _ = win.emit(LOADING_FINISHED, true);
+            for eta in (1..=3).rev() {
+                _ = win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta));
+                thread::sleep(Duration::from_secs(1));
+            }
+            _ = win.emit(LOADING_TEXT, "");
+            // restart app
+            app.restart();
         },
     );
 

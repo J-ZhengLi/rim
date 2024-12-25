@@ -126,5 +126,8 @@
     "insecure_download": "skipping SSL certificate verification (requested by `--insecure` flag)",
     "insecure_http_override": "using 'http' schema to skip SSL certificate verification (requested by `--insecure` flag)",
 
-    "no_toolkit_installed": "unable to update because no toolkit was installed"
+    "no_toolkit_installed": "unable to update because no toolkit was installed",
+
+    "self_update_in_progress": "self updating, please wait...",
+    "self_update_finished": "self update success! this program will restart in %{eta}"
 }
