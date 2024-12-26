@@ -1,71 +1,48 @@
-use std::path::{Path, PathBuf};
+use snapbox::cmd::Command;
+use std::path::PathBuf;
 
+use crate::paths;
 use crate::paths::TestPathExt;
+use crate::worker::SnapboxCommandExt;
 
-struct FileBuilder {
-    path: PathBuf,
-}
-
-impl FileBuilder {
-    pub fn new(path: PathBuf) -> FileBuilder {
-        FileBuilder { path }
-    }
-
-    fn mk(&mut self) {
-        self.dirname().mkdir_p();
-    }
-
-    fn dirname(&self) -> &Path {
-        self.path.parent().unwrap()
-    }
-}
-
-pub struct Project {
+pub struct ProjectBuilder {
     root: PathBuf,
+    cmd: Command,
 }
 
-impl Project {
-    pub fn new(root: PathBuf) -> Project {
-        Project { root }
+impl ProjectBuilder {
+    /// Generate installer test process
+    pub fn rim_cli_process() -> ProjectBuilder {
+        let root = paths::test_home();
+        let cmd = Command::rim_cli();
+        ProjectBuilder { root, cmd }
+    }
+
+    /// Generate installer test process
+    pub fn installer_process() -> ProjectBuilder {
+        let root = paths::test_home();
+        let cmd = Command::installer();
+        ProjectBuilder { root, cmd }
+    }
+
+    /// Generate manager test process
+    pub fn manager_process() -> ProjectBuilder {
+        let root = paths::test_home();
+        let cmd = Command::manager();
+        ProjectBuilder { root, cmd }
     }
 
     pub fn root(&self) -> PathBuf {
         self.root.clone()
     }
-}
 
-pub struct ProjectBuilder {
-    project: Project,
-    files: Vec<FileBuilder>,
-}
-
-impl ProjectBuilder {
-    /// Generate test project
-    pub fn from(root: PathBuf) -> ProjectBuilder {
-        let root = Project::new(root);
-        ProjectBuilder {
-            project: root,
-            files: vec![],
-        }
-    }
-
-    pub fn file<B: AsRef<Path>>(mut self, path: B) -> Self {
-        self.files
-            .push(FileBuilder::new(self.project.root().join(path.as_ref())));
-        self
-    }
-
-    pub fn build(mut self) -> Project {
+    pub fn build(self) -> Command {
         // clean the home directory.
-        self.project.root().rm_rf();
+        self.root().rm_rf();
         // create the home directory
-        self.project.root().mkdir_p();
-        // create the extral file
-        for file in self.files.iter_mut() {
-            file.mk();
-        }
+        self.root().mkdir_p();
 
-        let ProjectBuilder { project, .. } = self;
-        project
+        let ProjectBuilder { cmd, .. } = self;
+        cmd
     }
 }

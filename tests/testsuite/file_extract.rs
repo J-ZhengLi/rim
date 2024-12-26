@@ -9,7 +9,7 @@ fn extract_to_temp(filename: &str, skip_prefix: bool) -> (PathBuf, PathBuf) {
     let src_path = paths::assets_home().join(filename);
     let mut extractable = Extractable::load(src_path.as_path()).unwrap();
 
-    let project = ProjectBuilder::from(paths::test_home()).build();
+    let project = ProjectBuilder::rim_cli_process();
 
     if skip_prefix {
         let path = extractable
