@@ -132,7 +132,13 @@ impl<'a> Extractable<'a> {
         stop: Option<S>,
     ) -> Result<PathBuf> {
         fn inner_<S: AsRef<OsStr>>(root: &Path, stop: Option<S>) -> Result<PathBuf> {
-            if let [sub_dir] = super::walk_dir(root, false)?.as_slice() {
+            let sub_entries = if root.is_dir() {
+                super::walk_dir(root, false)?
+            } else {
+                return Ok(root.to_path_buf());
+            };
+
+            if let [sub_dir] = sub_entries.as_slice() {
                 if matches!(stop, Some(ref keyword) if filename_matches_keyword(sub_dir, keyword)) {
                     Ok(root.to_path_buf())
                 } else {
