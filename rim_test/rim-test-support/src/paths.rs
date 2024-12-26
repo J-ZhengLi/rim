@@ -50,7 +50,7 @@ thread_local! {
     static TEST_ID: RefCell<Option<usize>> = const { RefCell::new(None) };
 }
 
-fn test_root() -> PathBuf {
+pub fn test_root() -> PathBuf {
     let id = TEST_ID.with(|n| n.borrow().expect("Failed to get test thread id"));
 
     let mut test_root_dir = global_root_dir();
@@ -95,7 +95,7 @@ pub fn assets_home() -> PathBuf {
 
 /// Path to the current project home
 ///
-/// example: $CARGO_MANIFEST_DIR/rim_gui
+/// example: ../../$CARGO_MANIFEST_DIR
 pub fn home() -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.pop();

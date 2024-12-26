@@ -4,8 +4,10 @@ use rim_test_support::project::ProjectBuilder;
 
 #[rim_test]
 fn case() {
-    let project = ProjectBuilder::rim_cli_process().build();
+    let project = ProjectBuilder::manager_process();
     project
+        .build()
+        .arg("uninstall")
         .arg("--help")
         .assert()
         .success()

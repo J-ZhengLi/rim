@@ -1,0 +1,18 @@
+Update toolkit and/or this installation manager
+
+By default, this will update both the toolkit and manager, if you just want to update on of them, pass `--<toolkit|manager>-only` option to it.
+
+Usage: manager-cli[EXE] update [OPTIONS]
+
+Options:
+  -k, --insecure
+          Allow insecure connections when download packages from server
+
+      --toolkit-only
+          Update toolkit only
+
+      --manager-only
+          Update manager only
+
+  -h, --help
+          Print help (see a summary with '-h')
