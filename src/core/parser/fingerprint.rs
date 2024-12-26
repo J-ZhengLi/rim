@@ -38,10 +38,7 @@ impl TomlParser for InstallationRecord {
     where
         Self: Sized + serde::de::DeserializeOwned,
     {
-        assert!(
-            root.as_ref().is_dir(),
-            "install record needs to be loaded from a directory"
-        );
+        utils::ensure_dir(root.as_ref())?;
 
         let fp_path = root.as_ref().join(Self::FILENAME);
         if fp_path.is_file() {
