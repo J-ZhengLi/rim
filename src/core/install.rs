@@ -90,6 +90,7 @@ impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
+            // Note: `InstallationRecord::load` creates `install_dir` if it does not exist
             install_record: InstallationRecord::load(install_dir)?,
             cargo_registry: None,
             rustup_dist_server: default_rustup_dist_server().clone(),
@@ -103,14 +104,11 @@ impl<'a> InstallConfiguration<'a> {
     /// Creating install diretory and other preperations related to filesystem.
     ///
     /// This is suitable for first-time installation.
-    pub fn setup(&self) -> Result<()> {
+    pub fn setup(&mut self) -> Result<()> {
         let install_dir = &self.install_dir;
         let manifest = self.manifest;
 
         info!("{}", t!("install_init", dir = install_dir.display()));
-
-        // Create a new folder to hold installation
-        utils::ensure_dir(install_dir)?;
 
         // Create a copy of the manifest which is later used for component management.
         let manifest_out_path = install_dir.join(ToolsetManifest::FILENAME);
@@ -381,8 +379,7 @@ impl<'a> InstallConfiguration<'a> {
     /// otherwise this will copy that file into dest.
     fn extract_or_copy_to(&self, maybe_file: &Path, dest: &Path) -> Result<PathBuf> {
         if let Ok(mut extractable) = Extractable::load(maybe_file) {
-            extractable.extract_then_skip_solo_dir(dest, Some("bin"))?;
-            Ok(dest.to_path_buf())
+            extractable.extract_then_skip_solo_dir(dest, Some("bin"))
         } else {
             utils::copy_into(maybe_file, dest)
         }
@@ -413,13 +410,13 @@ impl InstallConfiguration<'_> {
             .insecure(self.insecure)
             .update(self, manifest)?;
 
+        let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        self.install_record.update_rust(manifest.rust_version());
+        record.update_rust(manifest.rust_version());
         // record meta info
-        self.install_record
-            .clone_toolkit_meta_from_manifest(manifest);
+        record.clone_toolkit_meta_from_manifest(manifest);
         // write changes
-        self.install_record.write()?;
+        record.write()?;
 
         self.inc_progress(60.0)
     }
@@ -495,7 +492,7 @@ mod tests {
 
         let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
         let manifest = get_toolset_manifest(None, false).unwrap();
-        let config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
+        let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
         config.setup().unwrap();
 
         assert!(config.install_record.name.is_none());

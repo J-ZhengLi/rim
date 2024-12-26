@@ -83,7 +83,7 @@ fn gen_release_toml(version: &str) -> Result<()> {
 /// The target version will always be one major release ahead of the current version,
 /// so if the current version is `1.0.0`, the target version will be `2.0.0`.
 fn mocked_ws_version() -> String {
-    let ws_manifest_content = include_str!("../../Cargo.toml");
+    let ws_manifest_content = include_str!("../../../Cargo.toml");
     let cur_ver = ws_manifest_content
         .lines()
         .find_map(|line| {
