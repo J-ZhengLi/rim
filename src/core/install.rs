@@ -74,7 +74,7 @@ pub struct InstallConfiguration<'a> {
     pub rustup_update_root: Url,
     /// Indicates whether `cargo` was already installed, useful when installing third-party tools.
     pub cargo_is_installed: bool,
-    install_record: Option<InstallationRecord>,
+    install_record: InstallationRecord,
     pub(crate) progress_indicator: Option<Progress<'a>>,
     manifest: &'a ToolsetManifest,
     insecure: bool,
@@ -90,7 +90,8 @@ impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
-            install_record: None,
+            // Note: `InstallationRecord::load` creates `install_dir` if it does not exist
+            install_record: InstallationRecord::load(install_dir)?,
             cargo_registry: None,
             rustup_dist_server: default_rustup_dist_server().clone(),
             rustup_update_root: default_rustup_update_root().clone(),
@@ -108,10 +109,6 @@ impl<'a> InstallConfiguration<'a> {
         let manifest = self.manifest;
 
         info!("{}", t!("install_init", dir = install_dir.display()));
-
-        // Create a new folder to hold installation (`InstallationRecord::load` ensures
-        // its parent directory)
-        self.install_record = Some(InstallationRecord::load(install_dir)?);
 
         // Create a copy of the manifest which is later used for component management.
         let manifest_out_path = install_dir.join(ToolsetManifest::FILENAME);
@@ -136,15 +133,6 @@ impl<'a> InstallConfiguration<'a> {
         }
 
         Ok(())
-    }
-
-    fn get_install_record_mut_unchecked(&mut self) -> &mut InstallationRecord {
-        self.install_record.as_mut().unwrap_or_else(|| {
-            panic!(
-                "internal error: attempt to get installation record before it was initialized \
-                make sure to call `setup` after creating a new `InstallConfiguration`"
-            )
-        })
     }
 
     pub fn install(mut self, components: Vec<Component>) -> Result<()> {
@@ -241,7 +229,7 @@ impl<'a> InstallConfiguration<'a> {
             self.inc_progress(sub_progress_delta)?;
         }
 
-        self.get_install_record_mut_unchecked().write()?;
+        self.install_record.write()?;
 
         Ok(())
     }
@@ -270,14 +258,14 @@ impl<'a> InstallConfiguration<'a> {
         self.cargo_is_installed = true;
 
         // Add the rust info to the fingerprint.
-        self.get_install_record_mut_unchecked()
+        self.install_record
             .add_rust_record(manifest.rust_version(), optional_components);
         // record meta info
         // TODO(?): Maybe this should be moved as a separate step?
-        self.get_install_record_mut_unchecked()
+        self.install_record
             .clone_toolkit_meta_from_manifest(manifest);
         // write changes
-        self.get_install_record_mut_unchecked().write()?;
+        self.install_record.write()?;
 
         self.inc_progress(30.0)
     }
@@ -330,8 +318,7 @@ impl<'a> InstallConfiguration<'a> {
             }
         };
 
-        self.get_install_record_mut_unchecked()
-            .add_tool_record(name, record);
+        self.install_record.add_tool_record(name, record);
 
         Ok(())
     }
@@ -423,14 +410,13 @@ impl InstallConfiguration<'_> {
             .insecure(self.insecure)
             .update(self, manifest)?;
 
+        let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        self.get_install_record_mut_unchecked()
-            .update_rust(manifest.rust_version());
+        record.update_rust(manifest.rust_version());
         // record meta info
-        self.get_install_record_mut_unchecked()
-            .clone_toolkit_meta_from_manifest(manifest);
+        record.clone_toolkit_meta_from_manifest(manifest);
         // write changes
-        self.get_install_record_mut_unchecked().write()?;
+        record.write()?;
 
         self.inc_progress(60.0)
     }
@@ -509,7 +495,7 @@ mod tests {
         let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
         config.setup().unwrap();
 
-        assert!(config.get_install_record_mut_unchecked().name.is_none());
+        assert!(config.install_record.name.is_none());
         assert!(install_root
             .path()
             .join(InstallationRecord::FILENAME)
