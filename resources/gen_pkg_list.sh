@@ -1,19 +1,20 @@
 set -x
 
-RUST_VERSION='1.82.0'
-DIST_DATE='2024-10-17'
+RUST_VERSION='1.83.0'
+DIST_DATE='2024-11-28'
 SERVER='https://static.rust-lang.org'
 
 RUSTUP_VERSION='1.27.1'
 # third-party tools version
-TYPOS_VERSION='1.27.3'
-CARGO_NEXTEST_VERSION='0.9.84'
+TYPOS_VERSION='1.28.4'
+CARGO_NEXTEST_VERSION='0.9.87'
 
 manifest="channel-rust-$RUST_VERSION.toml"
 targets=(
     x86_64-pc-windows-gnu
     x86_64-pc-windows-msvc
     x86_64-unknown-linux-gnu
+    aarch64-unknown-linux-gnu
 )
 targeted_components=(
     cargo-$RUST_VERSION
@@ -31,11 +32,12 @@ other_components=(
 )
 # Unless some package needs re-pack, we can just use original link here, since this basically only used for ci.
 other_tools=(
-    x86_64-pc-windows-gnu/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z@https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev0/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z
+    x86_64-pc-windows-gnu/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z@https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z
     x86_64-pc-windows/cargo-nextest-$CARGO_NEXTEST_VERSION-x86_64-pc-windows-msvc.zip@https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-$CARGO_NEXTEST_VERSION-x86_64-pc-windows-msvc.zip
     x86_64-pc-windows/typos-v$TYPOS_VERSION-x86_64-pc-windows-msvc.zip@https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v$TYPOS_VERSION-x86_64-pc-windows-msvc.zip
     x86_64-unknown-linux/typos-v$TYPOS_VERSION-x86_64-unknown-linux-musl.tar.gz@https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v$TYPOS_VERSION-x86_64-unknown-linux-musl.tar.gz
     x86_64-unknown-linux-gnu/cargo-nextest-$CARGO_NEXTEST_VERSION-x86_64-unknown-linux-gnu.tar.gz@https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-$CARGO_NEXTEST_VERSION-x86_64-unknown-linux-gnu.tar.gz
+    aarch64-unknown-linux-gnu/cargo-nextest-$CARGO_NEXTEST_VERSION-aarch64-unknown-linux-gnu.tar.gz@https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-$CARGO_NEXTEST_VERSION-aarch64-unknown-linux-gnu.tar.gz
 )
 
 write_dist() {
@@ -46,13 +48,13 @@ write_dist() {
         for target in ${targets[@]}; do
             pkg=$cp-$target.tar.xz
             sha=$pkg.sha256
-            echo "dist/$DIST_DATE/$pkg@$SERVER/dist/$pkg" >> $pl
-            echo "dist/$DIST_DATE/$sha@$SERVER/dist/$sha" >> $pl
+            echo "dist/$DIST_DATE/$pkg@$SERVER/dist/$DIST_DATE/$pkg" >> $pl
+            echo "dist/$DIST_DATE/$sha@$SERVER/dist/$DIST_DATE/$sha" >> $pl
         done
     done
     for cp in ${other_components[@]}; do
-        echo "dist/$DIST_DATE/$cp.tar.xz@$SERVER/dist/$cp.tar.xz" >> $pl
-        echo "dist/$DIST_DATE/$cp.tar.xz.sha256@$SERVER/dist/$cp.tar.xz.sha256" >> $pl
+        echo "dist/$DIST_DATE/$cp.tar.xz@$SERVER/dist/$DIST_DATE/$cp.tar.xz" >> $pl
+        echo "dist/$DIST_DATE/$cp.tar.xz.sha256@$SERVER/dist/$DIST_DATE/$cp.tar.xz.sha256" >> $pl
     done
     echo "dist/$manifest@$SERVER/dist/$manifest" >> $pl
     echo "dist/$manifest.sha256@$SERVER/dist/$manifest.sha256" >> $pl
