@@ -17,7 +17,10 @@ use std::{
 };
 use url::Url;
 
-use crate::{core::Language, utils};
+use crate::{
+    core::{GlobalOpts, Language},
+    utils,
+};
 pub use common::pause;
 
 /// Install rustup, rust toolchain, and various tools.
@@ -27,18 +30,35 @@ pub use common::pause;
 #[command(version, about)]
 pub struct Installer {
     /// Enable verbose output
-    #[arg(hide = true, short, long, conflicts_with = "quiet")]
+    #[arg(short, long, conflicts_with = "quiet")]
     pub verbose: bool,
     /// Suppress non-critical messages
-    #[arg(hide = true, short, long, conflicts_with = "verbose")]
+    #[arg(short, long, conflicts_with = "verbose")]
     pub quiet: bool,
     /// Disable interaction and answer 'yes' to all prompts
-    #[arg(hide = true, short, long = "yes")]
+    #[arg(short, long = "yes")]
     yes_to_all: bool,
     #[cfg(feature = "gui")]
     /// Don't show GUI when running the program.
     #[arg(hide = true, long)]
     pub no_gui: bool,
+    /// Don't modify user's `PATH` environment variable.
+    ///
+    /// Note that some other variables (such as CARGO_HOME, RUSTUP_DIST_SERVER, etc.)
+    /// will still be written to ensure the Rust toolchain can be used correctly.
+    #[arg(long)]
+    no_modify_path: bool,
+    /// Don't make any environment modifications on user's machine,
+    /// including Windows registry entries and `PATH` variable.
+    ///
+    /// Note that the installation might not work as intended if some
+    /// of the variables are missing (such as CARGO_HOME, RUSTUP_DIST_SERVER, etc.).
+    /// Do NOT use this if you don't know what you're doing.
+    #[arg(long)]
+    no_modify_env: bool,
+    /// Allow insecure connections when download packages from server.
+    #[arg(short = 'k', long)]
+    insecure: bool,
 
     /// Specify another language to display
     #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
@@ -105,18 +125,21 @@ impl PathOrUrl {
 #[command(version, about)]
 pub struct Manager {
     /// Enable verbose output
-    #[arg(hide = true, short, long, conflicts_with = "quiet")]
+    #[arg(short, long, conflicts_with = "quiet")]
     pub verbose: bool,
     /// Suppress non-critical messages
-    #[arg(hide = true, short, long, conflicts_with = "verbose")]
+    #[arg(short, long, conflicts_with = "verbose")]
     pub quiet: bool,
     /// Disable interaction and answer 'yes' to all prompts
-    #[arg(hide = true, short, long = "yes")]
+    #[arg(short, long = "yes")]
     yes_to_all: bool,
     #[cfg(feature = "gui")]
     /// Don't show GUI when running the program.
     #[arg(hide = true, long)]
     pub no_gui: bool,
+    /// Don't modify user's `PATH` environment variable.
+    #[arg(long)]
+    no_modify_path: bool,
 
     /// Specify another language to display
     #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
@@ -135,7 +158,14 @@ impl Installer {
     }
 
     pub fn execute(&self) -> Result<()> {
-        setup(self.verbose, self.quiet, self.lang.as_deref())?;
+        setup(
+            self.verbose,
+            self.quiet,
+            self.yes_to_all,
+            self.no_modify_env,
+            self.no_modify_path,
+            self.lang.as_deref(),
+        )?;
 
         install::execute_installer(self)
     }
@@ -143,7 +173,17 @@ impl Installer {
 
 impl Manager {
     pub fn execute(&self) -> Result<()> {
-        setup(self.verbose, self.quiet, self.lang.as_deref())?;
+        // NB: `no_modify_env` was current set to always true, because manager currently only
+        // modifies during self uninstall, thus the `PROGRAM` registry entry for this program
+        // need to be removed, so don't change its value to true or let user override it yet.
+        setup(
+            self.verbose,
+            self.quiet,
+            self.yes_to_all,
+            false,
+            self.no_modify_path,
+            self.lang.as_deref(),
+        )?;
 
         let Some(subcmd) = &self.command else {
             return ManagerSubcommands::from_interaction()?.execute();
@@ -158,6 +198,9 @@ enum ManagerSubcommands {
     /// Install a specific dist version
     #[command(hide = true)]
     Install {
+        /// Allow insecure connections when download packages from server.
+        #[arg(short = 'k', long)]
+        insecure: bool,
         #[arg(value_name = "VERSION")]
         version: String,
     },
@@ -166,6 +209,9 @@ enum ManagerSubcommands {
     /// By default, this will update both the toolkit and manager, if you just want to update
     /// on of them, pass `--<toolkit|manager>-only` option to it.
     Update {
+        /// Allow insecure connections when download packages from server.
+        #[arg(short = 'k', long)]
+        insecure: bool,
         /// Update toolkit only
         #[arg(long, alias = "toolkit", conflicts_with = "manager_only")]
         toolkit_only: bool,
@@ -233,8 +279,8 @@ impl ManagerSubcommands {
             };
 
             match manager_opt {
-                Self::Update { .. } => {
-                    if !manager_opt.question_update_option_()? {
+                Self::Update { insecure, .. } => {
+                    if !manager_opt.question_update_option_(insecure)? {
                         continue;
                     }
                 }
@@ -254,15 +300,20 @@ impl ManagerSubcommands {
     }
 
     fn question_manager_option_() -> Result<Option<Self>> {
-        let maybe_cmd;
-
         // NOTE: If more option added, make sure to add the corresponding match pattern
         // to `from_interaction` function., otherwise it may cause `unimplemented` error.
-        handle_user_choice!(
+        let maybe_cmd = handle_user_choice!(
             t!("ask_manager_option"), 3,
-            maybe_cmd => {
+            {
                 1 t!("update") => {
-                    Some(Self::Update { toolkit_only: false, manager_only: false })
+                    let insecure = handle_user_choice!(
+                        t!("ask_download_option"), 1,
+                        {
+                            1 t!("default") => { false },
+                            2 t!("skip_ssl_check") => { true }
+                        }
+                    );
+                    Some(Self::Update { insecure, toolkit_only: false, manager_only: false })
                 },
                 2 t!("uninstall") => { Some(Self::Uninstall { keep_self: false }) },
                 3 t!("cancel") => { None }
@@ -274,18 +325,18 @@ impl ManagerSubcommands {
 
     /// Ask user about the update options, return a `bool` indicates whether the
     /// user wishs to continue.
-    fn question_update_option_(&mut self) -> Result<bool> {
-        handle_user_choice!(
+    fn question_update_option_(&mut self, insecure: bool) -> Result<bool> {
+        *self = handle_user_choice!(
             t!("ask_update_option"), 1,
-            *self => {
+            {
                 1 t!("update_all") => {
-                    Self::Update { toolkit_only: false, manager_only: false }
+                    Self::Update { insecure, toolkit_only: false, manager_only: false }
                 },
                 2 t!("update_self_only") => {
-                    Self::Update { toolkit_only: false, manager_only: true }
+                    Self::Update { insecure, toolkit_only: false, manager_only: true }
                 },
                 3 t!("update_toolkit_only") => {
-                    Self::Update { toolkit_only: true, manager_only: false }
+                    Self::Update { insecure, toolkit_only: true, manager_only: false }
                 },
                 4 t!("back") => { return Ok(false) }
             }
@@ -297,9 +348,9 @@ impl ManagerSubcommands {
     /// Ask user about uninstallation options, return a `bool` indicates whether the
     /// user wishs to continue.
     fn question_uninstall_option_(&mut self) -> Result<bool> {
-        handle_user_choice!(
+        *self = handle_user_choice!(
             t!("ask_uninstall_option"), 1,
-            *self => {
+            {
                 1 t!("uninstall_all") => { Self::Uninstall { keep_self: false } },
                 2 t!("uninstall_toolkit_only") => { Self::Uninstall { keep_self: true } },
                 3 t!("back") => { return Ok(false) }
@@ -318,7 +369,14 @@ pub fn parse_manager_cli() -> Manager {
     Manager::parse()
 }
 
-fn setup(verbose: bool, quiet: bool, lang: Option<&str>) -> Result<()> {
+fn setup(
+    verbose: bool,
+    quiet: bool,
+    yes: bool,
+    no_modify_env: bool,
+    no_modify_path: bool,
+    lang: Option<&str>,
+) -> Result<()> {
     // Setup locale
     if let Some(lang_str) = lang {
         let parsed: Language = lang_str.parse()?;
@@ -328,6 +386,8 @@ fn setup(verbose: bool, quiet: bool, lang: Option<&str>) -> Result<()> {
     }
     // Setup logger
     utils::Logger::new().verbose(verbose).quiet(quiet).setup()?;
+    // Setup global options
+    GlobalOpts::set(verbose, quiet, yes, no_modify_env, no_modify_path);
 
     Ok(())
 }

@@ -13,11 +13,11 @@ use super::{
 };
 use crate::{
     core::os::add_to_path,
+    setter,
     toolset_manifest::ToolMap,
     utils::{self, Extractable, Progress},
 };
 use anyhow::{anyhow, bail, Context, Result};
-use log::info;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -77,6 +77,7 @@ pub struct InstallConfiguration<'a> {
     install_record: InstallationRecord,
     pub(crate) progress_indicator: Option<Progress<'a>>,
     manifest: &'a ToolsetManifest,
+    insecure: bool,
 }
 
 impl RimDir for InstallConfiguration<'_> {
@@ -86,63 +87,58 @@ impl RimDir for InstallConfiguration<'_> {
 }
 
 impl<'a> InstallConfiguration<'a> {
+    pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
+        Ok(Self {
+            install_dir: install_dir.to_path_buf(),
+            // Note: `InstallationRecord::load` creates `install_dir` if it does not exist
+            install_record: InstallationRecord::load(install_dir)?,
+            cargo_registry: None,
+            rustup_dist_server: default_rustup_dist_server().clone(),
+            rustup_update_root: default_rustup_update_root().clone(),
+            cargo_is_installed: false,
+            progress_indicator: None,
+            manifest,
+            insecure: false,
+        })
+    }
     /// Creating install diretory and other preperations related to filesystem.
     ///
-    /// If `update` is set to true, this won't make modifications on environment, and
-    /// won't write manager binary as well.
-    pub fn init(
-        install_dir: &'a Path,
-        progress: Option<Progress<'a>>,
-        manifest: &'a ToolsetManifest,
-        update: bool,
-    ) -> Result<Self> {
-        if !update {
-            info!("{}", t!("install_init", dir = install_dir.display()));
-        }
+    /// This is suitable for first-time installation.
+    pub fn setup(&mut self) -> Result<()> {
+        let install_dir = &self.install_dir;
+        let manifest = self.manifest;
 
-        // Create a new folder to hold installation
-        utils::ensure_dir(install_dir)?;
+        info!("{}", t!("install_init", dir = install_dir.display()));
 
         // Create a copy of the manifest which is later used for component management.
         let manifest_out_path = install_dir.join(ToolsetManifest::FILENAME);
         utils::write_file(manifest_out_path, &manifest.to_toml()?, false)?;
 
-        if !update {
-            // Create a copy of this binary
-            let self_exe = std::env::current_exe()?;
-            // promote this installer to manager
-            let manager_name = format!("{}-manager", t!("vendor_en"));
+        // Create a copy of this binary
+        let self_exe = std::env::current_exe()?;
+        // promote this installer to manager
+        let manager_name = format!("{}-manager", t!("vendor_en"));
 
-            // Add this manager to the `PATH` environment
-            let manager_exe = install_dir.join(utils::exe!(manager_name));
-            utils::copy_as(self_exe, &manager_exe)?;
-            add_to_path(install_dir)?;
+        // Add this manager to the `PATH` environment
+        let manager_exe = install_dir.join(utils::exe!(manager_name));
+        utils::copy_as(self_exe, &manager_exe)?;
+        add_to_path(install_dir)?;
 
-            #[cfg(windows)]
-            // Create registry entry to add this program into "installed programs".
-            super::os::windows::do_add_to_programs(&manager_exe)?;
-        }
+        #[cfg(windows)]
+        // Create registry entry to add this program into "installed programs".
+        super::os::windows::do_add_to_programs(&manager_exe)?;
 
-        if let Some(prog) = &progress {
+        if let Some(prog) = &self.progress_indicator {
             prog.inc(Some(5.0))?;
         }
 
-        Ok(Self {
-            install_dir: install_dir.to_path_buf(),
-            install_record: InstallationRecord::load(install_dir)?,
-            cargo_registry: Some(DEFAULT_CARGO_REGISTRY)
-                .map(|(n, v)| (n.to_string(), v.to_string())),
-            rustup_dist_server: default_rustup_dist_server().clone(),
-            rustup_update_root: default_rustup_update_root().clone(),
-            cargo_is_installed: false,
-            progress_indicator: progress,
-            manifest,
-        })
+        Ok(())
     }
 
     pub fn install(mut self, components: Vec<Component>) -> Result<()> {
         let (tc_components, tools) = split_components(components);
 
+        self.setup()?;
         self.config_env_vars()?;
         self.config_cargo()?;
         // This step taking cares of requirements, such as `MSVC`, also third-party app such as `VS Code`.
@@ -160,24 +156,15 @@ impl<'a> InstallConfiguration<'a> {
         Ok(())
     }
 
-    pub fn cargo_registry<N, V>(mut self, name: N, value: V) -> Self
-    where
-        N: ToString,
-        V: ToString,
-    {
-        self.cargo_registry = Some((name.to_string(), value.to_string()));
-        self
-    }
-
-    pub fn rustup_dist_server(mut self, url: Url) -> Self {
-        self.rustup_dist_server = url;
-        self
-    }
-
-    pub fn rustup_update_root(mut self, url: Url) -> Self {
-        self.rustup_update_root = url;
-        self
-    }
+    setter!(
+        cargo_registry(self, name: impl ToString, value: impl ToString) {
+            Some((name.to_string(), value.to_string()))
+        }
+    );
+    setter!(rustup_dist_server(self, Url));
+    setter!(rustup_update_root(self, Url));
+    setter!(progress_indicator(self, Option<Progress<'a>>));
+    setter!(insecure(self, bool));
 
     pub(crate) fn env_vars(&self) -> Result<HashMap<&'static str, String>> {
         let cargo_home = self
@@ -262,7 +249,11 @@ impl<'a> InstallConfiguration<'a> {
 
         let manifest = self.manifest;
 
-        ToolchainInstaller::init().install(self, manifest, optional_components)?;
+        ToolchainInstaller::init().insecure(self.insecure).install(
+            self,
+            manifest,
+            optional_components,
+        )?;
         add_to_path(self.cargo_bin())?;
         self.cargo_is_installed = true;
 
@@ -388,8 +379,7 @@ impl<'a> InstallConfiguration<'a> {
     /// otherwise this will copy that file into dest.
     fn extract_or_copy_to(&self, maybe_file: &Path, dest: &Path) -> Result<PathBuf> {
         if let Ok(mut extractable) = Extractable::load(maybe_file) {
-            extractable.extract_to(dest)?;
-            Ok(dest.to_path_buf())
+            extractable.extract_then_skip_solo_dir(dest, Some("bin"))
         } else {
             utils::copy_into(maybe_file, dest)
         }
@@ -416,15 +406,17 @@ impl InstallConfiguration<'_> {
 
         let manifest = self.manifest;
 
-        ToolchainInstaller::init().update(self, manifest)?;
+        ToolchainInstaller::init()
+            .insecure(self.insecure)
+            .update(self, manifest)?;
 
+        let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        self.install_record.update_rust(manifest.rust_version());
+        record.update_rust(manifest.rust_version());
         // record meta info
-        self.install_record
-            .clone_toolkit_meta_from_manifest(manifest);
+        record.clone_toolkit_meta_from_manifest(manifest);
         // write changes
-        self.install_record.write()?;
+        record.write()?;
 
         self.inc_progress(60.0)
     }
@@ -437,6 +429,8 @@ impl InstallConfiguration<'_> {
     }
 }
 
+/// Get the default installation directory,
+/// which is a directory under [`home_dir`](utils::home_dir).
 pub fn default_install_dir() -> PathBuf {
     utils::home_dir().join(&*t!("vendor_en"))
 }
@@ -497,9 +491,9 @@ mod tests {
         std::fs::create_dir_all(&cache_dir).unwrap();
 
         let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
-        let manifest = get_toolset_manifest(None).unwrap();
-        let config =
-            InstallConfiguration::init(install_root.path(), None, &manifest, true).unwrap();
+        let manifest = get_toolset_manifest(None, false).unwrap();
+        let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
+        config.setup().unwrap();
 
         assert!(config.install_record.name.is_none());
         assert!(install_root

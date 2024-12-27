@@ -8,6 +8,8 @@ import BaseDialog from '../components/BaseDialog.vue';
 import BaseTag from '@/components/BaseTag.vue';
 import ScrollBox from '../components/ScrollBox.vue';
 import Titlebar from '../components/Titlebar.vue';
+import LoadingMask from '../components/LoadingMask.vue';
+import BaseToast from '@/components/BaseToast.vue';
 
 export default {
   install(app: App) {
@@ -20,5 +22,7 @@ export default {
     app.component('base-tag', BaseTag);
     app.component('scroll-box', ScrollBox);
     app.component('titlebar', Titlebar);
+    app.component('loading-mask', LoadingMask);
+    app.component('base-toast', BaseToast);
   },
 };

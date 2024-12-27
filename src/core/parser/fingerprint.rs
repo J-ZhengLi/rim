@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context, Result};
 use indexmap::IndexMap;
-use log::debug;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -39,10 +38,7 @@ impl TomlParser for InstallationRecord {
     where
         Self: Sized + serde::de::DeserializeOwned,
     {
-        assert!(
-            root.as_ref().is_dir(),
-            "install record needs to be loaded from a directory"
-        );
+        utils::ensure_dir(root.as_ref())?;
 
         let fp_path = root.as_ref().join(Self::FILENAME);
         if fp_path.is_file() {
@@ -85,7 +81,7 @@ impl InstallationRecord {
         let content = self
             .to_toml()
             .context("unable to serialize installation fingerprint")?;
-        debug!("writing installation record into '{}'", path.display());
+        trace!("writing installation record into '{}'", path.display());
         utils::write_bytes(&path, content.as_bytes(), false).with_context(|| {
             anyhow!(
                 "unable to write fingerprint file to the given location: '{}'",
@@ -114,7 +110,7 @@ impl InstallationRecord {
     pub(crate) fn update_rust(&mut self, version: &str) {
         if let Some(rust) = self.rust.as_mut() {
             rust.version = version.into();
-            debug!("toolchain installation record was updated to '{version}'");
+            trace!("toolchain installation record was updated to '{version}'");
         }
     }
 

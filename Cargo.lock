@@ -560,12 +560,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "common-path"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2382f75942f4b3be3690fe4f86365e9c853c1587d6ee58212cebf6e2a9ccd101"
-
-[[package]]
 name = "console"
 version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1589,15 +1583,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "home"
-version = "0.5.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
-dependencies = [
- "windows-sys 0.52.0",
-]
-
-[[package]]
 name = "html5ever"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2439,6 +2424,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
+name = "os_pipe"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ffd2b0a5634335b135d5728d84c5e0fd726954b87111f7506a61c502280d982"
+dependencies = [
+ "libc",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3036,23 +3031,22 @@ dependencies = [
 
 [[package]]
 name = "rim"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "cc",
  "cfg-if",
  "chrono",
  "clap",
- "common-path",
  "dirs",
  "env_proxy",
  "fern",
  "flate2",
- "home",
  "indexmap 2.5.0",
  "indicatif",
  "libc",
  "log",
+ "os_pipe",
  "reqwest",
  "rust-i18n",
  "self-replace",
@@ -3065,7 +3059,6 @@ dependencies = [
  "toml 0.8.19",
  "url",
  "winapi",
- "windows-sys 0.52.0",
  "winreg",
  "xz2",
  "zip",
@@ -3073,7 +3066,7 @@ dependencies = [
 
 [[package]]
 name = "rim-gui"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "fern",

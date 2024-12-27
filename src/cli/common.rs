@@ -12,7 +12,6 @@ use std::{
 
 use anyhow::{Context, Result};
 use indexmap::IndexMap;
-use log::warn;
 
 use crate::components::Component;
 
@@ -53,19 +52,20 @@ use crate::components::Component;
 /// >
 /// ```
 macro_rules! handle_user_choice {
-    ($ques:expr, $default:expr, $assign:expr => { $($idx:literal $choice:expr => $action:block),+ }) => {
-        #[allow(clippy::needless_late_init)]
+    ($ques:expr, $default:expr, { $($idx:literal $choice:expr => $action:block),+ }) => {
         {
             let choices__ = &[ $($choice),* ];
             let choice__ = $crate::cli::common::question_single_choice($ques, choices__, $default)?;
-            $assign = match choice__ {
+            match choice__ {
                 $($idx => $action),*
                 _ => unreachable!("`question_single_choice` ensures choice's range")
-            };
+            }
         }
     };
 }
 pub(crate) use handle_user_choice;
+
+use super::GlobalOpts;
 
 /// A map containing a component's version difference.
 ///
@@ -75,7 +75,7 @@ pub(crate) type VersionDiffMap<'c> = HashMap<&'c str, (Option<&'c str>, Option<&
 /// A map contains the selected components with their indexes in the full component list.
 ///
 /// Notice that this is an [`IndexMap`], which means the order will be preserved.
-pub(crate) type ComponentChoices<'c> = IndexMap<&'c Component, usize>;
+pub(crate) type ComponentChoices<'c> = IndexMap<usize, &'c Component>;
 
 pub(crate) fn question_str<Q: Display, A: Display>(
     question: Q,
@@ -255,6 +255,10 @@ where
 }
 
 pub(crate) fn confirm<Q: Display>(question: Q, default: bool) -> Result<bool> {
+    if GlobalOpts::get().yes_to_all {
+        return Ok(true);
+    }
+
     let mut stdout = io::stdout();
     writeln!(
         &mut stdout,
