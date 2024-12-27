@@ -3,6 +3,8 @@
 
 #[macro_use]
 extern crate rust_i18n;
+#[macro_use]
+extern crate log;
 
 pub mod cli;
 mod core;

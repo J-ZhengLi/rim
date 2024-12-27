@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use log::info;
 use std::collections::HashSet;
 use std::path::Path;
 use url::Url;
@@ -12,20 +11,21 @@ use crate::toolset_manifest::get_toolset_manifest;
 use crate::InstallConfiguration;
 
 use super::common::{ComponentChoices, ComponentDecoration, ComponentListBuilder, VersionDiffMap};
-use super::{common, ManagerSubcommands};
+use super::{common, GlobalOpts, ManagerSubcommands};
 
 pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
     let ManagerSubcommands::Update {
         toolkit_only,
         manager_only,
+        insecure,
     } = cmd
     else {
         return Ok(false);
     };
 
-    let update_opt = UpdateOpt;
+    let update_opt = UpdateOpt::new().insecure(*insecure);
     if !manager_only {
-        update_opt.update_toolkit(update_toolkit_)?;
+        update_opt.update_toolkit(|path| update_toolkit_(path, *insecure))?;
     }
     if !toolkit_only {
         update_opt.self_update()?;
@@ -34,16 +34,22 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
     Ok(true)
 }
 
-fn update_toolkit_(install_dir: &Path) -> Result<()> {
-    let Some(installed) = Toolkit::installed()? else {
+fn update_toolkit_(install_dir: &Path, insecure: bool) -> Result<()> {
+    let Some(installed) = Toolkit::installed(false)? else {
         info!("{}", t!("no_toolkit_installed"));
         return Ok(());
     };
+    let installed = &*installed.lock().unwrap();
 
     // get possible update
-    let Some(latest_toolkit) = latest_installable_toolkit()? else {
+    let Some(latest_toolkit) = latest_installable_toolkit(installed, insecure)? else {
         return Ok(());
     };
+    log::debug!(
+        "detected latest toolkit: {}-{}",
+        &latest_toolkit.name,
+        &latest_toolkit.version
+    );
 
     // load the latest manifest
     let manifest_url = latest_toolkit
@@ -56,7 +62,7 @@ fn update_toolkit_(install_dir: &Path) -> Result<()> {
             must contains a valid `manifest_url`"
             )
         })?;
-    let manifest = get_toolset_manifest(Some(&manifest_url))?;
+    let manifest = get_toolset_manifest(Some(manifest_url), insecure)?;
     let new_components = manifest.current_target_components(false)?;
 
     // notify user that we will install the latest update to replace their current installation
@@ -73,8 +79,8 @@ fn update_toolkit_(install_dir: &Path) -> Result<()> {
     // let user choose if they want to update installed component only, or want to select more components to install
     if let UpdateOption::Yes(components) = updater.get_user_choices()? {
         // install update for selected components
-        let config = InstallConfiguration::init(install_dir, None, &manifest, true)?;
-        config.update(components.into_keys().cloned().collect())
+        let config = InstallConfiguration::new(install_dir, &manifest)?;
+        config.update(components.into_values().cloned().collect())
     } else {
         Ok(())
     }
@@ -133,7 +139,7 @@ impl<'c> ComponentsUpdater<'c> {
         self.target
             .iter()
             .enumerate()
-            .filter_map(|(idx, c)| diff_ver_comps.contains(c.name.as_str()).then_some((c, idx)))
+            .filter(|(_, c)| diff_ver_comps.contains(c.name.as_str()))
             .collect()
     }
 
@@ -143,7 +149,7 @@ impl<'c> ComponentsUpdater<'c> {
             .show_desc(true)
             .build();
         let defult_choices = orig
-            .values()
+            .keys()
             .map(|idx| (idx + 1).to_string())
             .collect::<Vec<_>>()
             .join(" ");
@@ -162,14 +168,18 @@ impl<'c> ComponentsUpdater<'c> {
             .target
             .iter()
             .enumerate()
-            .filter_map(|(idx, c)| index_set.contains(&(idx + 1)).then_some((c, idx)))
+            .filter(|(idx, _)| index_set.contains(&(idx + 1)))
             .collect())
     }
 
     // recursively ask for user input
     fn handle_update_interaction_(&self, list: ComponentChoices<'c>) -> Result<UpdateOption<'c>> {
+        if GlobalOpts::get().yes_to_all {
+            return Ok(UpdateOption::Yes(list));
+        }
+
         let choices = vec![t!("continue"), t!("customize"), t!("cancel")];
-        let comp_list = ComponentListBuilder::new(list.keys().copied())
+        let comp_list = ComponentListBuilder::new(list.values().copied())
             .decorate(ComponentDecoration::VersionDiff(&self.version_diff))
             .build()
             .join("\n");

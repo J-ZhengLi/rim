@@ -19,7 +19,7 @@ onMounted(() => {
 <template>
   <div>
     <Titlebar :title="appTitle" />
-    <RouterView style="margin-top: 41px;" />
+    <RouterView style="margin-top: 40px;" />
   </div>
 </template>
 

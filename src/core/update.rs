@@ -3,20 +3,21 @@ use std::path::Path;
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
-use log::{debug, info, warn};
 use semver::Version;
 use url::Url;
 
 use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
 use super::parser::TomlParser;
-use crate::utils;
+use crate::{setter, utils};
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
 static LATEST_RELEASE: OnceLock<ReleaseInfo> = OnceLock::new();
 
 #[derive(Default)]
-pub struct UpdateOpt;
+pub struct UpdateOpt {
+    insecure: bool,
+}
 
 impl RimDir for UpdateOpt {
     fn install_dir(&self) -> &Path {
@@ -26,8 +27,10 @@ impl RimDir for UpdateOpt {
 
 impl UpdateOpt {
     pub fn new() -> Self {
-        Self
+        Self { insecure: false }
     }
+
+    setter!(insecure(self, bool));
 
     /// Calls a function to update toolkit.
     ///
@@ -48,7 +51,7 @@ impl UpdateOpt {
     /// If the program is succesfully updated, this will return `Ok(true)`,
     /// which indicates the program should be restarted.
     pub fn self_update(&self) -> Result<bool> {
-        if !check_self_update().update_needed() {
+        if !check_self_update(self.insecure).update_needed() {
             info!(
                 "{}",
                 t!(
@@ -65,7 +68,7 @@ impl UpdateOpt {
         let cli = "";
 
         let src_name = utils::exe!(format!("{}-manager{cli}", t!("vendor_en")));
-        let latest_version = &latest_manager_release()?.version;
+        let latest_version = &latest_manager_release(self.insecure)?.version;
         let download_url = parse_download_url(&format!(
             "manager/archive/{latest_version}/{}/{src_name}",
             env!("TARGET"),
@@ -98,13 +101,15 @@ impl UpdateOpt {
 ///
 /// This will try to access the internet upon first call in order to
 /// read the `release.toml` file from the server, and the result will be "cached" after.
-fn latest_manager_release() -> Result<&'static ReleaseInfo> {
+fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
     if let Some(release_info) = LATEST_RELEASE.get() {
         return Ok(release_info);
     }
 
     let download_url = parse_download_url(&format!("manager/{}", ReleaseInfo::FILENAME))?;
-    let raw = utils::DownloadOpt::<()>::new("manager release info")?.read(&download_url)?;
+    let raw = utils::DownloadOpt::new("manager release info")
+        .insecure(insecure)
+        .read(&download_url)?;
     let release_info = ReleaseInfo::from_str(&raw)?;
 
     Ok(LATEST_RELEASE.get_or_init(|| release_info))
@@ -134,10 +139,10 @@ impl SelfUpdateKind<'_> {
 /// Returns `true` if current manager version is lower than its latest version.
 ///
 /// If the version info could not be fetched, this will return `false` otherwise.
-pub fn check_self_update() -> SelfUpdateKind<'static> {
+pub fn check_self_update(insecure: bool) -> SelfUpdateKind<'static> {
     info!("{}", t!("checking_manager_updates"));
 
-    let latest_version = match latest_manager_release() {
+    let latest_version = match latest_manager_release(insecure) {
         Ok(release) => &release.version,
         Err(e) => {
             warn!("{}: {e}", t!("fetch_latest_manager_version_failed"));
@@ -161,7 +166,7 @@ fn parse_download_url(source_path: &str) -> Result<Url> {
         .unwrap_or(super::RIM_DIST_SERVER)
         .parse()?;
 
-    debug!("parsing download url for '{source_path}' from server '{base_obs_server}'");
+    trace!("parsing download url for '{source_path}' from server '{base_obs_server}'");
     utils::url_join(&base_obs_server, source_path)
 }
 

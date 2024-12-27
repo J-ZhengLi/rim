@@ -2,6 +2,7 @@
 //! such as its name, version, and what's included etc.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::{Mutex, OnceLock};
 use std::{collections::BTreeMap, path::PathBuf};
 
 use anyhow::{anyhow, Result};
@@ -257,19 +258,19 @@ pub struct Proxy {
     pub no_proxy: Option<String>,
 }
 
-impl TryFrom<Proxy> for reqwest::Proxy {
+impl TryFrom<&Proxy> for reqwest::Proxy {
     type Error = anyhow::Error;
-    fn try_from(value: Proxy) -> std::result::Result<Self, Self::Error> {
-        let base = match (value.http, value.https) {
+    fn try_from(value: &Proxy) -> std::result::Result<Self, Self::Error> {
+        let base = match (&value.http, &value.https) {
             // When nothing provided, use env proxy if there is.
             (None, None) => reqwest::Proxy::custom(|url| env_proxy::for_url(url).to_url()),
             // When both are provided, use the provided https proxy.
-            (Some(_), Some(https)) => reqwest::Proxy::all(https)?,
-            (Some(http), None) => reqwest::Proxy::http(http)?,
-            (None, Some(https)) => reqwest::Proxy::https(https)?,
+            (Some(_), Some(https)) => reqwest::Proxy::all(https.clone())?,
+            (Some(http), None) => reqwest::Proxy::http(http.clone())?,
+            (None, Some(https)) => reqwest::Proxy::https(https.clone())?,
         };
-        let with_no_proxy = if let Some(no_proxy) = value.no_proxy {
-            base.no_proxy(reqwest::NoProxy::from_string(&no_proxy))
+        let with_no_proxy = if let Some(no_proxy) = &value.no_proxy {
+            base.no_proxy(reqwest::NoProxy::from_string(no_proxy))
         } else {
             // Fallback to using env var
             base.no_proxy(reqwest::NoProxy::from_env())
@@ -511,19 +512,44 @@ fn baked_in_manifest_raw() -> &'static str {
 /// - Download from specific url, which could have file schema.
 /// - Load from `baked_in_manifest_raw`.
 ///
-pub fn get_toolset_manifest(url: Option<&Url>) -> Result<ToolsetManifest> {
-    if let Some(url) = url {
+pub fn get_toolset_manifest(url: Option<Url>, insecure: bool) -> Result<ToolsetManifest> {
+    /// During the lifetime of program (in manager mode), manifest could be loaded multiple times,
+    /// each time requires communicating with server if not cached, which is not ideal.
+    /// Therefore we are caching those globally, identified by its URL.
+    // NB: This might becomes a problem if we ended up has a ton of toolset to distribute,
+    // or the size of manifest files are very big, then we need to switch the caching location
+    // to disk. But right now, each `ToolsetManifest` only takes up a few KB, so it's fine to
+    // store them in memory.
+    // NB: This will reduce the time and IO load with repeating calls, but will increase the
+    // time for the initial call because of the `manifest.clone()`.
+    static CACHED_MANIFESTS: OnceLock<Mutex<HashMap<Option<Url>, ToolsetManifest>>> =
+        OnceLock::new();
+
+    let mutex = CACHED_MANIFESTS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut guard = mutex.lock().unwrap();
+
+    // ============ We have it cached, clone and return it directly ===================
+    if let Some(mf) = guard.get(&url) {
+        debug!("using in memory cached toolset manifest");
+        return Ok(mf.clone());
+    }
+
+    // ========== We don't have it yet, so, load the manifest and cache it ============
+    let manifest = if let Some(url) = &url {
+        debug!("downloading toolset manifest from {url}");
         let temp = utils::make_temp_file("toolset-manifest-", None)?;
-        // NB: This might fail if the url requires certain proxy setup
-        utils::DownloadOpt::<()>::new("toolset manifest")?.download_file(
-            url,
-            temp.path(),
-            false,
-        )?;
+        utils::DownloadOpt::new("toolset manifest")
+            .insecure(insecure)
+            .download_file(url, temp.path(), false)?;
         ToolsetManifest::load(temp.path())
     } else {
+        debug!("loading built-in toolset manifest");
         ToolsetManifest::from_str(baked_in_manifest_raw())
-    }
+    }?;
+    debug!("caching toolset manifest in memory");
+    guard.insert(url, manifest.clone());
+
+    Ok(manifest)
 }
 
 #[cfg(test)]

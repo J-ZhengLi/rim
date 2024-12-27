@@ -5,6 +5,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::cli::common::{self, Confirm};
+use crate::cli::GlobalOpts;
 use crate::components::Component;
 use crate::core::install::{
     default_rustup_dist_server, default_rustup_update_root, InstallConfiguration,
@@ -20,7 +21,6 @@ use super::common::{
 use super::{Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
-use log::warn;
 
 /// Perform installer actions.
 ///
@@ -33,6 +33,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
         rustup_dist_server,
         rustup_update_root,
         manifest: manifest_src,
+        insecure,
         ..
     } = installer;
 
@@ -41,14 +42,16 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     }
 
     let manifest_url = manifest_src.as_ref().map(|s| s.to_url()).transpose()?;
-    let mut manifest = get_toolset_manifest(manifest_url.as_ref())?;
+    let mut manifest = get_toolset_manifest(manifest_url, *insecure)?;
     manifest.adjust_paths()?;
 
     let component_list = manifest.current_target_components(true)?;
-    let user_opt = CustomInstallOpt::collect_from_user(
-        prefix.as_deref().unwrap_or(&default_install_dir()),
-        component_list,
-    )?;
+    let abs_prefix = if let Some(path) = prefix {
+        utils::to_nomalized_abspath(path, None)?
+    } else {
+        default_install_dir()
+    };
+    let user_opt = CustomInstallOpt::collect_from_user(&abs_prefix, component_list)?;
 
     let (registry_name, registry_value) = registry_url
         .as_deref()
@@ -56,7 +59,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
         .unwrap_or(DEFAULT_CARGO_REGISTRY);
     let install_dir = user_opt.prefix;
 
-    InstallConfiguration::init(&install_dir, None, &manifest, false)?
+    InstallConfiguration::new(&install_dir, &manifest)?
         .cargo_registry(registry_name, registry_value)
         .rustup_dist_server(
             rustup_dist_server
@@ -68,17 +71,28 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
                 .clone()
                 .unwrap_or_else(|| default_rustup_update_root().clone()),
         )
+        .insecure(*insecure)
         .install(user_opt.components)?;
 
-    println!("\n{}\n", t!("install_finish_info"));
+    let g_opts = GlobalOpts::get();
+    if !g_opts.quiet {
+        println!("\n{}\n", t!("install_finish_info"));
+    }
 
-    if common::confirm(t!("question_try_demo"), true)? {
+    // NB(J-ZhengLi): the logic is flipped here because...
+    // Well, the decision was allowing a `VS-Code` window to popup after installation by default.
+    // However, it is not ideal when passing `--yes` when the user just want a quick install,
+    // and might gets annoying when the user is doing a 'quick install' on WSL. (a VSCode
+    // window will pop open on Windows)
+    if !g_opts.yes_to_all && common::confirm(t!("question_try_demo"), true)? {
         try_it::try_it(Some(&install_dir))?;
     }
 
     #[cfg(unix)]
     if let Some(cmd) = crate::core::os::unix::source_command() {
-        println!("\n{}", t!("linux_source_hint", cmd = cmd));
+        if !g_opts.quiet {
+            println!("\n{}", t!("linux_source_hint", cmd = cmd));
+        }
     }
 
     Ok(())
@@ -97,6 +111,16 @@ impl CustomInstallOpt {
     /// Asking various questions and collect user input from CLI,
     /// then return user specified installation options.
     fn collect_from_user(prefix: &Path, components: Vec<Component>) -> Result<Self> {
+        if GlobalOpts::get().yes_to_all {
+            return Ok(Self {
+                prefix: prefix.to_path_buf(),
+                components: default_component_choices(&components)
+                    .values()
+                    .map(|c| (*c).to_owned())
+                    .collect(),
+            });
+        }
+
         // This clear the console screen while also move the cursor to top left
         #[cfg(not(windows))]
         const CLEAR_SCREEN_SPELL: &str = "\x1B[2J\x1B[1:1H";
@@ -130,7 +154,7 @@ impl CustomInstallOpt {
                 Confirm::Yes => {
                     return Ok(Self {
                         prefix: install_dir.into(),
-                        components: choices.keys().map(|c| (*c).to_owned()).collect(),
+                        components: choices.values().map(|c| (*c).to_owned()).collect(),
                     });
                 }
                 Confirm::No => (),
@@ -151,40 +175,35 @@ fn read_install_dir_input(default: &str) -> Result<Option<String>> {
     }
 }
 
+fn default_component_choices(components: &[Component]) -> ComponentChoices<'_> {
+    components
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| !c.installed && !c.optional)
+        .collect()
+}
+
 /// Read user response of what set of components they want to install.
 ///
 /// Currently, there's only three options:
 /// 1. default
 /// 2. everything
 /// 3. custom
-fn read_component_selections<'a>(components: &'a [Component]) -> Result<ComponentChoices<'a>> {
+fn read_component_selections(components: &[Component]) -> Result<ComponentChoices<'_>> {
     let profile_choices = &[
         t!("install_default"),
         t!("install_everything"),
         t!("install_custom"),
     ];
-    let default_set = || -> ComponentChoices<'a> {
-        components
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, c)| {
-                if !c.installed && !c.optional {
-                    Some((c, idx))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    };
     let choice = question_single_choice(t!("question_components_profile"), profile_choices, "1")?;
     let selection = match choice {
         // Default set
-        1 => default_set(),
+        1 => default_component_choices(components),
         // Full set, but exclude installed components
         2 => components
             .iter()
             .enumerate()
-            .filter_map(|(idx, c)| if !c.installed { Some((c, idx)) } else { None })
+            .filter(|(_, c)| !c.installed)
             .collect(),
         // Customized set
         3 => {
@@ -192,8 +211,8 @@ fn read_component_selections<'a>(components: &'a [Component]) -> Result<Componen
                 .show_desc(true)
                 .decorate(ComponentDecoration::InstalledOrRequired)
                 .build();
-            let default_ids = default_set()
-                .values()
+            let default_ids = default_component_choices(components)
+                .keys()
                 .map(|idx| (idx + 1).to_string())
                 .collect::<Vec<_>>()
                 .join(" ");
@@ -211,13 +230,7 @@ fn read_component_selections<'a>(components: &'a [Component]) -> Result<Componen
             components
                 .iter()
                 .enumerate()
-                .filter_map(|(idx, c)| {
-                    if c.required || index_set.contains(&(idx + 1)) {
-                        Some((c, idx))
-                    } else {
-                        None
-                    }
-                })
+                .filter(|(idx, c)| c.required || index_set.contains(&(idx + 1)))
                 .collect()
         }
         _ => unreachable!("out-of-range input should already be caught"),
@@ -232,7 +245,7 @@ fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Resul
     writeln!(&mut stdout, "\n{}\n", t!("current_install_option"))?;
     writeln!(&mut stdout, "{}:\n\t{install_dir}", t!("install_dir"))?;
     writeln!(&mut stdout, "\n{}:", t!("selected_components"))?;
-    let list_of_comp = ComponentListBuilder::new(choices.keys().copied())
+    let list_of_comp = ComponentListBuilder::new(choices.values().copied())
         .decorate(ComponentDecoration::Confirmation)
         .build()
         .join("\n");
@@ -244,7 +257,7 @@ fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Resul
 }
 
 pub(super) fn execute_manager(manager: &ManagerSubcommands) -> Result<bool> {
-    let ManagerSubcommands::Install { version } = manager else {
+    let ManagerSubcommands::Install { version, .. } = manager else {
         return Ok(false);
     };
 

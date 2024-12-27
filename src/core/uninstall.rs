@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use indexmap::IndexMap;
-use log::{info, warn};
 
 use super::{
     directories::RimDir,

@@ -2,18 +2,19 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use log::info;
 use url::Url;
 
 use super::directories::RimDir;
 use super::install::InstallConfiguration;
 use super::parser::toolset_manifest::ToolsetManifest;
 use super::uninstall::UninstallConfiguration;
+use super::GlobalOpts;
 use super::CARGO_HOME;
 use super::RUSTUP_DIST_SERVER;
 use super::RUSTUP_HOME;
+use crate::setter;
 use crate::toolset_manifest::Proxy;
-use crate::utils::{self, download_with_proxy, set_exec_permission, url_join};
+use crate::utils::{self, set_exec_permission, url_join};
 
 #[cfg(windows)]
 pub(crate) const RUSTUP_INIT: &str = "rustup-init.exe";
@@ -25,13 +26,17 @@ const RUSTUP: &str = "rustup.exe";
 #[cfg(not(windows))]
 const RUSTUP: &str = "rustup";
 
-pub struct ToolchainInstaller;
+pub struct ToolchainInstaller {
+    insecure: bool,
+}
 
 impl ToolchainInstaller {
     pub(crate) fn init() -> Self {
         std::env::remove_var("RUSTUP_TOOLCHAIN");
-        Self
+        Self { insecure: false }
     }
+
+    setter!(insecure(self, bool));
 
     fn install_toolchain_via_rustup(
         &self,
@@ -49,14 +54,22 @@ impl ToolchainInstaller {
             args.push("--component");
             args.extend(components);
         }
-        if let Some(local_server) = manifest.offline_dist_server()? {
-            utils::Command::new(rustup)
-                .args(&args)
-                .env(RUSTUP_DIST_SERVER, local_server.as_str())
-                .run()
+        let mut cmd = if let Some(local_server) = manifest.offline_dist_server()? {
+            utils::cmd!([RUSTUP_DIST_SERVER=local_server.as_str()] rustup)
+        } else if let Ok(dist_server) = std::env::var(RUSTUP_DIST_SERVER) {
+            let mut server: Url = dist_server.parse()?;
+            if server.scheme() == "https" && self.insecure {
+                warn!("{}", t!("insecure_http_override"));
+                // the old scheme is `https` and new scheme is `http`, meaning that this
+                // is guaranteed to be `Ok`.
+                server.set_scheme("http").unwrap();
+            }
+            utils::cmd!([RUSTUP_DIST_SERVER=server.as_str()] rustup)
         } else {
-            utils::Command::new(rustup).args(&args).run()
-        }
+            utils::cmd!(rustup)
+        };
+        cmd.args(args);
+        utils::execute(cmd)
     }
 
     /// Install rust toolchain & components via rustup.
@@ -66,7 +79,7 @@ impl ToolchainInstaller {
         manifest: &ToolsetManifest,
         optional_components: &[String],
     ) -> Result<()> {
-        let rustup = ensure_rustup(config, manifest)?;
+        let rustup = ensure_rustup(config, manifest, self.insecure)?;
 
         let components_to_install = manifest
             .rust
@@ -93,30 +106,24 @@ impl ToolchainInstaller {
         config: &InstallConfiguration,
         manifest: &ToolsetManifest,
     ) -> Result<()> {
-        let rustup = ensure_rustup(config, manifest)?;
-
+        let rustup = ensure_rustup(config, manifest, self.insecure)?;
         let tc_ver = manifest.rust_version();
-        utils::Command::new(&rustup)
-            .args(&["toolchain", "add", tc_ver])
-            .run()?;
-        utils::Command::new(&rustup)
-            .args(&["default", tc_ver])
-            .run()?;
-        Ok(())
+
+        utils::run!(&rustup, "toolchain", "add", tc_ver, "--no-self-update")
     }
 
     // Rustup self uninstall all the components and toolchains.
     pub(crate) fn remove_self(&self, config: &UninstallConfiguration) -> Result<()> {
         let rustup = config.cargo_bin().join(RUSTUP);
-        utils::Command::new(rustup)
-            .args(&["self", "uninstall", "-y"])
-            .env(CARGO_HOME, config.cargo_home())
-            .env(RUSTUP_HOME, config.rustup_home())
-            .run()
+        utils::run!([CARGO_HOME=config.cargo_home(), RUSTUP_HOME=config.rustup_home()] rustup, "self", "uninstall", "-y")
     }
 }
 
-fn ensure_rustup(config: &InstallConfiguration, manifest: &ToolsetManifest) -> Result<PathBuf> {
+fn ensure_rustup(
+    config: &InstallConfiguration,
+    manifest: &ToolsetManifest,
+    insecure: bool,
+) -> Result<PathBuf> {
     let rustup_bin = config.cargo_bin().join(RUSTUP);
     if rustup_bin.exists() {
         return Ok(rustup_bin);
@@ -138,6 +145,7 @@ fn ensure_rustup(config: &InstallConfiguration, manifest: &ToolsetManifest) -> R
                 &rustup_init,
                 &config.rustup_update_root,
                 manifest.proxy.as_ref(),
+                insecure,
             )?;
             (rustup_init, Some(temp_dir))
         };
@@ -149,12 +157,20 @@ fn ensure_rustup(config: &InstallConfiguration, manifest: &ToolsetManifest) -> R
     Ok(rustup_bin)
 }
 
-fn download_rustup_init(dest: &Path, server: &Url, proxy: Option<&Proxy>) -> Result<()> {
+fn download_rustup_init(
+    dest: &Path,
+    server: &Url,
+    proxy: Option<&Proxy>,
+    insecure: bool,
+) -> Result<()> {
     info!("{}", t!("downloading_rustup_init"));
 
     let download_url = url_join(server, &format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
         .context("Failed to init rustup download url.")?;
-    download_with_proxy(RUSTUP_INIT, &download_url, dest, proxy)
+    utils::DownloadOpt::new(RUSTUP_INIT)
+        .insecure(insecure)
+        .proxy(proxy.cloned())
+        .download_file(&download_url, dest, false)
         .context("Failed to download rustup.")
 }
 
@@ -162,14 +178,21 @@ fn install_rustup(rustup_init: &PathBuf) -> Result<()> {
     // make sure it can be executed
     set_exec_permission(rustup_init)?;
 
-    let args = [
+    let mut args = vec![
         // tell rustup not to add `. $HOME/.cargo/env` because we already wrote one for them.
         "--no-modify-path",
         "--default-toolchain",
         "none",
         "--default-host",
         env!("TARGET"),
-        "-vy",
+        "-y",
     ];
-    utils::Command::new(rustup_init).args(&args).run()
+    if GlobalOpts::get().verbose {
+        args.push("-v");
+    } else if GlobalOpts::get().quiet {
+        args.push("-q");
+    }
+    let mut cmd = utils::cmd!(rustup_init);
+    cmd.args(args);
+    utils::execute(cmd)
 }
