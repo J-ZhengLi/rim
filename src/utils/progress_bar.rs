@@ -138,6 +138,15 @@ impl CliProgress<CliProgressBar> {
             stop,
         }
     }
+
+    /// Create a hidden progress bar that does not render anything.
+    pub fn hidden() -> Self {
+        CliProgress {
+            start: |_: String, _: Style| Ok(CliProgressBar::hidden()),
+            update: |_: &CliProgressBar, _: Option<u64>| {},
+            stop: |_: &CliProgressBar, _: String| {},
+        }
+    }
 }
 
 impl Default for CliProgress<CliProgressBar> {

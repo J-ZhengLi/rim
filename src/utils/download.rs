@@ -10,6 +10,7 @@ use reqwest::blocking::{Client, ClientBuilder};
 use url::Url;
 
 use super::progress_bar::{CliProgress, Style};
+use crate::core::GlobalOpts;
 use crate::setter;
 use crate::toolset_manifest::Proxy as CrateProxy;
 
@@ -40,9 +41,10 @@ pub struct DownloadOpt<T: Sized> {
 
 impl DownloadOpt<ProgressBar> {
     pub fn new<S: ToString>(name: S) -> Self {
+        let handler = (!GlobalOpts::get().quiet).then_some(CliProgress::new());
         Self {
             name: name.to_string(),
-            handler: Some(CliProgress::new()),
+            handler,
             insecure: false,
             proxy: None,
         }
