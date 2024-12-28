@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use xz2::read::XzDecoder;
 use zip::ZipArchive;
 
+use crate::core::GlobalOpts;
 use crate::utils::progress_bar::Style;
 
 use super::progress_bar::CliProgress;
@@ -84,7 +85,11 @@ impl<'a> Extractable<'a> {
     ///
     /// This will extract file under the `root`, make sure it's an empty folder before using this function.
     pub fn extract_to(&mut self, root: &Path) -> Result<()> {
-        let indicator = CliProgress::new();
+        let indicator = if GlobalOpts::get().quiet {
+            CliProgress::hidden()
+        } else {
+            CliProgress::new()
+        };
 
         let helper = ExtractHelper {
             file_path: self.path,

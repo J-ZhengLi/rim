@@ -310,6 +310,9 @@ pub(crate) fn confirm_install() -> Result<Confirm> {
 
 #[cfg(windows)]
 pub fn pause() -> Result<()> {
+    if GlobalOpts::get().yes_to_all {
+        return Ok(());
+    }
     let mut stdout = io::stdout();
     writeln!(&mut stdout, "\n{}", t!("pause_prompt"))?;
     _ = stdout.flush();
