@@ -72,6 +72,9 @@ fn create_backup_for_rc(path: &Path, backup_dir: &Path) -> Result<()> {
 impl Uninstallation for UninstallConfiguration<'_> {
     // This is basically removing the section marked with `rustup config section` in shell profiles.
     fn remove_rustup_env_vars(&self) -> Result<()> {
+        if GlobalOpts::get().no_modify_env() {
+            return Ok(());
+        }
         remove_all_config_section()
     }
 
@@ -169,6 +172,10 @@ fn modify_path(path: &Path, remove: bool) -> Result<()> {
     };
     if should_update_current_env {
         env::set_var("PATH", env::join_paths(splited)?);
+    }
+
+    if GlobalOpts::get().no_modify_path() {
+        return Ok(());
     }
 
     // Add the new path to bash profiles
