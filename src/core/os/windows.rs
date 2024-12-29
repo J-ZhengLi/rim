@@ -11,23 +11,12 @@ pub(crate) use rustup::*;
 
 impl EnvConfig for InstallConfiguration<'_> {
     fn config_env_vars(&self) -> Result<()> {
-        let vars_raw = self.env_vars()?;
+        info!("{}", t!("install_env_config"));
 
-        if GlobalOpts::get().no_modify_env {
-            // Update vars for current process, this is a MUST to ensure this installation
-            // can be done correctly.
-            for (key, val) in vars_raw {
-                std::env::set_var(key, val);
-            }
-        } else {
-            info!("{}", t!("install_env_config"));
-
-            for (key, val) in vars_raw {
-                set_env_var(key, val.encode_utf16().collect())?;
-            }
-
-            update_env();
+        for (key, val) in self.env_vars()? {
+            set_env_var(key, val.encode_utf16().collect())?;
         }
+        update_env();
 
         self.inc_progress(2.0)
     }
@@ -40,7 +29,7 @@ impl Uninstallation for UninstallConfiguration<'_> {
         remove_from_path(&cargo_bin_dir)?;
 
         for var_to_remove in crate::core::ALL_VARS {
-            set_env_var(var_to_remove, vec![])?;
+            unset_env_var(var_to_remove)?;
         }
 
         update_env();
@@ -77,13 +66,13 @@ impl Uninstallation for UninstallConfiguration<'_> {
 
 /// Module containing functions that are modified from `rustup`.
 pub(crate) mod rustup {
+    use super::GlobalOpts;
+    use anyhow::{anyhow, Context, Result};
     use std::env;
     use std::ffi::OsString;
     use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::Path;
     use std::sync::OnceLock;
-
-    use anyhow::{anyhow, Context, Result};
     use winapi::shared::minwindef;
     use winapi::um::winuser;
     use winreg::enums::{RegType, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE};
@@ -185,10 +174,11 @@ pub(crate) mod rustup {
             .context("Failed opening Environment key")
     }
 
-    // Get the windows PATH variable out of the registry as a String. If
-    // this returns None then the PATH variable is not a string and we
-    // should not mess with it.
-    pub(super) fn get_windows_path_var() -> Result<Option<Vec<u16>>> {
+    /// Get the current user's PATH variable out of the registry as a String.
+    ///
+    /// If this returns None then the PATH variable is not a string and we
+    /// should not mess with it.
+    pub(super) fn get_user_path_var() -> Result<Option<Vec<u16>>> {
         let environment = environment()?;
 
         let reg_value = environment.get_raw_value("PATH");
@@ -206,29 +196,47 @@ pub(crate) mod rustup {
         }
     }
 
+    /// Set the environment variable `key` with a given `value`.
+    ///
+    /// This will modify the environment permanently for current user,
+    /// as well as for current running process.
     pub(super) fn set_env_var(key: &str, val: Vec<u16>) -> Result<()> {
-        let env = environment()?;
+        // Set for current process
+        env::set_var(key, OsString::from_wide(&val));
+        set_persist_env_var(key, val)?;
 
+        Ok(())
+    }
+
+    /// Remove a environment variable with given `key`
+    ///
+    /// This will modify the environment permanently for current user,
+    /// as well as for current running process.
+    pub(super) fn unset_env_var(key: &str) -> Result<()> {
+        // Delete for current process
+        env::remove_var(key);
+        set_persist_env_var(key, vec![])?;
+
+        Ok(())
+    }
+
+    /// Set or remove env var using windows api.
+    fn set_persist_env_var(key: &str, val: Vec<u16>) -> Result<()> {
+        if GlobalOpts::get().no_modify_env() {
+            return Ok(());
+        }
+
+        let env = environment()?;
         if val.is_empty() {
+            // remove
             // Don't do anything if the variable doesn't exist
             if env.get_raw_value(key).is_err() {
                 return Ok(());
             }
-            // Delete for current process
-            env::remove_var(key);
             // Delete for user environment
             env.delete_value(key)?;
         } else {
-            // TODO: We need a better approch (?)
-            // `PATH` changes for current process should be applied before passing to this function.
-            // Because on windows, PATH variable are splited into `user` and `system`,
-            // since the `val` passed here usually for `user` only, setting var here will erase the
-            // system PATH variable.
-            if key != "PATH" {
-                // Set for current process
-                env::set_var(key, OsString::from_wide(&val));
-            }
-
+            // set var
             let reg_value = RegValue {
                 bytes: to_winreg_bytes(val),
                 vtype: RegType::REG_EXPAND_SZ,
@@ -263,7 +271,8 @@ pub(crate) mod rustup {
             .position(|path| path == path_bytes)
     }
 
-    pub(super) fn update_path_for_current_process(path: &Path, is_remove: bool) -> Result<()> {
+    /// Add or remove a path for current running process.
+    pub(super) fn set_path_for_current_process(path: &Path, is_remove: bool) -> Result<()> {
         let orig_path = env::var_os("PATH");
         match (orig_path, is_remove) {
             (Some(path_oss), false) => {
@@ -287,37 +296,58 @@ pub(crate) mod rustup {
         Ok(())
     }
 
+    /// Add a path permanently to user's `PATH` environment variable,
+    /// also work for current running process.
     pub(crate) fn add_to_path(path: &Path) -> Result<()> {
-        let Some(old_path) = get_windows_path_var()? else {
+        // Note: Windows's PATH variables are splitted into User's and System's,
+        // we cannot use `env::set_var` with this `user_path_new` because it would
+        // write it with user PATH value and erase all the system PATH values in it.
+        set_path_for_current_process(path, false)?;
+
+        if GlobalOpts::get().no_modify_path() {
+            return Ok(());
+        }
+
+        let Some(user_path_orig) = get_user_path_var()? else {
             return Ok(());
         };
         let path_bytes = path.as_os_str().encode_wide().collect::<Vec<_>>();
 
-        if find_path_in_env(&old_path, &path_bytes).is_some() {
-            // The path is already added, return without doing anything.
+        if find_path_in_env(&user_path_orig, &path_bytes).is_some() {
+            // The path was already added, return without doing anything.
             return Ok(());
         };
 
-        let mut new_path = path_bytes;
-        new_path.push(b';' as u16);
-        new_path.extend_from_slice(&old_path);
+        let mut user_path_new = path_bytes;
+        user_path_new.push(b';' as u16);
+        user_path_new.extend_from_slice(&user_path_orig);
 
         // Apply the new path
-        set_env_var("PATH", new_path)?;
-        update_path_for_current_process(path, false)?;
+        set_persist_env_var("PATH", user_path_new)?;
         // Sync changes
         update_env();
 
         Ok(())
     }
 
+    /// Remove a path permanently from user's `PATH` environment variable,
+    /// also work for current running process.
     pub(crate) fn remove_from_path(path: &Path) -> Result<()> {
-        let Some(old_path) = get_windows_path_var()? else {
+        // Note: Windows's PATH variables are splitted into User's and System's,
+        // we cannot use `env::set_var` with this `user_path_new` because it would
+        // write it with user PATH value and erase all the system PATH values in it.
+        set_path_for_current_process(path, true)?;
+
+        if GlobalOpts::get().no_modify_path() {
+            return Ok(());
+        }
+
+        let Some(user_path_orig) = get_user_path_var()? else {
             return Ok(());
         };
         let path_bytes = path.as_os_str().encode_wide().collect::<Vec<_>>();
 
-        let Some(idx) = find_path_in_env(&old_path, &path_bytes) else {
+        let Some(idx) = find_path_in_env(&user_path_orig, &path_bytes) else {
             // The path is not added, return without doing anything.
             return Ok(());
         };
@@ -326,21 +356,19 @@ pub(crate) mod rustup {
         // for that to find the string, because if it's the last string in the path,
         // there may not be.
         let mut len = path_bytes.len();
-        if old_path.get(idx + path_bytes.len()) == Some(&(b';' as u16)) {
+        if user_path_orig.get(idx + path_bytes.len()) == Some(&(b';' as u16)) {
             len += 1;
         }
 
-        let mut new_path = old_path[..idx].to_owned();
-        new_path.extend_from_slice(&old_path[idx + len..]);
-        // Don't leave a trailing ; though, we don't want an empty string in the
-        // path.
-        if new_path.last() == Some(&(b';' as u16)) {
-            new_path.pop();
+        let mut user_path_new = user_path_orig[..idx].to_owned();
+        user_path_new.extend_from_slice(&user_path_orig[idx + len..]);
+        // Don't leave a trailing ; though, we don't want an empty string in the path.
+        if user_path_new.last() == Some(&(b';' as u16)) {
+            user_path_new.pop();
         }
 
         // Apply the new path
-        set_env_var("PATH", new_path)?;
-        update_path_for_current_process(path, true)?;
+        set_persist_env_var("PATH", user_path_new)?;
         // Sync changes
         update_env();
 
@@ -360,7 +388,7 @@ mod tests {
         let cur_paths = std::env::var_os("PATH").unwrap_or_default();
 
         // ADD
-        rustup::update_path_for_current_process(&dummy_path, false).unwrap();
+        rustup::set_path_for_current_process(&dummy_path, false).unwrap();
         let new_paths = std::env::var_os("PATH").unwrap();
         let mut expected = dummy_path.as_os_str().to_os_string();
         expected.push(";");
@@ -368,7 +396,7 @@ mod tests {
         assert_eq!(new_paths, expected);
 
         // REMOVE
-        rustup::update_path_for_current_process(&dummy_path, true).unwrap();
+        rustup::set_path_for_current_process(&dummy_path, true).unwrap();
         let new_paths = std::env::var_os("PATH").unwrap();
         assert_eq!(new_paths, cur_paths);
     }

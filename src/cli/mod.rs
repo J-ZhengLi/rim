@@ -54,7 +54,7 @@ pub struct Installer {
     /// Note that the installation might not work as intended if some
     /// of the variables are missing (such as CARGO_HOME, RUSTUP_DIST_SERVER, etc.).
     /// Do NOT use this if you don't know what you're doing.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "no_modify_path")]
     no_modify_env: bool,
     /// Allow insecure connections when download packages from server.
     #[arg(short = 'k', long)]
@@ -140,6 +140,14 @@ pub struct Manager {
     /// Don't modify user's `PATH` environment variable.
     #[arg(long)]
     no_modify_path: bool,
+    /// Don't make any environment modifications on user's machine.
+    ///
+    /// This includes environment veriables including `PATH`, `CARGO_HOME`, `RUSTUP_HOME` etc,
+    /// keeping them intact even after uninstallation.
+    /// This Does not includes Windows `Uninstall` entry of course, which will get removed after
+    /// uninstallation.
+    #[arg(long, conflicts_with = "no_modify_path")]
+    no_modify_env: bool,
 
     /// Specify another language to display
     #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
@@ -173,14 +181,11 @@ impl Installer {
 
 impl Manager {
     pub fn execute(&self) -> Result<()> {
-        // NB: `no_modify_env` was current set to always true, because manager currently only
-        // modifies during self uninstall, thus the `PROGRAM` registry entry for this program
-        // need to be removed, so don't change its value to true or let user override it yet.
         setup(
             self.verbose,
             self.quiet,
             self.yes_to_all,
-            false,
+            self.no_modify_env,
             self.no_modify_path,
             self.lang.as_deref(),
         )?;

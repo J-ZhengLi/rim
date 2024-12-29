@@ -51,8 +51,8 @@ pub(crate) struct GlobalOpts {
     pub(crate) verbose: bool,
     pub(crate) quiet: bool,
     pub(crate) yes_to_all: bool,
-    pub(crate) no_modify_env: bool,
-    pub(crate) no_modify_path: bool,
+    no_modify_env: bool,
+    no_modify_path: bool,
 }
 
 /// Globally stored user options
@@ -94,6 +94,16 @@ impl GlobalOpts {
             })
         }
     }
+
+    /// Return `true` if either one of `no-modify-path` or `no-modify-env` was set to `true`
+    pub(crate) fn no_modify_path(&self) -> bool {
+        self.no_modify_path || self.no_modify_env
+    }
+
+    /// Return `true` if `no-modify-env` was set to `true`
+    pub(crate) fn no_modify_env(&self) -> bool {
+        self.no_modify_env
+    }
 }
 
 #[cfg(test)]
@@ -108,7 +118,8 @@ mod tests {
         assert_eq!(opts.verbose, true);
         assert_eq!(opts.quiet, false);
         assert_eq!(opts.yes_to_all, true);
-        assert_eq!(opts.no_modify_env, true);
-        assert_eq!(opts.no_modify_path, false);
+        assert_eq!(opts.no_modify_env(), true);
+        // no-modfy-path is dictated by no-modify-env, because PATH is part of env var
+        assert_eq!(opts.no_modify_path(), true);
     }
 }
