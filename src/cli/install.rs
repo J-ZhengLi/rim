@@ -226,11 +226,11 @@ fn read_component_selections(components: &[Component]) -> Result<ComponentChoice
             let index_set: HashSet<usize> = choices.into_iter().collect();
 
             // convert the input indexes to `ComponentChoices`,
-            // and we also need to add the `required` tools even if the user didn't choose it.
+            // also we need to add missing `required` tools even if the user didn't choose it.
             components
                 .iter()
                 .enumerate()
-                .filter(|(idx, c)| c.required || index_set.contains(&(idx + 1)))
+                .filter(|(idx, c)| (c.required && !c.installed) || index_set.contains(&(idx + 1)))
                 .collect()
         }
         _ => unreachable!("out-of-range input should already be caught"),
