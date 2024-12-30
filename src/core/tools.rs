@@ -67,8 +67,8 @@ impl<'a> Tool<'a> {
         }
     }
 
-    setter!(path(self, path: impl Into<PathExt<'a>>) { path.into() });
-    setter!(install_args(self, Option<Vec<&'a str>>));
+    setter!(with_path(self.path, path: impl Into<PathExt<'a>>) { path.into() });
+    setter!(with_install_args(self.install_args, Option<Vec<&'a str>>));
 
     pub(crate) fn from_path(name: &str, path: &'a Path) -> Result<Self> {
         if !path.exists() {
@@ -81,14 +81,14 @@ impl<'a> Tool<'a> {
 
         // Step 1: Looking for custom instruction
         if custom_instructions::is_supported(&name) {
-            return Ok(Self::new(name, ToolKind::Custom).path(path));
+            return Ok(Self::new(name, ToolKind::Custom).with_path(path));
         }
 
         // Step 2: Identify from file extension (if it's a file ofc).
         if utils::is_executable(path) {
-            return Ok(Self::new(name, ToolKind::Executables).path(path));
+            return Ok(Self::new(name, ToolKind::Executables).with_path(path));
         } else if Plugin::is_supported(path) {
-            return Ok(Self::new(name, ToolKind::Plugin).path(path));
+            return Ok(Self::new(name, ToolKind::Plugin).with_path(path));
         }
         // TODO: Well, we got a directory, things are getting complicated, there could be one of this scenarios:
         // 1. Directory contains some executable files and nothing else
@@ -103,7 +103,7 @@ impl<'a> Tool<'a> {
             // Check if there is any folder that looks like `bin`
             // Then assuming this is `UsrDirs` type installer.
             if entries.iter().any(|path| path.ends_with("bin")) {
-                return Ok(Self::new(name, ToolKind::DirWithBin).path(path));
+                return Ok(Self::new(name, ToolKind::DirWithBin).with_path(path));
             }
             // If no sub folder exists, and there are binaries lays directly in the folder
             if !entries.iter().any(|path| path.is_dir()) {
@@ -111,19 +111,19 @@ impl<'a> Tool<'a> {
                     .iter()
                     .filter_map(|path| utils::is_executable(path).then_some(path.to_path_buf()))
                     .collect::<Vec<_>>();
-                return Ok(Self::new(name, ToolKind::Executables).path(assumed_binaries));
+                return Ok(Self::new(name, ToolKind::Executables).with_path(assumed_binaries));
             }
         }
 
         warn!("unknown tool '{name}', it's installer doesn't fit any predefined characteristic");
-        Ok(Self::new(name, ToolKind::Unknown).path(path))
+        Ok(Self::new(name, ToolKind::Unknown).with_path(path))
     }
 
     /// Specify as a tool that managed by `cargo`.
     ///
     /// Note: `extra_args` should not contains "install" and `name`.
     pub(crate) fn cargo_tool(name: &str, extra_args: Option<Vec<&'a str>>) -> Self {
-        Self::new(name.to_string(), ToolKind::CargoTool).install_args(extra_args)
+        Self::new(name.to_string(), ToolKind::CargoTool).with_install_args(extra_args)
     }
 
     pub(crate) fn install(
@@ -145,7 +145,7 @@ impl<'a> Tool<'a> {
                     self.install_args.as_deref().unwrap_or(&[self.name()]),
                     config.cargo_home(),
                 )?;
-                return Ok(ToolRecord::cargo_tool().version(version));
+                return Ok(ToolRecord::cargo_tool().with_version(version));
             }
             ToolKind::Executables => {
                 let mut res = vec![];
@@ -175,7 +175,9 @@ impl<'a> Tool<'a> {
             }
         };
 
-        Ok(ToolRecord::new(self.kind).paths(paths).version(version))
+        Ok(ToolRecord::new(self.kind)
+            .with_paths(paths)
+            .with_version(version))
     }
 
     pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {

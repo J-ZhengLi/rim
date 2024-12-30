@@ -36,7 +36,7 @@ impl ToolchainInstaller {
         Self { insecure: false }
     }
 
-    setter!(insecure(self, bool));
+    setter!(insecure(self.insecure, bool));
 
     fn install_toolchain_via_rustup(
         &self,
@@ -169,7 +169,7 @@ fn download_rustup_init(
         .context("Failed to init rustup download url.")?;
     utils::DownloadOpt::new(RUSTUP_INIT)
         .insecure(insecure)
-        .proxy(proxy.cloned())
+        .with_proxy(proxy.cloned())
         .download_file(&download_url, dest, false)
         .context("Failed to download rustup.")
 }

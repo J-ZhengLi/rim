@@ -133,10 +133,10 @@ impl ToolsetManifest {
             profile_name,
             profile.description.as_deref().unwrap_or_default(),
         )
-        .group_name(Some(self.toolchain_group_name()))
-        .is_toolchain_component(true)
+        .with_group(Some(self.toolchain_group_name()))
+        .set_toolchain_component(true)
         .required(true)
-        .version(Some(tc_channel))];
+        .with_version(Some(tc_channel))];
 
         for component in self.optional_toolchain_components() {
             components.push(
@@ -144,11 +144,11 @@ impl ToolsetManifest {
                     component,
                     self.get_tool_description(component).unwrap_or_default(),
                 )
-                .group_name(Some(self.toolchain_group_name()))
+                .with_group(Some(self.toolchain_group_name()))
                 .optional(true)
-                .is_toolchain_component(true)
+                .set_toolchain_component(true)
                 // toolchain component's version are unified
-                .version(Some(tc_channel)),
+                .with_version(Some(tc_channel)),
             );
         }
 
@@ -175,12 +175,12 @@ impl ToolsetManifest {
                         tool_name,
                         self.get_tool_description(tool_name).unwrap_or_default(),
                     )
-                    .group_name(self.group_name(tool_name))
-                    .tool_installer(tool_info)
+                    .with_group(self.group_name(tool_name))
+                    .with_tool_installer(tool_info)
                     .required(tool_info.is_required())
                     .optional(tool_info.is_optional())
                     .installed(installed)
-                    .version(version),
+                    .with_version(version),
                 );
             }
         }

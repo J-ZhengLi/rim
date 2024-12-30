@@ -56,7 +56,7 @@ macro_rules! exe {
 }
 pub(crate) use exe;
 
-/// Struct member variables setter.
+/// A convenient macro to write struct variables setter.
 ///
 /// # Usage
 ///
@@ -70,15 +70,15 @@ pub(crate) use exe;
 /// }
 ///
 /// impl Foo {
-///     setter!(a(self, bool));
-///     setter!(b(self, u32));
-///     setter!(c(self, value: u8) { Some(value) });
+///     setter!(a(self.a, bool));
+///     setter!(with_b(self.b, u32));
+///     setter!(set_c(self.c, value: u8) { Some(value) });
 /// }
 ///
 /// let foo = Foo::default()
 ///     .a(true)
-///     .b(10)
-///     .c(100);
+///     .with_b(10)
+///     .set_c(100);
 /// assert_eq!(foo.a, true);
 /// assert_eq!(foo.b, 10);
 /// assert_eq!(foo.c, Some(100));
@@ -86,17 +86,17 @@ pub(crate) use exe;
 // FIXME(?): Find a proper way to provide function visibility instead of all `pub`.
 #[macro_export]
 macro_rules! setter {
-    ($name:ident ($self_arg:ident, $t:ty)) => {
+    ($name:ident ($self:ident.$self_param:ident, $t:ty)) => {
         #[allow(clippy::wrong_self_convention)]
-        pub fn $name(mut $self_arg, val: $t) -> Self {
-            $self_arg.$name = val;
-            $self_arg
+        pub fn $name(mut $self, val: $t) -> Self {
+            $self.$self_param = val;
+            $self
         }
     };
-    ($name:ident ($self_arg:ident, $($val:ident : $t:ty),*) { $init_val:expr }) => {
-        pub fn $name(mut $self_arg, $($val: $t),*) -> Self {
-            $self_arg.$name = $init_val;
-            $self_arg
+    ($name:ident ($self:ident.$self_param:ident, $($val:ident : $t:ty),*) { $init_val:expr }) => {
+        pub fn $name(mut $self, $($val: $t),*) -> Self {
+            $self.$self_param = $init_val;
+            $self
         }
     };
 }

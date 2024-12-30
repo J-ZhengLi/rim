@@ -224,8 +224,8 @@ impl ToolRecord {
         self.use_cargo.unwrap_or(self.kind)
     }
 
-    setter!(paths(self, Vec<PathBuf>));
-    setter!(version(self, ver: Option<impl Into<String>>) { ver.map(Into::into) });
+    setter!(with_paths(self.paths, Vec<PathBuf>));
+    setter!(with_version(self.version, ver: Option<impl Into<String>>) { ver.map(Into::into) });
 }
 
 // `use-cargo = true/false` was used during [0.2.0, 0.3.0], in order not to break
@@ -273,7 +273,7 @@ mod tests {
         fp.add_rust_record("stable", &rust_components);
         fp.add_tool_record(
             "aaa",
-            ToolRecord::new(ToolKind::Custom).paths(vec![install_dir.join("aaa")]),
+            ToolRecord::new(ToolKind::Custom).with_paths(vec![install_dir.join("aaa")]),
         );
 
         let v0 = format!(
