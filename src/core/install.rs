@@ -201,7 +201,7 @@ impl<'a> InstallConfiguration<'a> {
 
     fn install_tools_(&mut self, use_cargo: bool, tools: &ToolMap, weight: f32) -> Result<()> {
         let to_install = tools
-            .into_iter()
+            .iter()
             .filter(|(_, t)| {
                 if use_cargo {
                     t.is_cargo_tool()

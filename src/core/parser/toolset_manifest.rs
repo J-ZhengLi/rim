@@ -2,6 +2,7 @@
 //! such as its name, version, and what's included etc.
 
 use std::collections::{HashMap, HashSet};
+use std::ops::{Deref, DerefMut};
 use std::sync::{Mutex, OnceLock};
 use std::{collections::BTreeMap, path::PathBuf};
 
@@ -17,7 +18,66 @@ use crate::utils;
 use super::TomlParser;
 
 /// A map of tools, contains the name and source package information.
-pub type ToolMap = IndexMap<String, ToolInfo>;
+///
+/// This is basically a wrapper type to `IndexMap`, but with tailored functionalities to suit
+/// the needs of tools' installation and uninstallation.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
+pub struct ToolMap(IndexMap<String, ToolInfo>);
+
+pub struct ToolMapIter<'a> {
+    iter: indexmap::map::Iter<'a, String, ToolInfo>,
+}
+
+impl<'a> Iterator for ToolMapIter<'a> {
+    type Item = (&'a str, &'a ToolInfo);
+    fn next(&mut self) -> Option<Self::Item> {
+        let (name, info) = self.iter.next()?;
+        // The `key` of each iteration prefers the identifier over the name.
+        let identifier = info.identifier().unwrap_or(name.as_str());
+        Some((identifier, info))
+    }
+}
+
+impl ToolMap {
+    pub fn new() -> Self {
+        Self(IndexMap::new())
+    }
+
+    pub fn iter(&self) -> ToolMapIter<'_> {
+        ToolMapIter {
+            iter: self.0.iter(),
+        }
+    }
+}
+
+impl Deref for ToolMap {
+    type Target = IndexMap<String, ToolInfo>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ToolMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl FromIterator<(String, ToolInfo)> for ToolMap {
+    fn from_iter<T: IntoIterator<Item = (String, ToolInfo)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(iter))
+    }
+}
+
+impl<'a> IntoIterator for &'a ToolMap {
+    type Item = (&'a str, &'a ToolInfo);
+    type IntoIter = ToolMapIter<'a>;
+    fn into_iter(self) -> Self::IntoIter {
+        ToolMapIter {
+            iter: self.0.iter(),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -189,12 +249,12 @@ impl ToolsetManifest {
     }
 
     /// Get a list of tool names if those are already installed in current target.
-    pub fn already_installed_tools(&self) -> Vec<&String> {
+    pub fn already_installed_tools(&self) -> Vec<&str> {
         let Some(map) = self.current_target_tools() else {
             return vec![];
         };
         map.keys()
-            .filter(|name| custom_instructions::is_installed(name))
+            .filter_map(|name| custom_instructions::is_installed(name).then_some(name.as_str()))
             .collect()
     }
 
@@ -375,6 +435,7 @@ pub enum ToolInfo {
         required: bool,
         #[serde(default)]
         optional: bool,
+        identifier: Option<String>,
     },
     Git {
         git: Url,
@@ -385,6 +446,7 @@ pub enum ToolInfo {
         required: bool,
         #[serde(default)]
         optional: bool,
+        identifier: Option<String>,
     },
     Path {
         path: PathBuf,
@@ -393,6 +455,7 @@ pub enum ToolInfo {
         required: bool,
         #[serde(default)]
         optional: bool,
+        identifier: Option<String>,
     },
     Url {
         url: Url,
@@ -401,6 +464,7 @@ pub enum ToolInfo {
         required: bool,
         #[serde(default)]
         optional: bool,
+        identifier: Option<String>,
     },
 }
 
@@ -441,57 +505,19 @@ impl ToolInfo {
         )
     }
 
-    pub fn convert_to_path(&mut self, path: PathBuf) {
+    /// Retrieve the identifier string of this tool.
+    ///
+    /// ```toml
+    /// "My Program" = { path = "/path/to/package", identifier = "my_program" }
+    /// #                                                         ^^^^^^^^^^
+    /// ```
+    pub fn identifier(&self) -> Option<&str> {
         match self {
-            Self::PlainVersion(ver) => {
-                *self = Self::Path {
-                    path,
-                    version: Some(ver.to_owned()),
-                    required: false,
-                    optional: false,
-                };
-            }
-            Self::Git {
-                required, optional, ..
-            } => {
-                *self = Self::Path {
-                    path,
-                    version: None,
-                    required: *required,
-                    optional: *optional,
-                };
-            }
-            Self::Path {
-                version,
-                required,
-                optional,
-                ..
-            }
-            | Self::Url {
-                version,
-                required,
-                optional,
-                ..
-            } => {
-                *self = Self::Path {
-                    path,
-                    version: version.to_owned(),
-                    required: *required,
-                    optional: *optional,
-                };
-            }
-            Self::DetailedVersion {
-                ver,
-                required,
-                optional,
-            } => {
-                *self = Self::Path {
-                    path,
-                    version: Some(ver.to_owned()),
-                    required: *required,
-                    optional: *optional,
-                }
-            }
+            Self::PlainVersion(_) => None,
+            Self::DetailedVersion { identifier, .. }
+            | Self::Git { identifier, .. }
+            | Self::Path { identifier, .. }
+            | Self::Url { identifier, .. } => identifier.as_deref(),
         }
     }
 }
@@ -567,6 +593,7 @@ mod tests {
                 url: $url_str.parse().unwrap(),
                 required: false,
                 optional: false,
+                identifier: None,
             }
         };
         ($git:literal, $branch:expr, $tag:expr, $rev:expr) => {
@@ -577,6 +604,7 @@ mod tests {
                 rev: $rev.map(ToString::to_string),
                 required: false,
                 optional: false,
+                identifier: None,
             }
         };
         ($path:expr, $version:expr) => {
@@ -585,6 +613,7 @@ mod tests {
                 path: $path,
                 required: false,
                 optional: false,
+                identifier: None,
             }
         };
     }
@@ -744,7 +773,7 @@ t4 = { git = "https://git.example.com/org/tool", branch = "stable" }
         #[cfg(all(windows, target_env = "gnu"))]
         assert_eq!(
             tools.unwrap(),
-            &ToolMap::from([
+            &ToolMap::from_iter([
                 (
                     "mingw64".into(),
                     tool_info!(
@@ -777,7 +806,7 @@ t4 = { git = "https://git.example.com/org/tool", branch = "stable" }
         #[cfg(all(windows, target_env = "msvc"))]
         assert_eq!(
             tools.unwrap(),
-            &ToolMap::from([
+            &ToolMap::from_iter([
                 (
                     "buildtools".into(),
                     tool_info!(
@@ -814,7 +843,7 @@ t4 = { git = "https://git.example.com/org/tool", branch = "stable" }
         );
 
         #[cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))]
-        assert_eq!(tools.unwrap(), &ToolMap::from([
+        assert_eq!(tools.unwrap(), &ToolMap::from_iter([
             ("cargo-llvm-cov".into(), tool_info!("https://github.com/taiki-e/cargo-llvm-cov/releases/download/v0.6.11/cargo-llvm-cov-x86_64-unknown-linux-gnu.tar.gz", Some("0.6.11"))),
             ("flamegraph".into(), tool_info!("https://github.com/flamegraph-rs/flamegraph", None::<&str>, Some("v0.6.5"), None::<&str>)),
             ("cargo-expand".into(), tool_info!("1.0.88")),
@@ -980,7 +1009,8 @@ t3 = { ver = "0.3.0", optional = true } # use cargo install
             Some(&ToolInfo::DetailedVersion {
                 ver: "0.2.0".into(),
                 required: true,
-                optional: false
+                optional: false,
+                identifier: None,
             })
         );
         assert_eq!(
@@ -988,7 +1018,8 @@ t3 = { ver = "0.3.0", optional = true } # use cargo install
             Some(&ToolInfo::DetailedVersion {
                 ver: "0.3.0".into(),
                 required: false,
-                optional: true
+                optional: true,
+                identifier: None,
             })
         );
     }
@@ -1131,5 +1162,53 @@ version = "1.0.0"
         let expected = ToolsetManifest::from_str(input).unwrap();
         assert_eq!(expected.name.unwrap(), "my toolkit");
         assert_eq!(expected.version.unwrap(), "1.0");
+    }
+
+    #[test]
+    fn with_tool_identifier() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.x86_64-pc-windows-msvc]
+t1 = { ver = "0.2.0", identifier = "surprise_program_1" }
+t2 = { path = "/some/path", identifier = "surprise_program_2" }
+"#;
+
+        let expected = ToolsetManifest::from_str(input).unwrap();
+        let mut tools = expected
+            .tools
+            .target
+            .get("x86_64-pc-windows-msvc")
+            .unwrap()
+            .iter();
+        let (_, t1_info) = tools.next().unwrap();
+        let (_, t2_info) = tools.next().unwrap();
+        assert_eq!(t1_info.identifier(), Some("surprise_program_1"));
+        assert!(
+            matches!(t2_info, ToolInfo::Path { identifier: Some(name), .. } if name == "surprise_program_2")
+        );
+    }
+
+    #[test]
+    fn toolmap_iterator_uses_identifier_as_key() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.x86_64-pc-windows-msvc]
+t1 = { ver = "0.2.0", identifier = "surprise_program_1" }
+t2 = { path = "/some/path", identifier = "surprise_program_2" }
+t3 = "0.1.0"
+t4 = { url = "https://example.com/t4.zip" }
+"#;
+
+        let expected = ToolsetManifest::from_str(input).unwrap();
+        let tools = expected.tools.target.get("x86_64-pc-windows-msvc").unwrap();
+        let mut iter = tools.iter().map(|(name, _)| name);
+        assert_eq!(iter.next(), Some("surprise_program_1"));
+        assert_eq!(iter.next(), Some("surprise_program_2"));
+        assert_eq!(iter.next(), Some("t3"));
+        assert_eq!(iter.next(), Some("t4"));
     }
 }
