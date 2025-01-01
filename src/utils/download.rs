@@ -50,9 +50,9 @@ impl DownloadOpt<ProgressBar> {
         }
     }
 
-    setter!(proxy(self, Option<CrateProxy>));
-    setter!(handler(self, Option<CliProgress<ProgressBar>>));
-    setter!(insecure(self, bool));
+    setter!(with_proxy(self.proxy, Option<CrateProxy>));
+    setter!(with_handler(self.handler, Option<CliProgress<ProgressBar>>));
+    setter!(insecure(self.insecure, bool));
 
     /// Build and return a client for download
     fn client(&self) -> Result<Client> {
@@ -192,7 +192,7 @@ pub fn download_with_proxy<S: ToString>(
     proxy: Option<&CrateProxy>,
 ) -> Result<()> {
     DownloadOpt::new(name)
-        .proxy(proxy.cloned())
+        .with_proxy(proxy.cloned())
         .download_file(url, dest, false)
 }
 

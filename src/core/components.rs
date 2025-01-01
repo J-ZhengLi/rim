@@ -49,13 +49,13 @@ impl Component {
         comp
     }
 
-    setter!(required(self, bool));
-    setter!(optional(self, bool));
-    setter!(installed(self, bool));
-    setter!(is_toolchain_component(self, bool));
-    setter!(group_name(self, group: Option<&str>) { group.map(ToOwned::to_owned) });
-    setter!(tool_installer(self, installer: &ToolInfo) { Some(installer.clone()) });
-    setter!(version(self, version: Option<&str>) { version.map(ToOwned::to_owned) });
+    setter!(required(self.required, bool));
+    setter!(optional(self.optional, bool));
+    setter!(installed(self.installed, bool));
+    setter!(set_toolchain_component(self.is_toolchain_component, bool));
+    setter!(with_group(self.group_name, group: Option<&str>) { group.map(ToOwned::to_owned) });
+    setter!(with_tool_installer(self.tool_installer, installer: &ToolInfo) { Some(installer.clone()) });
+    setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });
 }
 
 /// Get a combined list of tools and toolchain components in Vec<[Component]> format,

@@ -157,14 +157,14 @@ impl<'a> InstallConfiguration<'a> {
     }
 
     setter!(
-        cargo_registry(self, name: impl ToString, value: impl ToString) {
+        with_cargo_registry(self.cargo_registry, name: impl ToString, value: impl ToString) {
             Some((name.to_string(), value.to_string()))
         }
     );
-    setter!(rustup_dist_server(self, Url));
-    setter!(rustup_update_root(self, Url));
-    setter!(progress_indicator(self, Option<Progress<'a>>));
-    setter!(insecure(self, bool));
+    setter!(with_rustup_dist_server(self.rustup_dist_server, Url));
+    setter!(with_rustup_update_root(self.rustup_update_root, Url));
+    setter!(with_progress_indicator(self.progress_indicator, Option<Progress<'a>>));
+    setter!(insecure(self.insecure, bool));
 
     pub(crate) fn env_vars(&self) -> Result<HashMap<&'static str, String>> {
         let cargo_home = self
@@ -201,7 +201,7 @@ impl<'a> InstallConfiguration<'a> {
 
     fn install_tools_(&mut self, use_cargo: bool, tools: &ToolMap, weight: f32) -> Result<()> {
         let to_install = tools
-            .into_iter()
+            .iter()
             .filter(|(_, t)| {
                 if use_cargo {
                     t.is_cargo_tool()

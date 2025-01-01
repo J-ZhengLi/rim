@@ -30,7 +30,7 @@ impl UpdateOpt {
         Self { insecure: false }
     }
 
-    setter!(insecure(self, bool));
+    setter!(insecure(self.insecure, bool));
 
     /// Calls a function to update toolkit.
     ///

@@ -60,13 +60,13 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     let install_dir = user_opt.prefix;
 
     InstallConfiguration::new(&install_dir, &manifest)?
-        .cargo_registry(registry_name, registry_value)
-        .rustup_dist_server(
+        .with_cargo_registry(registry_name, registry_value)
+        .with_rustup_dist_server(
             rustup_dist_server
                 .clone()
                 .unwrap_or_else(|| default_rustup_dist_server().clone()),
         )
-        .rustup_update_root(
+        .with_rustup_update_root(
             rustup_update_root
                 .clone()
                 .unwrap_or_else(|| default_rustup_update_root().clone()),

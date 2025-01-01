@@ -113,13 +113,13 @@ impl<'a> UninstallConfiguration<'a> {
                         tool
                     } else if !tool_detail.paths.is_empty() {
                         Tool::new(name.into(), ToolKind::Executables)
-                            .path(tool_detail.paths.clone())
+                            .with_path(tool_detail.paths.clone())
                     } else {
                         info!("{}", t!("uninstall_unknown_tool_warn", tool = name));
                         continue;
                     }
                 }
-                _ => Tool::new(name.into(), kind).path(tool_detail.paths.clone()),
+                _ => Tool::new(name.into(), kind).with_path(tool_detail.paths.clone()),
             };
             tools_to_uninstall.push(tool);
         }
