@@ -56,7 +56,7 @@
     "pause_prompt": "press ENTER key to continue...",
     "confirm": "Confirm",
     "reenter": "Re-enter",
-    "enter_choice_below": "please enter your choice below",
+    "enter_choice_below": "please enter the index of your choice below",
     "cancel": "Cancel",
     "ranged_integer": "integer within the range of [%{lower_bound}, %{upper_bound}]",
     "space_separated_and": "space separated ",
@@ -112,9 +112,6 @@
     "install_everything": "everything",
     "install_custom": "customize",
 
-    "ask_manager_option": "Update & Uninstall",
-    "ask_update_option": "Choose an update option",
-    "ask_download_option": "Choose a download option",
     "skip_ssl_check": "skip SSL certificate verification",
     "update_all": "Update all (including toolkit and toolkit manager)",
     "update_self_only": "Update toolkit manager",
@@ -126,7 +123,13 @@
     "insecure_download": "skipping SSL certificate verification (requested by `--insecure` flag)",
     "insecure_http_override": "using 'http' schema to skip SSL certificate verification (requested by `--insecure` flag)",
 
-    "no_toolkit_installed": "unable to update because no toolkit was installed",
+    "choose_an_option": "Choose any option below",
+    "no_toolkit_installed": "no toolkit was installed",
+    "no_component_installed": "no component was installed",
+    "component": "component",
+    "toolkit": "toolkit",
+    "list_option": "List component/toolkit",
+    "all": "all",
 
     "self_update_in_progress": "self updating, please wait...",
     "self_update_finished": "self update success! this program will restart in %{eta}"

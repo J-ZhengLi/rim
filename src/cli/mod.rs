@@ -224,10 +224,9 @@ enum ManagerSubcommands {
         #[arg(long, alias = "manager")]
         manager_only: bool,
     },
-    #[command(hide = true)]
-    /// Show a list of available dist version or components
+    /// Display a list of toolkits or components
     List {
-        /// Prints the current installed dist version
+        /// Show installed only
         #[arg(long)]
         installed: bool,
         #[command(subcommand)]
@@ -294,6 +293,11 @@ impl ManagerSubcommands {
                         continue;
                     }
                 }
+                Self::List { command, .. } => {
+                    if command.is_none() {
+                        continue;
+                    }
+                }
                 _ => unimplemented!(
                     "manager interaction currently only have `update` and `install` \
                     options available"
@@ -308,11 +312,11 @@ impl ManagerSubcommands {
         // NOTE: If more option added, make sure to add the corresponding match pattern
         // to `from_interaction` function., otherwise it may cause `unimplemented` error.
         let maybe_cmd = handle_user_choice!(
-            t!("ask_manager_option"), 3,
+            t!("choose_an_option"), 4,
             {
                 1 t!("update") => {
                     let insecure = handle_user_choice!(
-                        t!("ask_download_option"), 1,
+                        t!("choose_an_option"), 1,
                         {
                             1 t!("default") => { false },
                             2 t!("skip_ssl_check") => { true }
@@ -321,7 +325,17 @@ impl ManagerSubcommands {
                     Some(Self::Update { insecure, toolkit_only: false, manager_only: false })
                 },
                 2 t!("uninstall") => { Some(Self::Uninstall { keep_self: false }) },
-                3 t!("cancel") => { None }
+                3 t!("list_option") => {
+                    let installed = handle_user_choice!(
+                        t!("choose_an_option"), 1,
+                        {
+                            1 t!("all") => { false },
+                            2 t!("installed") => { true }
+                        }
+                    );
+                    Some(Self::List { installed, command: list::ask_list_command()? })
+                },
+                4 t!("cancel") => { None }
             }
         );
 
@@ -332,7 +346,7 @@ impl ManagerSubcommands {
     /// user wishs to continue.
     fn question_update_option_(&mut self, insecure: bool) -> Result<bool> {
         *self = handle_user_choice!(
-            t!("ask_update_option"), 1,
+            t!("choose_an_option"), 1,
             {
                 1 t!("update_all") => {
                     Self::Update { insecure, toolkit_only: false, manager_only: false }
@@ -354,7 +368,7 @@ impl ManagerSubcommands {
     /// user wishs to continue.
     fn question_uninstall_option_(&mut self) -> Result<bool> {
         *self = handle_user_choice!(
-            t!("ask_uninstall_option"), 1,
+            t!("choose_an_option"), 1,
             {
                 1 t!("uninstall_all") => { Self::Uninstall { keep_self: false } },
                 2 t!("uninstall_toolkit_only") => { Self::Uninstall { keep_self: true } },

@@ -314,7 +314,7 @@ pub fn pause() -> Result<()> {
         return Ok(());
     }
     let mut stdout = io::stdout();
-    writeln!(&mut stdout, "\n{}", t!("pause_prompt"))?;
+    write!(&mut stdout, "\n{}", t!("pause_prompt"))?;
     _ = stdout.flush();
 
     readline()?;
