@@ -81,6 +81,15 @@ pub struct Installer {
     /// Specify a path or url of manifest file that contains package source and various configurations.
     #[arg(long, value_name = "PATH or URL")]
     manifest: Option<PathOrUrl>,
+    /// Display a list of components that can be installed on current machine.
+    #[arg(long, conflicts_with = "component")]
+    list_components: bool,
+    /// Include a list of component to install.
+    /// Note that required components will be installed no matter the value of this option.
+    ///
+    /// For the complete list, use `--list-components` option.
+    #[arg(short, long)]
+    component: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]

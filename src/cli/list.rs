@@ -8,6 +8,7 @@ use crate::{
     components,
     fingerprint::InstallationRecord,
     toolkit::{toolkits_from_server, Toolkit},
+    toolset_manifest::ToolsetManifest,
 };
 
 #[derive(Subcommand, Debug, Default, Clone, Copy)]
@@ -22,7 +23,7 @@ pub(super) enum ListCommand {
 impl ListCommand {
     fn execute(&self, installed: bool) -> Result<()> {
         match self {
-            Self::Component => list_components(installed),
+            Self::Component => list_components(installed, None),
             Self::Toolkit => list_toolkits(installed),
         }
     }
@@ -55,9 +56,18 @@ pub(super) fn ask_list_command() -> Result<Option<ListCommand>> {
     Ok(cmd)
 }
 
-fn list_components(installed_only: bool) -> Result<()> {
-    let fp = InstallationRecord::load_from_install_dir()?;
-    let components = components::all_components_from_installation(&fp)?;
+/// Print a list of components and return them.
+pub(crate) fn list_components(
+    installed_only: bool,
+    manifest: Option<&ToolsetManifest>,
+) -> Result<()> {
+    let components = if let Some(mf) = manifest {
+        mf.current_target_components(true)?
+    } else {
+        let fp = InstallationRecord::load_from_install_dir()?;
+        components::all_components_from_installation(&fp)?
+    };
+
     let comp_iter = components.iter().skip(1);
     let verbose = GlobalOpts::get().verbose;
     let mut stdout = std::io::stdout();
@@ -87,11 +97,14 @@ fn list_components(installed_only: bool) -> Result<()> {
         }
     } else {
         for comp in comp_iter {
-            let version = comp
-                .version
-                .as_ref()
-                .map(|ver| format!(" {ver}"))
-                .unwrap_or_default();
+            let version = if verbose {
+                comp.version
+                    .as_ref()
+                    .map(|ver| format!(" {ver}"))
+                    .unwrap_or_default()
+            } else {
+                String::new()
+            };
             let installed_suffix = if comp.installed {
                 format!(" ({})", t!("installed"))
             } else {
