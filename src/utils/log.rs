@@ -10,6 +10,8 @@ use std::sync::OnceLock;
 #[derive(Debug)]
 pub struct Logger {
     output_sender: Option<Sender<String>>,
+    /// This level only effects displayed log,
+    /// the file logger will still be using max log level.
     level: LevelFilter,
 }
 
@@ -59,10 +61,15 @@ impl Logger {
     /// - If [`quiet`](Logger::quiet) was called with `true`, this will not output any message
     ///     on `stdout`, but will still output them into log file.
     pub fn setup(self) -> Result<()> {
+        let dispatch = fern::Dispatch::new().level(LevelFilter::Trace);
+        let filter_log_for_output = move |md: &log::Metadata| -> bool {
+            md.level() <= self.level && md.level() != LevelFilter::Trace
+        };
+
         // decide if `Sender` or `Stdout` should be used as message medium.
         let output = if let Some(sender) = self.output_sender {
             fern::Dispatch::new()
-                .level(self.level)
+                .filter(filter_log_for_output)
                 .format(|out, msg, rec| {
                     out.finish(format_args!(
                         "{}: {msg}",
@@ -72,7 +79,7 @@ impl Logger {
                 .chain(sender)
         } else {
             fern::Dispatch::new()
-                .level(self.level)
+                .filter(filter_log_for_output)
                 .format(|out, msg, rec| {
                     out.finish(format_args!(
                         "{}: {msg}",
@@ -97,7 +104,7 @@ impl Logger {
             })
             .chain(fern::log_file(log_file_path()?)?);
 
-        output.chain(file_config).apply()?;
+        dispatch.chain(output).chain(file_config).apply()?;
         Ok(())
     }
 }
