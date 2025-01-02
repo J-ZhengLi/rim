@@ -166,7 +166,7 @@ fn parse_download_url(source_path: &str) -> Result<Url> {
         .unwrap_or(super::RIM_DIST_SERVER)
         .parse()?;
 
-    trace!("parsing download url for '{source_path}' from server '{base_obs_server}'");
+    debug!("parsing download url for '{source_path}' from server '{base_obs_server}'");
     utils::url_join(&base_obs_server, source_path)
 }
 

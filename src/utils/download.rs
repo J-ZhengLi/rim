@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use indicatif::ProgressBar;
-use reqwest::blocking::{Client, ClientBuilder};
+use reqwest::blocking::Client;
 use url::Url;
 
 use super::progress_bar::{CliProgress, Style};
@@ -17,14 +17,6 @@ use crate::toolset_manifest::Proxy as CrateProxy;
 fn default_proxy() -> reqwest::Proxy {
     reqwest::Proxy::custom(|url| env_proxy::for_url(url).to_url())
         .no_proxy(reqwest::NoProxy::from_env())
-}
-
-fn default_client_builder() -> ClientBuilder {
-    let user_agent = format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-    Client::builder()
-        .user_agent(user_agent)
-        .timeout(Duration::from_secs(30))
-        .connection_verbose(false)
 }
 
 #[derive(Debug)]
@@ -56,12 +48,15 @@ impl DownloadOpt<ProgressBar> {
 
     /// Build and return a client for download
     fn client(&self) -> Result<Client> {
+        let user_agent = format!("{}/{}", t!("vendor_en"), env!("CARGO_PKG_VERSION"));
         let proxy = if let Some(p) = &self.proxy {
             p.try_into()?
         } else {
             default_proxy()
         };
-        let client = default_client_builder()
+        let client = Client::builder()
+            .user_agent(user_agent)
+            .connect_timeout(Duration::from_secs(30))
             .danger_accept_invalid_certs(self.insecure)
             .proxy(proxy)
             .build()?;
