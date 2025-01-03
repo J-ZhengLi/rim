@@ -100,7 +100,7 @@ impl From<DistPackage> for Toolkit {
 /// Note the retrieved list will be reversed so that the newest toolkit will always be on top.
 ///
 /// The collection will always be cached to reduce the number of server requests.
-fn toolkits_from_server(insecure: bool) -> Result<&'static [Toolkit]> {
+pub(crate) fn toolkits_from_server(insecure: bool) -> Result<&'static [Toolkit]> {
     if let Some(cached) = ALL_TOOLKITS.get() {
         return Ok(cached);
     }

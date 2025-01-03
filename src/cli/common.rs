@@ -67,15 +67,21 @@ pub(crate) use handle_user_choice;
 
 use super::GlobalOpts;
 
-/// A map containing a component's version difference.
-///
-/// The keys of this map is the name of the component, the value is a pair of (maybe) strings
-/// with the first one being the current version, second one being the target version.
-pub(crate) type VersionDiffMap<'c> = HashMap<&'c str, (Option<&'c str>, Option<&'c str>)>;
+/// A map representing a component's version difference related to it's name.
+pub(crate) type VersionDiffMap<'c> = HashMap<&'c str, VersionDiff<'c>>;
 /// A map contains the selected components with their indexes in the full component list.
 ///
 /// Notice that this is an [`IndexMap`], which means the order will be preserved.
 pub(crate) type ComponentChoices<'c> = IndexMap<usize, &'c Component>;
+
+#[derive(Debug)]
+pub(crate) struct VersionDiff<'c> {
+    pub(crate) from: Option<&'c str>,
+    pub(crate) to: Option<&'c str>,
+    /// `true` a tool wasn't supported or installed previously, but have a new version
+    /// available, which means that tool is newly supported.
+    pub(crate) is_newly_supported: bool,
+}
 
 pub(crate) fn question_str<Q: Display, A: Display>(
     question: Q,
@@ -314,7 +320,7 @@ pub fn pause() -> Result<()> {
         return Ok(());
     }
     let mut stdout = io::stdout();
-    writeln!(&mut stdout, "\n{}", t!("pause_prompt"))?;
+    write!(&mut stdout, "\n{}", t!("pause_prompt"))?;
     _ = stdout.flush();
 
     readline()?;
@@ -376,8 +382,12 @@ impl ComponentDecoration<'_> {
             }
             Self::VersionDiff(diff_map) => diff_map
                 .get(comp.name.as_str())
-                .map(|(from, to)| {
-                    format!(" ({} -> {})", from.unwrap_or("N/A"), to.unwrap_or("N/A"))
+                .map(|diff| {
+                    format!(
+                        " ({} -> {})",
+                        diff.from.unwrap_or("N/A"),
+                        diff.to.unwrap_or("N/A")
+                    )
                 })
                 .unwrap_or_else(String::new),
         }

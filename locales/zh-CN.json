@@ -51,7 +51,7 @@
     "pause_prompt": "按回车键继续...",
     "confirm": "确认",
     "reenter": "重新输入",
-    "enter_choice_below": "请在下方输入您的选择",
+    "enter_choice_below": "请在下方输入选项序号",
     "cancel": "取消",
     "ranged_integer": "取值范围在 [%{lower_bound}, %{upper_bound}] 之间的整数",
     "space_separated_and": "使用空格分隔并且",
@@ -106,9 +106,6 @@
     "install_everything": "全量安装",
     "install_custom": "自定义组件选择",
 
-    "ask_manager_option": "更新和卸载",
-    "ask_update_option": "更新选项",
-    "ask_download_option": "选择一个下载选项",
     "skip_ssl_check": "跳过 SSL 证书验证",
     "update_all": "全部更新 (包括套件及此管理工具)",
     "update_self_only": "更新管理工具",
@@ -120,7 +117,13 @@
     "insecure_download": "跳过 SSL 证书验证（根据命令行选项 'insecure' 的要求）",
     "insecure_http_override": "使用 “http” 跳过 SSL 证书验证（根据命令行选项 'insecure' 的要求）",
 
-    "no_toolkit_installed": "未安装工具套件, 无法更新",
+    "choose_an_option": "请选择以下任一选项",
+    "no_toolkit_installed": "未安装工具套件",
+    "no_component_installed": "未安装任何组件",
+    "list_option": "显示组件/套件列表",
+    "component": "组件",
+    "toolkit": "套件",
+    "all": "全部",
 
     "self_update_in_progress": "正在自更新，请耐心等待...",
     "self_update_finished": "自更新成功！该程序将在 %{eta} 秒后重新启动"
