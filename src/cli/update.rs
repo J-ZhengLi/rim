@@ -10,7 +10,9 @@ use crate::toolkit::latest_installable_toolkit;
 use crate::toolset_manifest::get_toolset_manifest;
 use crate::InstallConfiguration;
 
-use super::common::{ComponentChoices, ComponentDecoration, ComponentListBuilder, VersionDiffMap};
+use super::common::{
+    ComponentChoices, ComponentDecoration, ComponentListBuilder, VersionDiff, VersionDiffMap,
+};
 use super::{common, GlobalOpts, ManagerSubcommands};
 
 pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
@@ -18,6 +20,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
         toolkit_only,
         manager_only,
         insecure,
+        component,
     } = cmd
     else {
         return Ok(false);
@@ -25,7 +28,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
 
     let update_opt = UpdateOpt::new().insecure(*insecure);
     if !manager_only {
-        update_opt.update_toolkit(|path| update_toolkit_(path, *insecure))?;
+        update_opt.update_toolkit(|path| update_toolkit_(path, *insecure, component.as_deref()))?;
     }
     if !toolkit_only {
         update_opt.self_update()?;
@@ -34,7 +37,11 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
     Ok(true)
 }
 
-fn update_toolkit_(install_dir: &Path, insecure: bool) -> Result<()> {
+fn update_toolkit_(
+    install_dir: &Path,
+    insecure: bool,
+    user_selected_comps: Option<&[String]>,
+) -> Result<()> {
     let Some(installed) = Toolkit::installed(false)? else {
         info!("{}", t!("no_toolkit_installed"));
         return Ok(());
@@ -77,7 +84,7 @@ fn update_toolkit_(install_dir: &Path, insecure: bool) -> Result<()> {
 
     let updater = ComponentsUpdater::new(&installed.components, &new_components);
     // let user choose if they want to update installed component only, or want to select more components to install
-    if let UpdateOption::Yes(components) = updater.get_user_choices()? {
+    if let UpdateOption::Yes(components) = updater.to_update_option(user_selected_comps)? {
         // install update for selected components
         let config = InstallConfiguration::new(install_dir, &manifest)?;
         config.update(components.into_values().cloned().collect())
@@ -101,11 +108,25 @@ impl<'c> ComponentsUpdater<'c> {
         let version_diff = target
             .iter()
             .map(|c| {
+                let mut is_installed = false;
                 let installed_version = installed
                     .iter()
-                    .find_map(|ic| (ic.name == c.name).then_some(ic.version.as_deref()))
+                    .find_map(|ic| {
+                        (ic.name == c.name).then(|| {
+                            is_installed = true;
+                            ic.version.as_deref()
+                        })
+                    })
                     .flatten();
-                (c.name.as_str(), (installed_version, c.version.as_deref()))
+                let is_newly_supported = !is_installed && c.version.is_some();
+                (
+                    c.name.as_str(),
+                    VersionDiff {
+                        from: installed_version,
+                        to: c.version.as_deref(),
+                        is_newly_supported,
+                    },
+                )
             })
             .collect();
         Self {
@@ -121,25 +142,47 @@ impl<'c> ComponentsUpdater<'c> {
     fn component_names_with_diff_version(&self) -> HashSet<&'c str> {
         self.version_diff
             .iter()
-            .filter_map(|(name, (from, to))| (from != to).then_some(*name))
+            .filter_map(|(name, diff)| {
+                // return only the components that are previously installed
+                if diff.is_newly_supported {
+                    None
+                } else {
+                    (diff.from != diff.to).then_some(*name)
+                }
+            })
             .collect()
     }
 
-    fn get_user_choices(&self) -> Result<UpdateOption<'c>> {
-        let default = self.default_component_choices();
+    fn to_update_option(&self, user_selected_comps: Option<&[String]>) -> Result<UpdateOption<'c>> {
+        let default = self.default_component_choices(user_selected_comps);
         self.handle_update_interaction_(default)
     }
 
-    // Default component set contains components that are:
-    // 1. installed
-    // 2. have different versions
-    fn default_component_choices(&self) -> ComponentChoices<'c> {
-        let diff_ver_comps = self.component_names_with_diff_version();
+    /// Default component set contains components that:
+    /// - User provide a list of components via commandline, such as `--components comp_a,comp_b`.
+    /// - Was previously installed and have new version available.
+    fn default_component_choices(
+        &self,
+        user_selected_comps: Option<&[String]>,
+    ) -> ComponentChoices<'c> {
+        let mut base_set = self.component_names_with_diff_version();
+        let mut user_set: HashSet<&str> = HashSet::from_iter(
+            user_selected_comps
+                .unwrap_or_default()
+                .iter()
+                .map(|s| s.as_str()),
+        );
+        let is_append = user_set.remove("..");
+        if is_append {
+            base_set.extend(user_set);
+        } else {
+            base_set = user_set;
+        }
 
         self.target
             .iter()
             .enumerate()
-            .filter(|(_, c)| diff_ver_comps.contains(c.name.as_str()))
+            .filter(|(_, c)| base_set.contains(c.name.as_str()))
             .collect()
     }
 

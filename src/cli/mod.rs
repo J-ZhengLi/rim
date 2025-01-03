@@ -232,6 +232,17 @@ enum ManagerSubcommands {
         /// Update manager only
         #[arg(long, alias = "manager")]
         manager_only: bool,
+        /// Include a list of components (separated by comma) to update,
+        /// effective only when updating toolkit.
+        ///
+        /// By default, the value of this option will override the list of components
+        /// to be updated, meaning if you use `--component a,b`, only component a and b will
+        /// be updated.
+        /// If you want to keep the default selection, but adding some extra components to update,
+        /// you need to include a `..` in the value, such as `--component a,b,..`, then not only
+        /// a and b, but also other components that were selected by default will get updated.
+        #[arg(short, long, value_delimiter = ',')]
+        component: Option<Vec<String>>,
     },
     /// Display a list of toolkits or components
     List {
@@ -331,7 +342,7 @@ impl ManagerSubcommands {
                             2 t!("skip_ssl_check") => { true }
                         }
                     );
-                    Some(Self::Update { insecure, toolkit_only: false, manager_only: false })
+                    Some(Self::Update { insecure, toolkit_only: false, manager_only: false, component: None })
                 },
                 2 t!("uninstall") => { Some(Self::Uninstall { keep_self: false }) },
                 3 t!("list_option") => {
@@ -354,17 +365,20 @@ impl ManagerSubcommands {
     /// Ask user about the update options, return a `bool` indicates whether the
     /// user wishs to continue.
     fn question_update_option_(&mut self, insecure: bool) -> Result<bool> {
+        // component choices are asked after executing update command,
+        // so it's ok to leave it as None for now.
+        let component = None;
         *self = handle_user_choice!(
             t!("choose_an_option"), 1,
             {
                 1 t!("update_all") => {
-                    Self::Update { insecure, toolkit_only: false, manager_only: false }
+                    Self::Update { insecure, toolkit_only: false, manager_only: false, component }
                 },
                 2 t!("update_self_only") => {
-                    Self::Update { insecure, toolkit_only: false, manager_only: true }
+                    Self::Update { insecure, toolkit_only: false, manager_only: true, component }
                 },
                 3 t!("update_toolkit_only") => {
-                    Self::Update { insecure, toolkit_only: true, manager_only: false }
+                    Self::Update { insecure, toolkit_only: true, manager_only: false, component }
                 },
                 4 t!("back") => { return Ok(false) }
             }
