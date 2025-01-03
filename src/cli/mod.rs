@@ -84,11 +84,11 @@ pub struct Installer {
     /// Display a list of components that can be installed on current machine.
     #[arg(long, conflicts_with = "component")]
     list_components: bool,
-    /// Include a list of component to install.
-    /// Note that required components will be installed no matter the value of this option.
+    /// Include a list of components (separated by comma) to install.
+    /// Note that required components will be installed whether included or not.
     ///
     /// For the complete list, use `--list-components` option.
-    #[arg(short, long)]
+    #[arg(short, long, value_delimiter = ',')]
     component: Option<Vec<String>>,
 }
 

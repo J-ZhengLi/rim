@@ -35,6 +35,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
         manifest: manifest_src,
         insecure,
         list_components,
+        component,
         ..
     } = installer;
 
@@ -46,7 +47,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     let mut manifest = get_toolset_manifest(manifest_url, *insecure)?;
 
     if *list_components {
-        // print a list of available components then return, don't do anything
+        // print a list of available components then return, don't do anything else
         return super::list::list_components(false, Some(&manifest));
     }
 
@@ -58,7 +59,8 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     } else {
         default_install_dir()
     };
-    let user_opt = CustomInstallOpt::collect_from_user(&abs_prefix, component_list)?;
+    let user_opt =
+        CustomInstallOpt::collect_from_user(&abs_prefix, component_list, component.as_deref())?;
 
     let (registry_name, registry_value) = registry_url
         .as_deref()
@@ -115,13 +117,20 @@ struct CustomInstallOpt {
 }
 
 impl CustomInstallOpt {
-    /// Asking various questions and collect user input from CLI,
+    /// Asking various questions and collect user input from console interaction,
     /// then return user specified installation options.
-    fn collect_from_user(prefix: &Path, components: Vec<Component>) -> Result<Self> {
+    ///
+    /// It takes default values, such as `prefix`, `components`, etc.
+    /// and a full list of available compoents allowing user to choose from.
+    fn collect_from_user(
+        prefix: &Path,
+        all_components: Vec<Component>,
+        user_selected_comps: Option<&[String]>,
+    ) -> Result<Self> {
         if GlobalOpts::get().yes_to_all {
             return Ok(Self {
                 prefix: prefix.to_path_buf(),
-                components: default_component_choices(&components)
+                components: default_component_choices(&all_components, user_selected_comps)
                     .values()
                     .map(|c| (*c).to_owned())
                     .collect(),
@@ -153,7 +162,7 @@ impl CustomInstallOpt {
                 continue;
             }
 
-            let choices = read_component_selections(&components)?;
+            let choices = read_component_selections(&all_components, user_selected_comps)?;
 
             show_confirmation(&install_dir, &choices)?;
 
@@ -182,12 +191,53 @@ fn read_install_dir_input(default: &str) -> Result<Option<String>> {
     }
 }
 
-fn default_component_choices(components: &[Component]) -> ComponentChoices<'_> {
-    components
+fn default_component_choices<'a>(
+    all_components: &'a [Component],
+    user_selected_comps: Option<&[String]>,
+) -> ComponentChoices<'a> {
+    let selected_comps_set: HashSet<&String> =
+        HashSet::from_iter(user_selected_comps.unwrap_or_default());
+    let should_install = |component: &Component| -> bool {
+        let require_but_not_installed = component.required && !component.installed;
+        let user_selected = selected_comps_set.contains(&component.name);
+        user_selected || require_but_not_installed
+    };
+    all_components
         .iter()
         .enumerate()
-        .filter(|(_, c)| !c.installed && !c.optional)
+        .filter(|(_, c)| should_install(c))
         .collect()
+}
+
+fn custom_component_choices<'a>(
+    all_components: &'a [Component],
+    user_selected_comps: Option<&[String]>,
+) -> Result<ComponentChoices<'a>> {
+    let list_of_comps = ComponentListBuilder::new(all_components)
+        .show_desc(true)
+        .decorate(ComponentDecoration::InstalledOrRequired)
+        .build();
+    let default_ids = default_component_choices(all_components, user_selected_comps)
+        .keys()
+        .map(|idx| (idx + 1).to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let choices = common::question_multi_choices(
+        t!("select_components_to_install"),
+        &list_of_comps,
+        &default_ids,
+    )?;
+    // convert input vec to set for faster lookup
+    // Note: user input index are started from 1.
+    let index_set: HashSet<usize> = choices.into_iter().collect();
+
+    // convert the input indexes to `ComponentChoices`,
+    // also we need to add missing `required` tools even if the user didn't choose it.
+    Ok(all_components
+        .iter()
+        .enumerate()
+        .filter(|(idx, c)| (c.required && !c.installed) || index_set.contains(&(idx + 1)))
+        .collect())
 }
 
 /// Read user response of what set of components they want to install.
@@ -196,7 +246,10 @@ fn default_component_choices(components: &[Component]) -> ComponentChoices<'_> {
 /// 1. default
 /// 2. everything
 /// 3. custom
-fn read_component_selections(components: &[Component]) -> Result<ComponentChoices<'_>> {
+fn read_component_selections<'a>(
+    all_components: &'a [Component],
+    user_selected_comps: Option<&[String]>,
+) -> Result<ComponentChoices<'a>> {
     let profile_choices = &[
         t!("install_default"),
         t!("install_everything"),
@@ -205,41 +258,15 @@ fn read_component_selections(components: &[Component]) -> Result<ComponentChoice
     let choice = question_single_choice(t!("question_components_profile"), profile_choices, "1")?;
     let selection = match choice {
         // Default set
-        1 => default_component_choices(components),
+        1 => default_component_choices(all_components, user_selected_comps),
         // Full set, but exclude installed components
-        2 => components
+        2 => all_components
             .iter()
             .enumerate()
             .filter(|(_, c)| !c.installed)
             .collect(),
         // Customized set
-        3 => {
-            let list_of_comps = ComponentListBuilder::new(components)
-                .show_desc(true)
-                .decorate(ComponentDecoration::InstalledOrRequired)
-                .build();
-            let default_ids = default_component_choices(components)
-                .keys()
-                .map(|idx| (idx + 1).to_string())
-                .collect::<Vec<_>>()
-                .join(" ");
-            let choices = common::question_multi_choices(
-                t!("select_components_to_install"),
-                &list_of_comps,
-                &default_ids,
-            )?;
-            // convert input vec to set for faster lookup
-            // Note: user input index are started from 1.
-            let index_set: HashSet<usize> = choices.into_iter().collect();
-
-            // convert the input indexes to `ComponentChoices`,
-            // also we need to add missing `required` tools even if the user didn't choose it.
-            components
-                .iter()
-                .enumerate()
-                .filter(|(idx, c)| (c.required && !c.installed) || index_set.contains(&(idx + 1)))
-                .collect()
-        }
+        3 => custom_component_choices(all_components, user_selected_comps)?,
         _ => unreachable!("out-of-range input should already be caught"),
     };
 

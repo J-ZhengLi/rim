@@ -22,3 +22,4 @@ Prerequisites = ["mingw64"]
 
 [tools.target.x86_64-pc-windows-gnu]
 mingw64 = { required = true, url = "https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev0/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z", version = "14.2.0-rt_v12-rev0" }
+"tool a" = { ver = "0.1.0", identifier = "tool_a" }
