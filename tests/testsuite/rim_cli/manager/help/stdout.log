@@ -1,0 +1,18 @@
+An interactive Rust installation manager
+
+Usage: manager-cli[EXE] [OPTIONS] [COMMAND]
+
+Commands:
+  update     Update toolkit and/or this installation manager
+  uninstall  Uninstall individual components or everything
+  try-it     A subcommand to create a new Rust project template and let you start coding with it
+  help       Print this message or the help of the given subcommand(s)
+
+Options:
+  -v, --verbose         Enable verbose output
+  -q, --quiet           Suppress non-critical messages
+  -y, --yes             Disable interaction and answer 'yes' to all prompts
+      --no-modify-path  Don't modify user's `PATH` environment variable
+  -l, --lang <LANG>     Specify another language to display [possible values: cn, en]
+  -h, --help            Print help
+  -V, --version         Print version
