@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::path::PathBuf;
+use std::thread;
 
 use anyhow::{Context, Result};
 use url::Url;
@@ -114,8 +115,27 @@ impl ToolchainInstaller {
 
     // Rustup self uninstall all the components and toolchains.
     pub(crate) fn remove_self(&self, config: &UninstallConfiguration) -> Result<()> {
+        let progress = utils::CliProgress::new();
+        let spinner = (progress.start)(
+            t!("uninstalling_rust_toolchain").to_string(),
+            utils::CliProgressStyle::Spinner {
+                auto_tick_duration: None,
+            },
+        )?;
+
         let rustup = config.cargo_bin().join(RUSTUP);
-        utils::run!([CARGO_HOME=config.cargo_home(), RUSTUP_HOME=config.rustup_home()] rustup, "self", "uninstall", "-y")
+        let cargo_home = config.cargo_home().to_path_buf();
+        let rustup_home = config.rustup_home().to_path_buf();
+        let handle = thread::spawn(
+            move || utils::run!([CARGO_HOME=cargo_home, RUSTUP_HOME=rustup_home] rustup, "self", "uninstall", "-y"),
+        );
+        while !handle.is_finished() {
+            (progress.update)(&spinner, None);
+        }
+
+        handle.join().unwrap()?;
+        (progress.stop)(&spinner, t!("rust_toolchain_uninstalled").to_string());
+        Ok(())
     }
 }
 

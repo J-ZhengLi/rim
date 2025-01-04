@@ -73,6 +73,7 @@
     "uninstalling_third_party_tools": "Uninstalling third-party tools",
     "uninstalling_for": "Uninstalling '%{name}'",
     "uninstalling_rust_toolchain": "Uninstalling Rust toolchain",
+    "rust_toolchain_uninstalled": "Rust toolchain uninstalled",
     "uninstall_env_config": "Removing environment variables...",
     "uninstall_self": "Removing self & wrapping up",
     "uninstall_tool_skipped": "skipping uninstall for tool '%{tool}'",

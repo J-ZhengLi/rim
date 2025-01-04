@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use xz2::read::XzDecoder;
 use zip::ZipArchive;
 
-use crate::core::GlobalOpts;
 use crate::utils::progress_bar::Style;
 
 use super::progress_bar::CliProgress;
@@ -85,16 +84,10 @@ impl<'a> Extractable<'a> {
     ///
     /// This will extract file under the `root`, make sure it's an empty folder before using this function.
     pub fn extract_to(&mut self, root: &Path) -> Result<()> {
-        let indicator = if GlobalOpts::get().quiet {
-            CliProgress::hidden()
-        } else {
-            CliProgress::new()
-        };
-
         let helper = ExtractHelper {
             file_path: self.path,
             output_dir: root,
-            indicator,
+            indicator: CliProgress::new(),
         };
 
         match &mut self.kind {
@@ -292,7 +285,9 @@ impl<T: Sized> ExtractHelper<'_, T> {
         // NB: DO NOT consume the entries, like collect it into a vec or something,
         // as it will corrupt the contents within it, causing data loss in some of the files:
         // https://github.com/J-ZhengLi/rim/issues/161
-        let bar = self.start_progress_bar(Style::Spinner)?;
+        let bar = self.start_progress_bar(Style::Spinner {
+            auto_tick_duration: None,
+        })?;
 
         for (idx, mut entry) in entries.into_iter().filter_map(|e| e.ok()).enumerate() {
             let entry_path = entry.path()?;
