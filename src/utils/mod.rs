@@ -20,7 +20,7 @@ pub use extraction::Extractable;
 pub use file_system::*;
 pub use log::{log_file_path, Logger};
 pub use process::*;
-pub use progress_bar::Progress;
+pub use progress_bar::{CliProgress, Progress, Style as CliProgressStyle};
 
 use anyhow::Result;
 use url::Url;

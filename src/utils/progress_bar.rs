@@ -1,9 +1,14 @@
 //! Progress bar indicator for commandline user interface.
 
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use anyhow::Result;
 use indicatif::{ProgressBar as CliProgressBar, ProgressState, ProgressStyle};
+
+use crate::core::GlobalOpts;
 
 struct ProgressPos(Mutex<f32>);
 
@@ -69,7 +74,7 @@ pub struct CliProgress<T: Sized> {
     pub stop: fn(&T, String),
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Style {
     /// Display the progress base on number of bytes.
     Bytes(u64),
@@ -77,8 +82,10 @@ pub enum Style {
     Len(u64),
     /// A spinner that spins as the progress goes, this does not require
     /// length information.
-    #[default]
-    Spinner,
+    Spinner {
+        /// Set continuous spinning for a given amount of time.
+        auto_tick_duration: Option<Duration>,
+    },
 }
 
 impl Style {
@@ -86,7 +93,7 @@ impl Style {
         match self {
             Style::Bytes(_) => "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
             Style::Len(_) => "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})",
-            Style::Spinner => "{spinner:.green} [{elapsed_precise}] {msg}"
+            Style::Spinner{..} => "{spinner:.green} [{elapsed_precise}] {msg}"
         }
     }
 }
@@ -115,7 +122,13 @@ impl CliProgress<CliProgressBar> {
             };
             let pb = match style {
                 Style::Bytes(total) | Style::Len(total) => CliProgressBar::new(total),
-                Style::Spinner => CliProgressBar::new_spinner(),
+                Style::Spinner { auto_tick_duration } => {
+                    let spinner = CliProgressBar::new_spinner();
+                    if let Some(dur) = auto_tick_duration {
+                        spinner.enable_steady_tick(dur);
+                    }
+                    spinner
+                }
             };
             apply_custom_style(&pb, style.pattern())?;
             pb.set_message(msg);
@@ -132,10 +145,14 @@ impl CliProgress<CliProgressBar> {
             pb.finish_with_message(msg);
         }
 
-        CliProgress {
-            start,
-            update,
-            stop,
+        if GlobalOpts::get().quiet {
+            Self::hidden()
+        } else {
+            CliProgress {
+                start,
+                update,
+                stop,
+            }
         }
     }
 

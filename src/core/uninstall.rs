@@ -1,7 +1,6 @@
-use std::path::PathBuf;
-
 use anyhow::Result;
 use indexmap::IndexMap;
+use std::path::PathBuf;
 
 use super::{
     directories::RimDir,
@@ -62,7 +61,6 @@ impl<'a> UninstallConfiguration<'a> {
 
         // Remove rust toolchain via rustup.
         if self.install_record.rust.is_some() {
-            info!("{}", t!("uninstalling_rust_toolchain"));
             ToolchainInstaller::init().remove_self(&self)?;
             self.install_record.remove_rust_record();
             self.install_record.write()?;
