@@ -14,6 +14,7 @@ impl ProjectBuilder {
     /// Generate installer test process
     pub fn rim_cli_process() -> ProjectBuilder {
         let root = paths::test_home();
+        init_workspace(root.clone());
         let cmd = Command::rim_cli();
         ProjectBuilder { root, cmd }
     }
@@ -21,6 +22,7 @@ impl ProjectBuilder {
     /// Generate installer test process
     pub fn installer_process() -> ProjectBuilder {
         let root = paths::test_home();
+        init_workspace(root.clone());
         let cmd = Command::installer();
         ProjectBuilder { root, cmd }
     }
@@ -28,6 +30,7 @@ impl ProjectBuilder {
     /// Generate manager test process
     pub fn manager_process() -> ProjectBuilder {
         let root = paths::test_home();
+        init_workspace(root.clone());
         let cmd = Command::manager();
         ProjectBuilder { root, cmd }
     }
@@ -37,12 +40,17 @@ impl ProjectBuilder {
     }
 
     pub fn build(self) -> Command {
-        // clean the home directory.
-        self.root().rm_rf();
-        // create the home directory
-        self.root().mkdir_p();
-
+        // retain the modification entry.
         let ProjectBuilder { cmd, .. } = self;
+        println!("cmd: {:?}", cmd);
         cmd
     }
+}
+
+fn init_workspace(root: PathBuf) {
+    let root = root.clone();
+    // clean the home directory.
+    root.rm_rf();
+    // create the home directory
+    root.mkdir_p();
 }

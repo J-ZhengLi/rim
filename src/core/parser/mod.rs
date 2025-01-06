@@ -19,7 +19,7 @@ static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
 #[allow(unused)]
 pub(crate) trait TomlParser {
-    const FILENAME: &str;
+    const FILENAME: &'static str;
 
     /// Deserialize a certain type from [`str`] value.
     fn from_str(from: &str) -> Result<Self>

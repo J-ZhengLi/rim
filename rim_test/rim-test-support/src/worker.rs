@@ -1,7 +1,10 @@
 #![allow(unused_imports)]
 
 use env::consts::EXE_SUFFIX;
-use std::{env, fmt::format, fs, path::PathBuf};
+use std::env;
+use std::fmt::format;
+use std::fs;
+use std::path::PathBuf;
 
 use crate::paths;
 
@@ -34,23 +37,23 @@ fn rim_cli() -> PathBuf {
 
 /// Path to the installer-cli binary
 fn installer_cli() -> PathBuf {
-    ensure_bin(&format!("installer-cli{EXE_SUFFIX}"));
-    snapbox::cmd::cargo_bin("installer-cli")
+    ensure_bin(&format!("installer-cli{EXE_SUFFIX}"))
 }
 
 /// Path to the manager-cli binary
 fn manager_cli() -> PathBuf {
-    ensure_bin(&format!("manager-cli{EXE_SUFFIX}"));
-    snapbox::cmd::cargo_bin("manager-cli")
+    ensure_bin(&format!("manager-cli{EXE_SUFFIX}"))
 }
 
 // Before any invoke of rim_cli,
 // we should save a copy as `installer` and `manager`.
-fn ensure_bin(name: &str) {
+fn ensure_bin(name: &str) -> PathBuf {
     let src = rim_cli();
-    let dst = rim_cli().with_file_name(name);
+    let dst = paths::test_home().join(name);
     if !dst.exists() {
         fs::copy(src, &dst)
             .unwrap_or_else(|_| panic!("Failed to copy rim-cli{EXE_SUFFIX} to {name}"));
     }
+
+    dst
 }

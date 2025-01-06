@@ -98,7 +98,7 @@ pub struct ToolsetManifest {
 }
 
 impl TomlParser for ToolsetManifest {
-    const FILENAME: &str = "toolset-manifest.toml";
+    const FILENAME: &'static str = "toolset-manifest.toml";
 
     fn load<P: AsRef<std::path::Path>>(path: P) -> anyhow::Result<Self> {
         let raw = utils::read_to_string("manifest", &path)?;

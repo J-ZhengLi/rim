@@ -9,10 +9,10 @@ use rim_test_support::project::ProjectBuilder;
 fn case() {
     let project = ProjectBuilder::installer_process();
     let root = project.root();
+    println!("root: {:?}", root);
     project
         .build()
         .arg("-y")
-        .arg("--no-modify-path")
         .arg("--no-modify-env")
         .arg("--prefix")
         .arg(&root)

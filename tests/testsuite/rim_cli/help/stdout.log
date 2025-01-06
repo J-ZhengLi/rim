@@ -36,6 +36,14 @@ Options:
       --manifest <PATH or URL>
           Specify a path or url of manifest file that contains package source and various configurations
 
+      --list-components
+          Display a list of components that can be installed on current machine
+
+  -c, --component <COMPONENT>
+          Include a list of components (separated by comma) to install. Note that required components will be installed whether included or not.
+          
+          For the complete list, use `--list-components` option.
+
   -h, --help
           Print help (see a summary with '-h')
 

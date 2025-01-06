@@ -28,7 +28,7 @@ pub struct InstallationRecord {
 }
 
 impl TomlParser for InstallationRecord {
-    const FILENAME: &str = ".fingerprint.toml";
+    const FILENAME: &'static str = ".fingerprint.toml";
 
     /// Load fingerprint from a given root.
     ///
