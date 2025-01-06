@@ -252,7 +252,6 @@ enum ManagerSubcommands {
         #[command(subcommand)]
         command: Option<list::ListCommand>,
     },
-    #[command(hide = true)]
     /// Install or uninstall components
     Component {
         #[command(subcommand)]
