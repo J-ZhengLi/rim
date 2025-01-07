@@ -1,4 +1,5 @@
 use std::{
+    fmt::Display,
     sync::{Arc, Mutex, MutexGuard},
     thread,
     time::Duration,
@@ -21,6 +22,7 @@ use rim::{
     utils::{self, Progress},
 };
 use tauri::{api::dialog, AppHandle, Manager};
+use tauri_plugin_positioner::{Position, WindowExt};
 
 static SELECTED_TOOLSET: Mutex<Option<ToolsetManifest>> = Mutex::new(None);
 
@@ -34,6 +36,7 @@ pub(super) fn main() -> Result<()> {
     let msg_recv = common::setup_logger()?;
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_positioner::init())
         .invoke_handler(tauri::generate_handler![
             super::close_window,
             get_installed_kit,
@@ -142,45 +145,16 @@ fn install_toolkit(window: tauri::Window, components_list: Vec<Component>) -> Re
 }
 
 #[tauri::command]
-fn maybe_self_update(app: AppHandle) -> Result<()> {
+async fn maybe_self_update(app: AppHandle) -> Result<()> {
     let update_kind = update::check_self_update(false);
     let Some(new_ver) = update_kind.newer_version() else {
         return Ok(());
     };
-    let window_arc = Arc::new(app.get_window("manager_window"));
 
-    dialog::ask(
-        window_arc.clone().as_ref().as_ref(),
-        t!("update_available"),
-        t!(
-            "ask_self_update",
-            latest = new_ver,
-            current = env!("CARGO_PKG_VERSION")
-        ),
-        move |yes| {
-            if !yes {
-                return;
-            }
-            let Some(win) = window_arc.as_ref() else {
-                return;
-            };
-
-            // block UI interaction, and show loading toast
-            _ = win.emit(LOADING_TEXT, t!("self_update_in_progress"));
-            // do self update
-            if let Ok(true) = UpdateOpt::new().self_update() {
-                app.restart();
-            }
-            _ = win.emit(LOADING_FINISHED, true);
-            for eta in (1..=3).rev() {
-                _ = win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta));
-                thread::sleep(Duration::from_secs(1));
-            }
-            _ = win.emit(LOADING_TEXT, "");
-            // restart app
-            app.restart();
-        },
-    );
+    // TODO: if is_on_background {}
+    show_self_update_notification_popup(&app, None, None).await?;
+    // TODO: else
+    show_self_update_dialog(app, new_ver)?;
 
     Ok(())
 }
@@ -204,4 +178,62 @@ fn handle_toolkit_install_click(url: String) -> Result<Vec<Component>> {
     *guard = Some(manifest);
 
     Ok(components)
+}
+
+fn show_self_update_dialog<S: Display>(app: AppHandle, new_ver: S) -> Result<()> {
+    let window = Arc::new(app.get_window("manager_window"));
+    dialog::ask(
+        window.clone().as_ref().as_ref(),
+        t!("update_available"),
+        t!(
+            "ask_self_update",
+            latest = new_ver,
+            current = env!("CARGO_PKG_VERSION")
+        ),
+        move |yes| {
+            if !yes {
+                return;
+            }
+            let Some(win) = window.as_ref() else {
+                return;
+            };
+
+            // block UI interaction, and show loading toast
+            _ = win.emit(LOADING_TEXT, t!("self_update_in_progress"));
+            // do self update
+            if let Ok(true) = UpdateOpt::new().self_update() {
+                app.restart();
+            }
+            _ = win.emit(LOADING_FINISHED, true);
+            for eta in (1..=3).rev() {
+                _ = win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta));
+                thread::sleep(Duration::from_secs(1));
+            }
+            _ = win.emit(LOADING_TEXT, "");
+            // restart app
+            app.restart();
+        },
+    );
+    Ok(())
+}
+
+async fn show_self_update_notification_popup(
+    app_handle: &AppHandle,
+    width: Option<f64>,
+    height: Option<f64>,
+) -> Result<()> {
+    let popup = tauri::WindowBuilder::new(
+        app_handle,
+        "notification_popup", /* the unique window label */
+        tauri::WindowUrl::App("notification.html".into()),
+    )
+    .always_on_top(true)
+    .decorations(false)
+    .resizable(false)
+    .title("notification")
+    .inner_size(width.unwrap_or(360.0), height.unwrap_or(220.0))
+    .build()?;
+
+    popup.move_window(Position::BottomRight)?;
+    Ok(())
 }
