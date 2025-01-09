@@ -4,9 +4,10 @@ use rim_test_support::project::ProjectBuilder;
 
 #[rim_test]
 fn case() {
-    let project = ProjectBuilder::manager_process();
+    let test_process = ProjectBuilder::manager_process();
+    let project = test_process.build();
+
     project
-        .build()
         .arg("try-it")
         .arg("--help")
         .assert()

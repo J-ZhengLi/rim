@@ -4,7 +4,8 @@ use rim_test_support::project::ProjectBuilder;
 
 #[rim_test]
 fn case() {
-    let project = ProjectBuilder::rim_cli_process().build();
+    let test_process = ProjectBuilder::installer_process();
+    let project = test_process.build();
     project
         .arg("--help")
         .assert()

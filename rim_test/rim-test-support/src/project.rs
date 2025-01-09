@@ -1,56 +1,37 @@
+use env::consts::EXE_SUFFIX;
 use snapbox::cmd::Command;
+use std::env;
 use std::path::PathBuf;
+use tempfile::TempDir;
 
-use crate::paths;
-use crate::paths::TestPathExt;
 use crate::worker::SnapboxCommandExt;
 
 pub struct ProjectBuilder {
-    root: PathBuf,
-    cmd: Command,
+    root: TempDir,
+    cmd: PathBuf,
 }
 
 impl ProjectBuilder {
     /// Generate installer test process
-    pub fn rim_cli_process() -> ProjectBuilder {
-        let root = paths::test_home();
-        init_workspace(root.clone());
-        let cmd = Command::rim_cli();
-        ProjectBuilder { root, cmd }
-    }
-
-    /// Generate installer test process
     pub fn installer_process() -> ProjectBuilder {
-        let root = paths::test_home();
-        init_workspace(root.clone());
-        let cmd = Command::installer();
+        let name = &format!("installer-cli{EXE_SUFFIX}");
+        let (root, cmd) = Command::cmd_bin(name);
         ProjectBuilder { root, cmd }
     }
 
     /// Generate manager test process
     pub fn manager_process() -> ProjectBuilder {
-        let root = paths::test_home();
-        init_workspace(root.clone());
-        let cmd = Command::manager();
+        let name = &format!("manager-cli{EXE_SUFFIX}");
+        let (root, cmd) = Command::cmd_bin(name);
         ProjectBuilder { root, cmd }
     }
 
     pub fn root(&self) -> PathBuf {
-        self.root.clone()
+        self.root.path().to_path_buf()
     }
 
-    pub fn build(self) -> Command {
+    pub fn build(&self) -> Command {
         // retain the modification entry.
-        let ProjectBuilder { cmd, .. } = self;
-        println!("cmd: {:?}", cmd);
-        cmd
+        Command::new(self.cmd.clone())
     }
-}
-
-fn init_workspace(root: PathBuf) {
-    let root = root.clone();
-    // clean the home directory.
-    root.rm_rf();
-    // create the home directory
-    root.mkdir_p();
 }

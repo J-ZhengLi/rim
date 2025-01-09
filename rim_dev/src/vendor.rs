@@ -14,16 +14,8 @@ Usage: cargo dev vendor
 "#;
 
 pub(super) fn vendor() -> Result<()> {
-    let workspace_dir = PathBuf::from(
-        std::env::var("RIM_WORKSPACE_DIR").unwrap_or(env!("CARGO_MANIFEST_DIR").to_string()),
-    );
-    let pkg_dir = workspace_dir.join("packages");
-    fs::create_dir_all(&pkg_dir)?;
-
-    let res_dir = PathBuf::from(
-        std::env::var("RESOURCE_DIR").unwrap_or(env!("CARGO_MANIFEST_DIR").to_string()),
-    )
-    .join("resources");
+    let res_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("resources");
+    let pkg_dir = res_dir.join("packages");
     let pkg_list = res_dir.join("packages.txt");
 
     if !pkg_list.is_file() {

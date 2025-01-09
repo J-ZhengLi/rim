@@ -5,15 +5,14 @@ use std::env;
 use std::fmt::format;
 use std::fs;
 use std::path::PathBuf;
+use tempfile::{TempDir, TempPath};
 
 use crate::paths;
 
 pub trait SnapboxCommandExt {
     fn rim_cli() -> Self;
 
-    fn installer() -> Self;
-
-    fn manager() -> Self;
+    fn cmd_bin(name: &str) -> (TempDir, PathBuf);
 }
 
 impl SnapboxCommandExt for snapbox::cmd::Command {
@@ -21,12 +20,9 @@ impl SnapboxCommandExt for snapbox::cmd::Command {
         Self::new(rim_cli())
     }
 
-    fn installer() -> Self {
-        Self::new(installer_cli())
-    }
-
-    fn manager() -> Self {
-        Self::new(manager_cli())
+    fn cmd_bin(name: &str) -> (TempDir, PathBuf) {
+        let (tmp_dir, cmd_path) = ensure_bin(name);
+        (tmp_dir, cmd_path)
     }
 }
 
@@ -35,25 +31,16 @@ fn rim_cli() -> PathBuf {
     snapbox::cmd::cargo_bin("rim-cli")
 }
 
-/// Path to the installer-cli binary
-fn installer_cli() -> PathBuf {
-    ensure_bin(&format!("installer-cli{EXE_SUFFIX}"))
-}
-
-/// Path to the manager-cli binary
-fn manager_cli() -> PathBuf {
-    ensure_bin(&format!("manager-cli{EXE_SUFFIX}"))
-}
-
 // Before any invoke of rim_cli,
 // we should save a copy as `installer` and `manager`.
-fn ensure_bin(name: &str) -> PathBuf {
+fn ensure_bin(name: &str) -> (TempDir, PathBuf) {
+    let test_root = paths::test_root();
     let src = rim_cli();
-    let dst = paths::test_home().join(name);
+    let dst = test_root.path().to_path_buf().join(name);
     if !dst.exists() {
         fs::copy(src, &dst)
             .unwrap_or_else(|_| panic!("Failed to copy rim-cli{EXE_SUFFIX} to {name}"));
     }
 
-    dst
+    (test_root, dst)
 }

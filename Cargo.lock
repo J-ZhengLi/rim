@@ -3069,7 +3069,6 @@ dependencies = [
  "semver",
  "serde",
  "sevenz-rust",
- "snapbox",
  "sys-locale",
  "tar",
  "tempfile",
@@ -3112,6 +3111,7 @@ dependencies = [
  "anyhow",
  "rim-test-macro",
  "snapbox",
+ "tempfile",
 ]
 
 [[package]]

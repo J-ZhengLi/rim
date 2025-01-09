@@ -7,7 +7,7 @@ pub fn rim_test(attr: TokenStream, item: TokenStream) -> TokenStream {
     for rule in split_attr(attr) {
         match rule.as_str() {
             // 插入不同版本进行测试
-            "should_ignore" => {
+            "ignore" => {
                 ignore = true;
             }
             _ => panic!("unknown rule: {:?}", rule),

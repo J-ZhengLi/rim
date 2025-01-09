@@ -1,26 +1,36 @@
-use std::path::{Path, PathBuf};
-
 use rim::utils::{self, Extractable};
-use rim_test_support::paths;
-use rim_test_support::prelude::*;
-use rim_test_support::project::ProjectBuilder;
+use rim_test_support::rim_test;
+use std::path::{Path, PathBuf};
+use tempfile::TempDir;
 
-fn extract_to_temp(filename: &str, skip_prefix: bool) -> (PathBuf, PathBuf) {
-    let src_path = paths::assets_home().join(filename);
-    let mut extractable = Extractable::load(src_path.as_path()).unwrap();
+fn extract_to_temp(filename: &str, skip_prefix: bool) -> (PathBuf, TempDir) {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("tests");
+    path.push("assets");
+    path.push(filename);
 
-    let project = ProjectBuilder::rim_cli_process();
+    let cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("cache");
+    utils::ensure_dir(&cache_dir).unwrap();
+
+    let temp_dir = tempfile::Builder::new()
+        .prefix("extract_test_")
+        .tempdir_in(&cache_dir)
+        .unwrap();
+
+    let mut extractable = Extractable::load(path.as_path()).unwrap();
 
     if skip_prefix {
         let path = extractable
-            .extract_then_skip_solo_dir(&project.root(), None::<&str>)
+            .extract_then_skip_solo_dir(temp_dir.path(), None::<&str>)
             .expect("failed to extract");
-        (path, project.root())
+        (path, temp_dir)
     } else {
         extractable
-            .extract_to(&project.root())
+            .extract_to(temp_dir.path())
             .expect("failed to extract");
-        (project.root(), project.root())
+        (temp_dir.path().to_path_buf(), temp_dir)
     }
 }
 
