@@ -10,7 +10,7 @@ use rim::{
     components::Component,
     toolset_manifest::ToolsetManifest,
     utils::{self, Progress},
-    InstallConfiguration,
+    AppInfo, InstallConfiguration,
 };
 
 pub(crate) const MESSAGE_UPDATE_EVENT: &str = "update-message";
@@ -126,6 +126,11 @@ pub(crate) fn set_locale(language: String) -> Result<()> {
     let lang: rim::Language = language.parse()?;
     utils::set_locale(lang.locale_str());
     Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn app_info() -> AppInfo {
+    AppInfo::get().to_owned()
 }
 
 /// Add back rounded corners (on Windows) and shadow effects.

@@ -20,6 +20,7 @@ use rim::{
     toolset_manifest::{get_toolset_manifest, ToolsetManifest},
     update::{self, UpdateOpt},
     utils::{self, Progress},
+    AppInfo,
 };
 use rim::{
     version_skip::{SkipFor, VersionSkip},
@@ -50,9 +51,9 @@ pub(super) fn main() -> Result<()> {
             install_toolkit,
             maybe_self_update,
             handle_toolkit_install_click,
-            get_name_and_version,
             common::supported_languages,
             common::set_locale,
+            common::app_info,
             self_update_now,
             skip_self_version,
             notification::close,
@@ -68,6 +69,7 @@ pub(super) fn main() -> Result<()> {
             .min_inner_size(640.0, 480.0)
             .decorations(false)
             .transparent(true)
+            .title(AppInfo::name())
             .build()?;
 
             common::set_window_shadow(&window);
@@ -78,14 +80,6 @@ pub(super) fn main() -> Result<()> {
         .run(tauri::generate_context!())
         .context("unknown error occurs while running tauri application")?;
     Ok(())
-}
-
-#[tauri::command]
-fn get_name_and_version() -> (String, String) {
-    (
-        t!("manager_title", product = t!("product")).to_string(),
-        format!("v{}", env!("CARGO_PKG_VERSION")),
-    )
 }
 
 #[tauri::command]

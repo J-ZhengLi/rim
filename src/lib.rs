@@ -15,6 +15,6 @@ pub use core::install::{default_install_dir, EnvConfig, InstallConfiguration};
 pub use core::parser::{fingerprint, get_installed_dir, toolset_manifest, version_skip};
 pub use core::try_it::try_it;
 pub use core::uninstall::UninstallConfiguration;
-pub use core::{components, toolkit, update, Language};
+pub use core::{components, toolkit, update, AppInfo, Language, Mode};
 
 i18n!("locales", fallback = "en");
