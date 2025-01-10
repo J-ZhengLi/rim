@@ -31,7 +31,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
         update_opt.update_toolkit(|path| update_toolkit_(path, *insecure, component.as_deref()))?;
     }
     if !toolkit_only {
-        update_opt.self_update()?;
+        update_opt.self_update(false)?;
     }
 
     Ok(true)

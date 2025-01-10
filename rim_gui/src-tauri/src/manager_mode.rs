@@ -11,9 +11,9 @@ use crate::{
         PROGRESS_UPDATE_EVENT,
     },
     error::Result,
+    notification::{self, Notification, NotificationAction},
 };
 use anyhow::Context;
-use rim::UninstallConfiguration;
 use rim::{
     components::Component,
     toolkit::{self, Toolkit},
@@ -21,10 +21,14 @@ use rim::{
     update::{self, UpdateOpt},
     utils::{self, Progress},
 };
+use rim::{
+    version_skip::{SkipFor, VersionSkip},
+    UninstallConfiguration,
+};
 use tauri::{api::dialog, AppHandle, Manager};
-use tauri_plugin_positioner::{Position, WindowExt};
 
 static SELECTED_TOOLSET: Mutex<Option<ToolsetManifest>> = Mutex::new(None);
+const MANAGER_WINDOW_LABEL: &str = "manager_window";
 
 fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
     SELECTED_TOOLSET
@@ -46,14 +50,18 @@ pub(super) fn main() -> Result<()> {
             install_toolkit,
             maybe_self_update,
             handle_toolkit_install_click,
-            window_title,
+            get_name_and_version,
             common::supported_languages,
             common::set_locale,
+            self_update_now,
+            skip_self_version,
+            notification::close,
+            notification::notification_content,
         ])
         .setup(|app| {
             let window = tauri::WindowBuilder::new(
                 app,
-                "manager_window",
+                MANAGER_WINDOW_LABEL,
                 tauri::WindowUrl::App("index.html/#/manager".into()),
             )
             .inner_size(800.0, 600.0)
@@ -73,11 +81,10 @@ pub(super) fn main() -> Result<()> {
 }
 
 #[tauri::command]
-fn window_title() -> String {
-    format!(
-        "{} v{}",
-        t!("installer_title", product = t!("product")),
-        env!("CARGO_PKG_VERSION")
+fn get_name_and_version() -> (String, String) {
+    (
+        t!("manager_title", product = t!("product")).to_string(),
+        format!("v{}", env!("CARGO_PKG_VERSION")),
     )
 }
 
@@ -152,7 +159,7 @@ async fn maybe_self_update(app: AppHandle) -> Result<()> {
     };
 
     // TODO: if is_on_background {}
-    show_self_update_notification_popup(&app, None, None).await?;
+    show_self_update_notification_popup(&app, new_ver).await?;
     // TODO: else
     show_self_update_dialog(app, new_ver)?;
 
@@ -180,60 +187,109 @@ fn handle_toolkit_install_click(url: String) -> Result<Vec<Component>> {
     Ok(components)
 }
 
+fn do_self_update(app: &AppHandle) -> Result<()> {
+    let window = app.get_window(MANAGER_WINDOW_LABEL);
+    // block UI interaction, and show loading toast
+    if let Some(win) = &window {
+        win.emit(LOADING_TEXT, t!("self_update_in_progress"))?;
+    }
+
+    // do self update, skip version check because it should already
+    // been checked using `update::check_self_update`
+    if let Err(e) = UpdateOpt::new().self_update(true) {
+        return Err(anyhow::anyhow!("failed when performing self update: {e}").into());
+    }
+
+    if let Some(win) = &window {
+        // schedual restart with 3 seconds timeout
+        win.emit(LOADING_FINISHED, true)?;
+        for eta in (1..=3).rev() {
+            win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta))?;
+            thread::sleep(Duration::from_secs(1));
+        }
+        win.emit(LOADING_TEXT, "")?;
+    }
+
+    // restart app
+    app.restart();
+
+    Ok(())
+}
+
 fn show_self_update_dialog<S: Display>(app: AppHandle, new_ver: S) -> Result<()> {
-    let window = Arc::new(app.get_window("manager_window"));
     dialog::ask(
-        window.clone().as_ref().as_ref(),
-        t!("update_available"),
+        app.get_window(MANAGER_WINDOW_LABEL).as_ref(),
+        t!("self_update_available"),
         t!(
             "ask_self_update",
             latest = new_ver,
             current = env!("CARGO_PKG_VERSION")
         ),
         move |yes| {
-            if !yes {
-                return;
+            if yes {
+                if let Err(e) = do_self_update(&app) {
+                    log::error!("failed when perform self update: {e}");
+                }
             }
-            let Some(win) = window.as_ref() else {
-                return;
-            };
-
-            // block UI interaction, and show loading toast
-            _ = win.emit(LOADING_TEXT, t!("self_update_in_progress"));
-            // do self update
-            if let Ok(true) = UpdateOpt::new().self_update() {
-                app.restart();
-            }
-            _ = win.emit(LOADING_FINISHED, true);
-            for eta in (1..=3).rev() {
-                _ = win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta));
-                thread::sleep(Duration::from_secs(1));
-            }
-            _ = win.emit(LOADING_TEXT, "");
-            // restart app
-            app.restart();
         },
     );
     Ok(())
 }
 
-async fn show_self_update_notification_popup(
+async fn show_self_update_notification_popup<S: Display>(
     app_handle: &AppHandle,
-    width: Option<f64>,
-    height: Option<f64>,
+    new_ver: S,
 ) -> Result<()> {
-    let popup = tauri::WindowBuilder::new(
-        app_handle,
-        "notification_popup", /* the unique window label */
-        tauri::WindowUrl::App("notification.html".into()),
+    Notification::new(
+        t!("self_update_available").into(),
+        t!(
+            "ask_self_update",
+            current = env!("CARGO_PKG_VERSION"),
+            latest = new_ver
+        )
+        .into(),
+        vec![
+            NotificationAction {
+                label: t!("update").into(),
+                icon: Some("/update-icon.svg".into()),
+                command: ("self_update_now".into(), None),
+            },
+            NotificationAction {
+                label: t!("skip_version").into(),
+                icon: Some("/stop-icon.svg".into()),
+                command: (
+                    "skip_self_version".into(),
+                    Some(format!("{{ \"version\": \"{new_ver}\" }}")),
+                ),
+            },
+            NotificationAction {
+                label: t!("close").into(),
+                icon: Some("/close-icon.svg".into()),
+                command: ("close".into(), None),
+            },
+        ],
     )
-    .always_on_top(true)
-    .decorations(false)
-    .resizable(false)
-    .title("notification")
-    .inner_size(width.unwrap_or(360.0), height.unwrap_or(220.0))
-    .build()?;
+    .show(app_handle)
+    .await?;
 
-    popup.move_window(Position::BottomRight)?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn self_update_now(app: AppHandle) -> Result<()> {
+    notification::close(app.clone()).await;
+    tauri::async_runtime::spawn(async move { do_self_update(&app) }).await?
+}
+
+#[tauri::command]
+async fn skip_self_version(app: AppHandle, version: String) -> Result<()> {
+    notification::close(app.clone()).await;
+    tauri::async_runtime::spawn(async move {
+        log::info!("skipping manager version: '{version}'");
+        VersionSkip::load_from_install_dir()
+            .skip(SkipFor::Manager, version)
+            .write_to_install_dir()
+    })
+    .await??;
     Ok(())
 }

@@ -12,6 +12,8 @@ type Target = {
 
 class ManagerConf {
   path: Ref<string> = ref('');
+  name: Ref<string> = ref('');
+  version: Ref<string> = ref('');
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
@@ -20,6 +22,22 @@ class ManagerConf {
   private _isUninstallManager: Ref<boolean> = ref(true);
 
   constructor() { }
+
+  /** The name of this application. */
+  async appName() {
+    if (!this.name.value) {
+      await this.cacheNameAndVersion();
+    }
+    return this.name.value;
+  }
+
+  /** The name and version of this application joined as a string. */
+  async appNameWithVersion() {
+    if (!this.name.value) {
+      await this.cacheNameAndVersion();
+    }
+    return this.version.value ? this.name.value + ' ' + this.version.value : this.name.value;
+  }
 
   public getUninstallManager() {
     return this._isUninstallManager.value;
@@ -126,6 +144,13 @@ class ManagerConf {
       ...components
     );
   }
+
+  async cacheNameAndVersion() {
+    let [name, version] = await invokeCommand('get_name_and_version') as [string, string];
+    this.name.value = name;
+    this.version.value = version;
+  }
+
   async loadConf() {
     let dir = await invokeCommand('get_install_dir');
     if (typeof dir === 'string' && dir.trim() !== '') {

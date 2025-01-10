@@ -9,7 +9,10 @@ use url::Url;
 use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
 use super::parser::TomlParser;
-use crate::{setter, utils};
+use crate::{
+    setter, utils,
+    version_skip::{SkipFor, VersionSkip},
+};
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
 static LATEST_RELEASE: OnceLock<ReleaseInfo> = OnceLock::new();
@@ -48,10 +51,11 @@ impl UpdateOpt {
 
     /// Update self when applicable.
     ///
-    /// If the program is succesfully updated, this will return `Ok(true)`,
-    /// which indicates the program should be restarted.
-    pub fn self_update(&self) -> Result<bool> {
-        if !check_self_update(self.insecure).update_needed() {
+    /// Latest version check can be disabled by passing `skip_check` as `false`.
+    /// Otherwise, this function will check whether if the current version is older
+    /// than the latest one, if not, return `Ok(false)` indicates no update has been done.
+    pub fn self_update(&self, skip_check: bool) -> Result<bool> {
+        if !skip_check && !check_self_update(self.insecure).update_needed() {
             info!(
                 "{}",
                 t!(
@@ -89,7 +93,6 @@ impl UpdateOpt {
         utils::download("latest manager", &download_url, &newer_manager)?;
 
         // replace the current executable
-        // TODO: restart GUI when available.
         self_replace::self_replace(newer_manager)?;
 
         info!("{}", t!("self_update_complete"));
@@ -149,6 +152,12 @@ pub fn check_self_update(insecure: bool) -> SelfUpdateKind<'static> {
             return SelfUpdateKind::Uncertain;
         }
     };
+
+    // Check if this version was skipped by user
+    if VersionSkip::load_from_install_dir().is_skipped(SkipFor::Manager, latest_version.to_string())
+    {
+        return SelfUpdateKind::UnNeeded;
+    }
 
     // safe to unwrap, otherwise cargo would fails the build
     let cur_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
