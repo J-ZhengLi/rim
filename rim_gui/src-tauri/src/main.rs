@@ -7,6 +7,7 @@ mod common;
 mod error;
 mod installer_mode;
 mod manager_mode;
+mod notification;
 
 use std::env;
 use std::path::PathBuf;

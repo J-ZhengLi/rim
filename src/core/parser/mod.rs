@@ -3,6 +3,7 @@ pub mod dist_manifest;
 pub mod fingerprint;
 pub(crate) mod release_info;
 pub mod toolset_manifest;
+pub mod version_skip;
 
 use anyhow::{bail, Context, Result};
 use fingerprint::InstallationRecord;
@@ -17,7 +18,6 @@ use crate::utils;
 
 static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
-#[allow(unused)]
 pub(crate) trait TomlParser {
     const FILENAME: &'static str;
 
@@ -44,6 +44,31 @@ pub(crate) trait TomlParser {
     {
         let raw = utils::read_to_string("toml", path)?;
         Self::from_str(&raw)
+    }
+
+    /// Load data from certain file under the given `parent` directory.
+    fn load_from_dir<P: AsRef<Path>>(parent: P) -> Result<Self>
+    where
+        Self: Sized + DeserializeOwned + Default,
+    {
+        let path = parent.as_ref().join(Self::FILENAME);
+        Self::load(path)
+    }
+
+    /// Serialize the data and write to a file under `parent` directory.
+    ///
+    /// Note: Nothing will be written if the content of `self` is empty.
+    fn write_to_dir<P: AsRef<Path>>(&self, parent: P) -> Result<()>
+    where
+        Self: Sized + Serialize,
+    {
+        let content = self.to_toml()?;
+        if content.trim().is_empty() {
+            return Ok(());
+        }
+        let path = parent.as_ref().join(Self::FILENAME);
+        utils::write_file(path, &content, false)?;
+        Ok(())
     }
 }
 
@@ -78,7 +103,7 @@ pub fn get_installed_dir() -> &'static Path {
             bail!("installation record cannot be found");
         }
         // the third check
-        let fp = InstallationRecord::load(&maybe_install_dir)
+        let fp = InstallationRecord::load_from_dir(&maybe_install_dir)
             .context("'.fingerprint' file exists but cannot be loaded")?;
         if fp.root != maybe_install_dir {
             bail!(

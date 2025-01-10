@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeMount } from 'vue';
-import { invokeCommand, managerConf } from '@/utils';
+import { computed, onBeforeMount, onMounted, ref } from 'vue';
+import { managerConf } from '@/utils';
 import { useCustomRouter } from '@/router';
-import { onMounted, ref } from 'vue';
 
 const appTitle = ref('');
 const { isBack } = useCustomRouter();
@@ -15,10 +14,8 @@ const transitionName = computed(() => {
 onBeforeMount(() => managerConf.loadConf());
 
 onMounted(() => {
-  invokeCommand("window_title").then((res) => {
-    if (typeof res === 'string') {
-      appTitle.value = res
-    }
+  managerConf.appNameWithVersion().then((res) => {
+    appTitle.value = res
   });
 });
 </script>

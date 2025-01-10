@@ -90,8 +90,8 @@ impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
-            // Note: `InstallationRecord::load` creates `install_dir` if it does not exist
-            install_record: InstallationRecord::load(install_dir)?,
+            // Note: `InstallationRecord::load_from_dir` creates `install_dir` if it does not exist
+            install_record: InstallationRecord::load_from_dir(install_dir)?,
             cargo_registry: None,
             rustup_dist_server: default_rustup_dist_server().clone(),
             rustup_update_root: default_rustup_update_root().clone(),

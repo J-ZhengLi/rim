@@ -10,7 +10,7 @@ use super::{toolset_manifest::ToolsetManifest, TomlParser};
 /// Re-load fingerprint file just to get the list of installed tools,
 /// therefore we can use this list to uninstall, while avoiding race condition.
 pub(crate) fn installed_tools_fresh(root: &Path) -> Result<IndexMap<String, ToolRecord>> {
-    Ok(InstallationRecord::load(root)?.tools)
+    Ok(InstallationRecord::load_from_dir(root)?.tools)
 }
 
 /// Holds Installation record.
@@ -32,9 +32,8 @@ impl TomlParser for InstallationRecord {
 
     /// Load fingerprint from a given root.
     ///
-    /// Note that the fingerprint filename is fixed, as defined as [`FILENAME`](Self::FILENAME),
-    /// hense why the parameter of this function is a root directory rather than dest path.
-    fn load<P: AsRef<Path>>(root: P) -> Result<InstallationRecord>
+    /// This will create one and return the default if it doesn't exist.
+    fn load_from_dir<P: AsRef<Path>>(root: P) -> Result<InstallationRecord>
     where
         Self: Sized + serde::de::DeserializeOwned,
     {
@@ -67,13 +66,10 @@ impl InstallationRecord {
 
     /// Load installation record from a presumed install directory,
     /// which is typically the parent directory of the current executable.
-    ///
-    /// # Note
-    /// Use this instead of [`InstallationRecord::load`] in **manager** mod.
     // TODO: Cache the result using a `Cell` or `RwLock` or combined.
     pub(crate) fn load_from_install_dir() -> Result<Self> {
         let root = super::get_installed_dir();
-        Self::load(root)
+        Self::load_from_dir(root)
     }
 
     pub(crate) fn write(&self) -> Result<()> {
@@ -267,7 +263,7 @@ mod tests {
     #[test]
     fn create_local_install_info() {
         let install_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
-        let mut fp = InstallationRecord::load(&install_dir).unwrap();
+        let mut fp = InstallationRecord::load_from_dir(&install_dir).unwrap();
         let rust_components = vec![String::from("rustfmt"), String::from("cargo")];
 
         fp.add_rust_record("stable", &rust_components);
