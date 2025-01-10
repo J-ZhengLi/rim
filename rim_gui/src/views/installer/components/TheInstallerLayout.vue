@@ -3,7 +3,7 @@ import { computed, onBeforeMount } from 'vue';
 import { useCustomRouter } from '@/router';
 import { useRoute } from 'vue-router';
 import TheAside from './TheAside.vue';
-import { installConf, invokeCommand } from '@/utils';
+import { installConf } from '@/utils';
 import { onMounted, ref } from 'vue';
 
 const appTitle = ref('');
@@ -20,10 +20,8 @@ const transitionName = computed(() => {
 onBeforeMount(() => installConf.loadAll());
 
 onMounted(() => {
-  invokeCommand("window_title").then((res) => {
-    if (typeof res === 'string') {
-      appTitle.value = res
-    }
+  installConf.appNameWithVersion().then((res) => {
+    appTitle.value = res
   });
 });
 </script>

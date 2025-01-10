@@ -8,7 +8,7 @@ use super::{common, INSTALL_DIR};
 use crate::error::Result;
 use rim::components::Component;
 use rim::toolset_manifest::{get_toolset_manifest, ToolsetManifest};
-use rim::{try_it, utils};
+use rim::{try_it, utils, AppInfo};
 
 static TOOLSET_MANIFEST: OnceLock<ToolsetManifest> = OnceLock::new();
 
@@ -26,9 +26,9 @@ pub(super) fn main() -> Result<()> {
             run_app,
             welcome_label,
             load_manifest_and_ret_version,
-            window_title,
             common::supported_languages,
             common::set_locale,
+            common::app_info,
         ])
         .setup(|app| {
             let window = tauri::WindowBuilder::new(
@@ -40,6 +40,7 @@ pub(super) fn main() -> Result<()> {
             .min_inner_size(640.0, 480.0)
             .decorations(false)
             .transparent(true)
+            .title(AppInfo::name())
             .build()?;
 
             common::set_window_shadow(&window);
@@ -50,15 +51,6 @@ pub(super) fn main() -> Result<()> {
         .run(tauri::generate_context!())
         .context("unknown error occurs while running tauri application")?;
     Ok(())
-}
-
-#[tauri::command]
-fn window_title() -> String {
-    format!(
-        "{} v{}",
-        t!("installer_title", product = t!("product")),
-        env!("CARGO_PKG_VERSION")
-    )
 }
 
 #[tauri::command]

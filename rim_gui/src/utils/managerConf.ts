@@ -4,6 +4,7 @@ import { Component } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
+import { AppInfo } from './types/AppInfo';
 
 type Target = {
   operation: 'update' | 'uninstall';
@@ -12,8 +13,7 @@ type Target = {
 
 class ManagerConf {
   path: Ref<string> = ref('');
-  name: Ref<string> = ref('');
-  version: Ref<string> = ref('');
+  info: Ref<AppInfo | null> = ref(null);
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
@@ -25,18 +25,20 @@ class ManagerConf {
 
   /** The name of this application. */
   async appName() {
-    if (!this.name.value) {
-      await this.cacheNameAndVersion();
+    if (this.info.value) {
+      return this.info.value.name;
     }
-    return this.name.value;
+    let info = await this.cacheAppInfo();
+    return info.name;
   }
 
   /** The name and version of this application joined as a string. */
   async appNameWithVersion() {
-    if (!this.name.value) {
-      await this.cacheNameAndVersion();
+    if (this.info.value) {
+      return this.info.value.version ? this.info.value.name + ' ' + this.info.value.version : this.info.value.name;
     }
-    return this.version.value ? this.name.value + ' ' + this.version.value : this.name.value;
+    let info = await this.cacheAppInfo();
+    return info.version ? info.name + ' ' + info.version : info.name;
   }
 
   public getUninstallManager() {
@@ -145,10 +147,10 @@ class ManagerConf {
     );
   }
 
-  async cacheNameAndVersion() {
-    let [name, version] = await invokeCommand('get_name_and_version') as [string, string];
-    this.name.value = name;
-    this.version.value = version;
+  async cacheAppInfo() {
+    let info = await invokeCommand('app_info') as AppInfo;
+    this.info.value = info;
+    return info;
   }
 
   async loadConf() {
