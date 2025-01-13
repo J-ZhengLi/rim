@@ -38,9 +38,3 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
-
-#[tauri::command]
-fn close_window(window: tauri::Window) {
-    // TODO：check and remove cache
-    window.close().unwrap();
-}

@@ -93,6 +93,8 @@
     "continue": "继续",
     "back": "返回",
     "customize": "自定义",
+    "show_ui": "显示界面",
+    "quit": "退出",
     "pre_update_confirmation": "\n即将更新以下组件, 您可以选择更新它们, 或输入 '2' 来手动选择要更新的组件\n\n%{list}",
     "downloading_rustup_init": "正在下载 rustup-init...",
     "unable_to_remove": "无法删除 '%{path}', 此文件可能正在被占用, 请尝试手动将其删除。",

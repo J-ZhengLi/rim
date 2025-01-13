@@ -26,7 +26,10 @@ use rim::{
     version_skip::{SkipFor, VersionSkip},
     UninstallConfiguration,
 };
-use tauri::{api::dialog, AppHandle, Manager};
+use tauri::{
+    api::dialog, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
+    SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
+};
 
 static SELECTED_TOOLSET: Mutex<Option<ToolsetManifest>> = Mutex::new(None);
 const MANAGER_WINDOW_LABEL: &str = "manager_window";
@@ -42,8 +45,11 @@ pub(super) fn main() -> Result<()> {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_positioner::init())
+        .system_tray(system_tray())
+        .on_system_tray_event(system_tray_event_handler)
+        .on_window_event(window_event_handler)
         .invoke_handler(tauri::generate_handler![
-            super::close_window,
+            close_window,
             get_installed_kit,
             get_available_kits,
             get_install_dir,
@@ -80,6 +86,20 @@ pub(super) fn main() -> Result<()> {
         .run(tauri::generate_context!())
         .context("unknown error occurs while running tauri application")?;
     Ok(())
+}
+
+// In manager mode, we don't want to close the window completely,
+// instead we should just "hide" it, so that we can later show it after click
+// on the tray icon.
+#[tauri::command]
+async fn close_window(window: tauri::Window) {
+    if let Err(e) = window.hide() {
+        log::error!(
+            "unable to hide the main window '{MANAGER_WINDOW_LABEL}', \
+            forcing it to close instead: {e}"
+        );
+        common::close_window(&window).await;
+    }
 }
 
 #[tauri::command]
@@ -151,11 +171,13 @@ async fn maybe_self_update(app: AppHandle) -> Result<()> {
     let Some(new_ver) = update_kind.newer_version() else {
         return Ok(());
     };
+    let is_on_background = !matches!(WindowState::detect(&app), Ok(WindowState::Normal(_)));
 
-    // TODO: if is_on_background {}
-    show_self_update_notification_popup(&app, new_ver).await?;
-    // TODO: else
-    show_self_update_dialog(app, new_ver)?;
+    if is_on_background {
+        show_self_update_notification_popup(&app, new_ver).await?;
+    } else {
+        show_self_update_dialog(app, new_ver)?;
+    }
 
     Ok(())
 }
@@ -182,6 +204,10 @@ fn handle_toolkit_install_click(url: String) -> Result<Vec<Component>> {
 }
 
 fn do_self_update(app: &AppHandle) -> Result<()> {
+    // try show the window first, make sure it does not fails the process,
+    // as we can still do self update without a window.
+    show_manager_window_if_possible(app);
+
     let window = app.get_window(MANAGER_WINDOW_LABEL);
     // block UI interaction, and show loading toast
     if let Some(win) = &window {
@@ -286,4 +312,86 @@ async fn skip_self_version(app: AppHandle, version: String) -> Result<()> {
     })
     .await??;
     Ok(())
+}
+
+enum WindowState {
+    Normal(Window),
+    Hidden(Window),
+    Minimized(Window),
+    Closed,
+}
+
+impl WindowState {
+    /// Detects the state of main manager window.
+    fn detect(app: &AppHandle) -> Result<Self> {
+        let Some(win) = app.get_window(MANAGER_WINDOW_LABEL) else {
+            return Ok(Self::Closed);
+        };
+        let state = if win.is_visible()? {
+            Self::Normal(win)
+        } else if win.is_minimized()? {
+            Self::Minimized(win)
+        } else {
+            Self::Hidden(win)
+        };
+        Ok(state)
+    }
+
+    fn show(&self) -> Result<()> {
+        let win = match self {
+            Self::Normal(win) => win,
+            Self::Closed => {
+                // TODO(?): maybe it is posible to revive a dead window, find a way.
+                log::error!("Attempt to re-open manager window which has already been shutdown.");
+                return Ok(());
+            }
+            Self::Minimized(win) => {
+                win.unminimize()?;
+                win
+            }
+            Self::Hidden(win) => {
+                win.show()?;
+                win
+            }
+        };
+        win.set_focus()?;
+        Ok(())
+    }
+}
+
+fn system_tray() -> SystemTray {
+    let tray_menu = SystemTrayMenu::new()
+        .add_item(CustomMenuItem::new("show", t!("show_ui")))
+        .add_native_item(tauri::SystemTrayMenuItem::Separator)
+        .add_item(CustomMenuItem::new("quit", t!("quit")));
+    SystemTray::new().with_menu(tray_menu)
+}
+
+fn system_tray_event_handler(app: &AppHandle, event: SystemTrayEvent) {
+    match event {
+        SystemTrayEvent::DoubleClick { .. } => show_manager_window_if_possible(app),
+        SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
+            "show" => show_manager_window_if_possible(app),
+            "quit" => app.exit(0),
+            _ => {}
+        },
+        _ => {}
+    }
+}
+
+fn window_event_handler(event: GlobalWindowEvent) {
+    match event.event() {
+        WindowEvent::CloseRequested { api, .. } => {
+            api.prevent_close();
+            tauri::async_runtime::block_on(close_window(event.window().clone()));
+        }
+        _ => {}
+    }
+}
+
+fn show_manager_window_if_possible(app: &AppHandle) {
+    let Ok(state) = WindowState::detect(app) else {
+        return;
+    };
+    _ = state.show();
 }

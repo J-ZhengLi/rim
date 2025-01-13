@@ -9,7 +9,7 @@ edition = "2021"
 tauri-build = { version = "1", features = [] }
 
 [dependencies]
-tauri = { version = "1", features = [ "window-all", "dialog-all", "shell-open"] }
+tauri = { version = "1", features = [ "system-tray", "window-all", "dialog-all", "shell-open"] }
 tauri-plugin-positioner = "1"
 window-shadows = "0.2.2"
 serde.workspace = true
