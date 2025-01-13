@@ -69,9 +69,8 @@ pub(crate) async fn notification_content() -> Option<Notification> {
 
 #[tauri::command]
 pub(crate) async fn close(app: AppHandle) {
-    if let Some(popup) = app.get_window(WINDOW_LABEL) {
-        if let Err(e) = popup.close() {
-            log::error!("failed when closing notification popup: {e}");
-        }
-    }
+    let Some(window) = app.get_window(WINDOW_LABEL) else {
+        return;
+    };
+    crate::common::close_window(&window).await;
 }

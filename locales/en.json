@@ -99,6 +99,8 @@
     "continue": "Continue",
     "back": "Back",
     "customize": "Customize",
+    "show_ui": "Show UI",
+    "quit": "Quit",
     "pre_update_confirmation": "\nThese components below will be updated, you may choose to install them, or manually select another set by entering '2'\n\n%{list}",
     "downloading_rustup_init": "downloading rustup-init...",
     "unable_to_remove": "unable to remove '%{path}' as it might be current used by other programs, please try manually remove it after.",

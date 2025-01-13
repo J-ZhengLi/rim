@@ -64,7 +64,8 @@ impl Uninstallation for UninstallConfiguration<'_> {
     }
 }
 
-/// Module containing functions that are modified from `rustup`.
+/// A module that contains functions that are modified from `rustup`:
+/// https://github.com/rust-lang/rustup/blob/master/src/cli/self_update/windows.rs
 pub(crate) mod rustup {
     use super::GlobalOpts;
     use anyhow::{anyhow, Context, Result};

@@ -11,13 +11,14 @@ use rim::toolset_manifest::{get_toolset_manifest, ToolsetManifest};
 use rim::{try_it, utils, AppInfo};
 
 static TOOLSET_MANIFEST: OnceLock<ToolsetManifest> = OnceLock::new();
+const INSTALLER_WINDOW_LABEL: &str = "installer_window";
 
 pub(super) fn main() -> Result<()> {
     let msg_recv = common::setup_logger()?;
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            super::close_window,
+            close_window,
             default_install_dir,
             select_folder,
             check_install_path,
@@ -33,7 +34,7 @@ pub(super) fn main() -> Result<()> {
         .setup(|app| {
             let window = tauri::WindowBuilder::new(
                 app,
-                "installer_window",
+                INSTALLER_WINDOW_LABEL,
                 tauri::WindowUrl::App("index.html/#/installer".into()),
             )
             .inner_size(800.0, 600.0)
@@ -51,6 +52,11 @@ pub(super) fn main() -> Result<()> {
         .run(tauri::generate_context!())
         .context("unknown error occurs while running tauri application")?;
     Ok(())
+}
+
+#[tauri::command]
+async fn close_window(window: tauri::Window) {
+    common::close_window(&window).await;
 }
 
 #[tauri::command]
