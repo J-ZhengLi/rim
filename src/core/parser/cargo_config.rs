@@ -19,7 +19,7 @@ pub(crate) struct CargoConfig {
 }
 
 impl TomlParser for CargoConfig {
-    const FILENAME: &str = "config.toml";
+    const FILENAME: &'static str = "config.toml";
 }
 
 // FIXME: remove this `allow` before 0.1.0 release.

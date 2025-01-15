@@ -1,0 +1,10 @@
+[package]
+name = "rim-test-support"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow.workspace = true
+tempfile.workspace = true
+rim-test-macro = { path = "../rim-test-macro" }
+snapbox = { version = "0.6.20", features = ["dir"] }

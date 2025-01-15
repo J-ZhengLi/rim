@@ -1,0 +1,23 @@
+Update toolkit and/or this installation manager
+
+By default, this will update both the toolkit and manager, if you just want to update on of them, pass `--<toolkit|manager>-only` option to it.
+
+Usage: manager-cli[EXE] update [OPTIONS]
+
+Options:
+  -k, --insecure
+          Allow insecure connections when download packages from server
+
+      --toolkit-only
+          Update toolkit only
+
+      --manager-only
+          Update manager only
+
+  -c, --component <COMPONENT>
+          Include a list of components (separated by comma) to update, effective only when updating toolkit.
+          
+          By default, the value of this option will override the list of components to be updated, meaning if you use `--component a,b`, only component a and b will be updated. If you want to keep the default selection, but adding some extra components to update, you need to include a `..` in the value, such as `--component a,b,..`, then not only a and b, but also other components that were selected by default will get updated.
+
+  -h, --help
+          Print help (see a summary with '-h')

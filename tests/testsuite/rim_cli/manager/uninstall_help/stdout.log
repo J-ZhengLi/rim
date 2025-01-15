@@ -1,0 +1,7 @@
+Uninstall individual components or everything
+
+Usage: manager-cli[EXE] uninstall [OPTIONS]
+
+Options:
+      --keep-self  Keep this manager tool, only uninstall toolkit
+  -h, --help       Print help

@@ -21,7 +21,7 @@ where
 }
 
 impl TomlParser for ReleaseInfo {
-    const FILENAME: &str = "release.toml";
+    const FILENAME: &'static str = "release.toml";
 }
 
 #[cfg(test)]
