@@ -55,8 +55,8 @@ impl UpdateOpt {
     /// Latest version check can be disabled by passing `skip_check` as `false`.
     /// Otherwise, this function will check whether if the current version is older
     /// than the latest one, if not, return `Ok(false)` indicates no update has been done.
-    pub fn self_update(&self, skip_check: bool) -> Result<bool> {
-        if !skip_check && !check_self_update(self.insecure)?.update_needed() {
+    pub async fn self_update(&self, skip_check: bool) -> Result<bool> {
+        if !skip_check && !check_self_update(self.insecure).await?.update_needed() {
             info!(
                 "{}",
                 t!(
@@ -73,7 +73,7 @@ impl UpdateOpt {
         let cli = "";
 
         let src_name = utils::exe!(format!("{}-manager{cli}", t!("vendor_en")));
-        let latest_version = &latest_manager_release(self.insecure)?.version;
+        let latest_version = &latest_manager_release(self.insecure).await?.version;
         let download_url = parse_download_url(&format!(
             "manager/archive/{latest_version}/{}/{src_name}",
             env!("TARGET"),
@@ -91,7 +91,9 @@ impl UpdateOpt {
         // dest file don't need the `-cli` suffix to confuse users
         let dest_name = utils::exe!(format!("{}-manager", t!("vendor_en")));
         let newer_manager = temp_root.path().join(dest_name);
-        utils::download("latest manager", &download_url, &newer_manager)?;
+        utils::DownloadOpt::new("latest manager")
+            .download(&download_url, &newer_manager)
+            .await?;
 
         // replace the current executable
         self_replace::self_replace(newer_manager)?;
@@ -105,7 +107,7 @@ impl UpdateOpt {
 ///
 /// This will try to access the internet upon first call in order to
 /// read the `release.toml` file from the server, and the result will be "cached" after.
-fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
+async fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
     if let Some(release_info) = LATEST_RELEASE.get() {
         return Ok(release_info);
     }
@@ -113,7 +115,8 @@ fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
     let download_url = parse_download_url(&format!("manager/{}", ReleaseInfo::FILENAME))?;
     let raw = utils::DownloadOpt::new("manager release info")
         .insecure(insecure)
-        .read(&download_url)?;
+        .read(&download_url)
+        .await?;
     let release_info = ReleaseInfo::from_str(&raw)?;
 
     Ok(LATEST_RELEASE.get_or_init(|| release_info))
@@ -149,10 +152,10 @@ impl SelfUpdateKind<'_> {
 /// # Error
 /// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
 /// status of updates checker.
-pub fn check_self_update(insecure: bool) -> Result<SelfUpdateKind<'static>> {
+pub async fn check_self_update(insecure: bool) -> Result<SelfUpdateKind<'static>> {
     info!("{}", t!("checking_manager_updates"));
 
-    let latest_version = match latest_manager_release(insecure) {
+    let latest_version = match latest_manager_release(insecure).await {
         Ok(release) => &release.version,
         Err(e) => {
             warn!("{}: {e}", t!("fetch_latest_manager_version_failed"));

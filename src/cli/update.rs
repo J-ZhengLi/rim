@@ -31,7 +31,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
         update_opt.update_toolkit(|path| update_toolkit_(path, *insecure, component.as_deref()))?;
     }
     if !toolkit_only {
-        update_opt.self_update(false)?;
+        tokio::runtime::Runtime::new()?.block_on(async { update_opt.self_update(false).await })?;
     }
 
     Ok(true)

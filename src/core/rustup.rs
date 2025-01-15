@@ -190,7 +190,7 @@ fn download_rustup_init(
     utils::DownloadOpt::new(RUSTUP_INIT)
         .insecure(insecure)
         .with_proxy(proxy.cloned())
-        .download_file(&download_url, dest, false)
+        .blocking_download(&download_url, dest)
         .context("Failed to download rustup.")
 }
 

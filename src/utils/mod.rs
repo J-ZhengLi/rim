@@ -13,9 +13,10 @@ mod progress_bar;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
-pub use download::{download, download_with_proxy, DownloadOpt};
+pub use download::DownloadOpt;
 pub use extraction::Extractable;
 pub use file_system::*;
 pub use log::{log_file_path, Logger};
@@ -181,6 +182,13 @@ pub fn use_current_locale() {
 
 pub fn set_locale(loc: &str) {
     rust_i18n::set_locale(loc);
+}
+
+/// Waits until `duration` has elapsed.
+///
+/// Note: Use this in `async` context rather than [`std::thread::sleep`].
+pub async fn async_sleep(duration: Duration) {
+    tokio::time::sleep(duration).await;
 }
 
 #[cfg(test)]

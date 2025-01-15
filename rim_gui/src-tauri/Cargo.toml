@@ -14,7 +14,6 @@ tauri-plugin-positioner = "1"
 window-shadows = "0.2.2"
 serde.workspace = true
 serde_json = "1"
-tokio = { version = "1.43.0", features = ["time"] }
 ###
 anyhow.workspace = true
 url.workspace = true
