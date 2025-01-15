@@ -133,6 +133,7 @@ impl Mode {
         APP_INFO.get_or_init(|| AppInfo {
             name: t!("manager_title", product = t!("product")).into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
+            is_manager: true,
         });
 
         Self::Manager(Box::new(cli))
@@ -147,6 +148,7 @@ impl Mode {
         APP_INFO.get_or_init(|| AppInfo {
             name: t!("installer_title", product = t!("product")).into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
+            is_manager: false,
         });
 
         Self::Installer(Box::new(cli))
@@ -178,6 +180,7 @@ impl Mode {
 pub struct AppInfo {
     name: String,
     version: String,
+    is_manager: bool,
 }
 
 impl Default for AppInfo {
@@ -185,6 +188,7 @@ impl Default for AppInfo {
         Self {
             name: env!("CARGO_PKG_NAME").to_string(),
             version: env!("CARGO_PKG_VERSION").to_string(),
+            is_manager: false,
         }
     }
 }
@@ -198,6 +202,10 @@ impl AppInfo {
     }
     pub fn version() -> &'static str {
         &Self::get().version
+    }
+    /// Return `true` if this app is currently running in manager mode.
+    pub fn is_manager() -> bool {
+        Self::get().is_manager
     }
 }
 

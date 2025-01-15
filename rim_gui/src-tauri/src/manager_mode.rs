@@ -23,11 +23,11 @@ use rim::{
     AppInfo,
 };
 use rim::{
-    version_skip::{SkipFor, VersionSkip},
+    updates::{UpdateCheckerOpt, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION},
     UninstallConfiguration,
 };
 use tauri::{
-    api::dialog, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
+    api::dialog, async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
     SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
 };
 
@@ -55,7 +55,7 @@ pub(super) fn main() -> Result<()> {
             get_install_dir,
             uninstall_toolkit,
             install_toolkit,
-            maybe_self_update,
+            check_self_update_in_background,
             handle_toolkit_install_click,
             common::supported_languages,
             common::set_locale,
@@ -166,20 +166,42 @@ fn install_toolkit(window: tauri::Window, components_list: Vec<Component>) -> Re
 }
 
 #[tauri::command]
-async fn maybe_self_update(app: AppHandle) -> Result<()> {
-    let update_kind = update::check_self_update(false);
-    let Some(new_ver) = update_kind.newer_version() else {
-        return Ok(());
-    };
-    let is_on_background = !matches!(WindowState::detect(&app), Ok(WindowState::Normal(_)));
+async fn check_self_update_in_background(app: AppHandle) -> Result<()> {
+    async_runtime::spawn(async move {
+        let manager = UpdateTarget::Manager;
+        let app_arc = Arc::new(app);
 
-    if is_on_background {
-        show_self_update_notification_popup(&app, new_ver).await?;
-    } else {
-        show_self_update_dialog(app, new_ver)?;
-    }
+        loop {
+            let app_clone = app_arc.clone();
 
-    Ok(())
+            let next_check_timeout = match update::check_self_update(false) {
+                Ok(update_kind) => {
+                    let Some(new_ver) = update_kind.newer_version() else {
+                        return Ok(());
+                    };
+
+                    let is_window_shown = WindowState::detect(&app_clone)
+                        .map(|st| st.is_shown())
+                        .unwrap_or_default();
+                    if is_window_shown {
+                        show_self_update_dialog(app_clone, new_ver)?;
+                    } else {
+                        show_self_update_notification_popup(&app_clone, new_ver).await?;
+                    }
+
+                    UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(manager)
+                }
+                Err(e) => {
+                    log::error!("self update check failed: {e}");
+
+                    DEFAULT_UPDATE_CHECK_DURATION
+                }
+            };
+
+            tokio::time::sleep(next_check_timeout).await;
+        }
+    })
+    .await?
 }
 
 /// When the `install` button in a toolkit's card was clicked,
@@ -236,7 +258,7 @@ fn do_self_update(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-fn show_self_update_dialog<S: Display>(app: AppHandle, new_ver: S) -> Result<()> {
+fn show_self_update_dialog<S: Display>(app: Arc<AppHandle>, new_ver: S) -> Result<()> {
     dialog::ask(
         app.get_window(MANAGER_WINDOW_LABEL).as_ref(),
         t!("self_update_available"),
@@ -306,8 +328,8 @@ async fn skip_self_version(app: AppHandle, version: String) -> Result<()> {
     notification::close(app.clone()).await;
     tauri::async_runtime::spawn(async move {
         log::info!("skipping manager version: '{version}'");
-        VersionSkip::load_from_install_dir()
-            .skip(SkipFor::Manager, version)
+        UpdateCheckerOpt::load_from_install_dir()
+            .skip(UpdateTarget::Manager, version)
             .write_to_install_dir()
     })
     .await??;
@@ -335,6 +357,10 @@ impl WindowState {
             Self::Hidden(win)
         };
         Ok(state)
+    }
+
+    fn is_shown(&self) -> bool {
+        matches!(self, Self::Normal(_))
     }
 
     fn show(&self) -> Result<()> {

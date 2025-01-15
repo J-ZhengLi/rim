@@ -3,7 +3,7 @@ pub mod dist_manifest;
 pub mod fingerprint;
 pub(crate) mod release_info;
 pub mod toolset_manifest;
-pub mod version_skip;
+pub mod updates;
 
 use anyhow::{bail, Context, Result};
 use fingerprint::InstallationRecord;

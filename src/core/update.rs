@@ -10,8 +10,9 @@ use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
 use super::parser::TomlParser;
 use crate::{
-    setter, utils,
-    version_skip::{SkipFor, VersionSkip},
+    setter,
+    updates::{UpdateCheckerOpt, UpdateTarget},
+    utils,
 };
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
@@ -55,7 +56,7 @@ impl UpdateOpt {
     /// Otherwise, this function will check whether if the current version is older
     /// than the latest one, if not, return `Ok(false)` indicates no update has been done.
     pub fn self_update(&self, skip_check: bool) -> Result<bool> {
-        if !skip_check && !check_self_update(self.insecure).update_needed() {
+        if !skip_check && !check_self_update(self.insecure)?.update_needed() {
             info!(
                 "{}",
                 t!(
@@ -118,6 +119,7 @@ fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
     Ok(LATEST_RELEASE.get_or_init(|| release_info))
 }
 
+#[derive(Debug)]
 pub enum SelfUpdateKind<'a> {
     Newer(&'a Version),
     Uncertain,
@@ -139,34 +141,41 @@ impl SelfUpdateKind<'_> {
     }
 }
 
-/// Returns `true` if current manager version is lower than its latest version.
+/// Check self(manager) updates.
 ///
-/// If the version info could not be fetched, this will return `false` otherwise.
-pub fn check_self_update(insecure: bool) -> SelfUpdateKind<'static> {
+/// This will also read an [`Updates`] configuration to see whether
+/// the update should be checked.
+///
+/// # Error
+/// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
+/// status of updates checker.
+pub fn check_self_update(insecure: bool) -> Result<SelfUpdateKind<'static>> {
     info!("{}", t!("checking_manager_updates"));
 
     let latest_version = match latest_manager_release(insecure) {
         Ok(release) => &release.version,
         Err(e) => {
             warn!("{}: {e}", t!("fetch_latest_manager_version_failed"));
-            return SelfUpdateKind::Uncertain;
+            return Ok(SelfUpdateKind::Uncertain);
         }
     };
-
-    // Check if this version was skipped by user
-    if VersionSkip::load_from_install_dir().is_skipped(SkipFor::Manager, latest_version.to_string())
-    {
-        return SelfUpdateKind::UnNeeded;
+    let updates = UpdateCheckerOpt::load_from_install_dir();
+    if updates.is_skipped(UpdateTarget::Manager, latest_version.to_string()) {
+        return Ok(SelfUpdateKind::UnNeeded);
     }
 
     // safe to unwrap, otherwise cargo would fails the build
     let cur_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 
-    if &cur_version < latest_version {
+    let res = if &cur_version < latest_version {
         SelfUpdateKind::Newer(latest_version)
     } else {
         SelfUpdateKind::UnNeeded
-    }
+    };
+    updates
+        .mark_checked(UpdateTarget::Manager)
+        .write_to_install_dir()?;
+    Ok(res)
 }
 
 fn parse_download_url(source_path: &str) -> Result<Url> {

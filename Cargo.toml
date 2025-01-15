@@ -51,7 +51,7 @@ rust-i18n.workspace = true
 sys-locale = "0.3.1"
 log.workspace = true
 fern.workspace = true
-chrono = "0.4.38"
+chrono = { version = "0.4.38", features = ["serde"] }
 semver = "1.0.23"
 self-replace = "1"
 os_pipe = "1.2.1"

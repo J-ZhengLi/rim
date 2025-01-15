@@ -160,8 +160,8 @@ class ManagerConf {
     }
 
     await this.reloadKits();
-    // check self update and ask user if they what to install it.
-    await invokeCommand('maybe_self_update');
+    // check self update in background and ask user if they what to install it.
+    await invokeCommand('check_self_update_in_background');
   }
 
   async loadInstalledKit() {
