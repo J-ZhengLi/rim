@@ -32,7 +32,7 @@ fern = { version = "0.7", features = ["colored"] }
 anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
 indicatif = "0.17"
-reqwest = { version = "0.12", features = ["blocking", "native-tls-vendored"] }
+reqwest = { version = "0.12", features = ["stream", "native-tls-vendored"] }
 serde.workspace = true
 url.workspace = true
 libc = "0.2"
@@ -55,6 +55,7 @@ chrono = { version = "0.4.38", features = ["serde"] }
 semver = "1.0.23"
 self-replace = "1"
 os_pipe = "1.2.1"
+tokio = { version = "1.43.0", features = ["time"] }
 
 [dev-dependencies]
 rim-test-support = { version = "0.1.0", path = "rim_test/rim-test-support" }

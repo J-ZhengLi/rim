@@ -566,7 +566,7 @@ pub fn get_toolset_manifest(url: Option<Url>, insecure: bool) -> Result<ToolsetM
         let temp = utils::make_temp_file("toolset-manifest-", None)?;
         utils::DownloadOpt::new("toolset manifest")
             .insecure(insecure)
-            .download_file(url, temp.path(), false)?;
+            .blocking_download(url, temp.path())?;
         ToolsetManifest::load(temp.path())
     } else {
         debug!("loading built-in toolset manifest");

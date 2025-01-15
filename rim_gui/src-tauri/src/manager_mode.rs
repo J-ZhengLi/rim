@@ -27,7 +27,7 @@ use rim::{
     UninstallConfiguration,
 };
 use tauri::{
-    api::dialog, async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
+    async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
     SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
 };
 
@@ -174,21 +174,13 @@ async fn check_self_update_in_background(app: AppHandle) -> Result<()> {
         loop {
             let app_clone = app_arc.clone();
 
-            let next_check_timeout = match update::check_self_update(false) {
+            let next_check_timeout = match update::check_self_update(false).await {
                 Ok(update_kind) => {
                     let Some(new_ver) = update_kind.newer_version() else {
                         return Ok(());
                     };
 
-                    let is_window_shown = WindowState::detect(&app_clone)
-                        .map(|st| st.is_shown())
-                        .unwrap_or_default();
-                    if is_window_shown {
-                        show_self_update_dialog(app_clone, new_ver)?;
-                    } else {
-                        show_self_update_notification_popup(&app_clone, new_ver).await?;
-                    }
-
+                    show_self_update_notification_popup(&app_clone, new_ver).await?;
                     UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(manager)
                 }
                 Err(e) => {
@@ -198,7 +190,7 @@ async fn check_self_update_in_background(app: AppHandle) -> Result<()> {
                 }
             };
 
-            tokio::time::sleep(next_check_timeout).await;
+            utils::async_sleep(next_check_timeout).await;
         }
     })
     .await?
@@ -225,7 +217,7 @@ fn handle_toolkit_install_click(url: String) -> Result<Vec<Component>> {
     Ok(components)
 }
 
-fn do_self_update(app: &AppHandle) -> Result<()> {
+async fn do_self_update(app: &AppHandle) -> Result<()> {
     // try show the window first, make sure it does not fails the process,
     // as we can still do self update without a window.
     show_manager_window_if_possible(app);
@@ -238,7 +230,7 @@ fn do_self_update(app: &AppHandle) -> Result<()> {
 
     // do self update, skip version check because it should already
     // been checked using `update::check_self_update`
-    if let Err(e) = UpdateOpt::new().self_update(true) {
+    if let Err(e) = UpdateOpt::new().self_update(true).await {
         return Err(anyhow::anyhow!("failed when performing self update: {e}").into());
     }
 
@@ -255,26 +247,6 @@ fn do_self_update(app: &AppHandle) -> Result<()> {
     // restart app
     app.restart();
 
-    Ok(())
-}
-
-fn show_self_update_dialog<S: Display>(app: Arc<AppHandle>, new_ver: S) -> Result<()> {
-    dialog::ask(
-        app.get_window(MANAGER_WINDOW_LABEL).as_ref(),
-        t!("self_update_available"),
-        t!(
-            "ask_self_update",
-            latest = new_ver,
-            current = env!("CARGO_PKG_VERSION")
-        ),
-        move |yes| {
-            if yes {
-                if let Err(e) = do_self_update(&app) {
-                    log::error!("failed when perform self update: {e}");
-                }
-            }
-        },
-    );
     Ok(())
 }
 
@@ -320,7 +292,7 @@ async fn show_self_update_notification_popup<S: Display>(
 #[tauri::command]
 async fn self_update_now(app: AppHandle) -> Result<()> {
     notification::close(app.clone()).await;
-    tauri::async_runtime::spawn(async move { do_self_update(&app) }).await?
+    tauri::async_runtime::spawn(async move { do_self_update(&app).await }).await?
 }
 
 #[tauri::command]
@@ -357,10 +329,6 @@ impl WindowState {
             Self::Hidden(win)
         };
         Ok(state)
-    }
-
-    fn is_shown(&self) -> bool {
-        matches!(self, Self::Normal(_))
     }
 
     fn show(&self) -> Result<()> {

@@ -117,7 +117,7 @@ pub(crate) fn toolkits_from_server(insecure: bool) -> Result<&'static [Toolkit]>
     let dist_m_file = utils::make_temp_file("dist-manifest-", None)?;
     utils::DownloadOpt::new("distribution manifest")
         .insecure(insecure)
-        .download_file(&dist_m_url, dist_m_file.path(), false)?;
+        .blocking_download(&dist_m_url, dist_m_file.path())?;
     debug!("distribution manifest file successfully downloaded!");
 
     // load dist "pacakges" then convert them into `toolkit`s
