@@ -102,6 +102,26 @@ macro_rules! setter {
     };
 }
 
+/// Run asynchronous code to completion, with the cost of blocking the current thread.
+///
+/// # Example
+/// ```rust
+/// # use rim::utils::blocking;
+/// async fn async_func() {
+///     // ...
+/// }
+///
+/// fn normal_func() {
+///     blocking!(async_func());
+/// }
+/// ```
+macro_rules! blocking {
+    ($blk:expr) => {
+        tokio::runtime::Runtime::new()?.block_on($blk)
+    };
+}
+pub(crate) use blocking;
+
 /// Forcefully parsing a `&str` to [`Url`].
 ///
 /// # Panic

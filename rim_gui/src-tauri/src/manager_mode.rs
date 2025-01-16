@@ -55,13 +55,14 @@ pub(super) fn main() -> Result<()> {
             get_install_dir,
             uninstall_toolkit,
             install_toolkit,
-            check_self_update_in_background,
+            check_updates_in_background,
             handle_toolkit_install_click,
             common::supported_languages,
             common::set_locale,
             common::app_info,
             self_update_now,
-            skip_self_version,
+            toolkit_update_now,
+            skip_version,
             notification::close,
             notification::notification_content,
         ])
@@ -103,13 +104,18 @@ async fn close_window(window: tauri::Window) {
 }
 
 #[tauri::command]
-fn get_installed_kit(reload: bool) -> Result<Option<Toolkit>> {
-    Ok(Toolkit::installed(reload)?.map(|mutex| mutex.lock().unwrap().clone()))
+async fn get_installed_kit(reload: bool) -> Result<Option<Toolkit>> {
+    let Some(mutex) = Toolkit::installed(reload).await? else {
+        return Ok(None);
+    };
+    let installed = mutex.lock().await.clone();
+    Ok(Some(installed))
 }
 
 #[tauri::command]
-fn get_available_kits(reload: bool) -> Result<Vec<Toolkit>> {
-    Ok(toolkit::installable_toolkits(reload, false)?
+async fn get_available_kits(reload: bool) -> Result<Vec<Toolkit>> {
+    Ok(toolkit::installable_toolkits(reload, false)
+        .await?
         .into_iter()
         .cloned()
         .collect())
@@ -165,32 +171,67 @@ fn install_toolkit(window: tauri::Window, components_list: Vec<Component>) -> Re
     Ok(())
 }
 
+/// Check self update and return the timeout duration until the next check.
+async fn check_manager_update(app: &AppHandle) -> Result<Duration> {
+    let timeout = match update::check_self_update(false).await {
+        Ok(update_kind) => {
+            if let update::UpdateKind::Newer { current, latest } = update_kind {
+                show_update_notification_popup(
+                    &app,
+                    UpdateTarget::Manager,
+                    &current,
+                    &latest,
+                    None,
+                )
+                .await?;
+            }
+            UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(UpdateTarget::Manager)
+        }
+        Err(e) => {
+            log::error!("manager update check failed: {e}");
+            DEFAULT_UPDATE_CHECK_DURATION
+        }
+    };
+    Ok(timeout)
+}
+
+/// Check toolkit update and return the timeout duration until the next check.
+async fn check_toolkit_update(app: &AppHandle) -> Result<Duration> {
+    let timeout = match update::check_toolkit_update(false).await {
+        Ok(update_kind) => {
+            if let update::UpdateKind::Newer { current, latest } = update_kind {
+                show_update_notification_popup(
+                    &app,
+                    UpdateTarget::Toolkit,
+                    current.version,
+                    latest.version,
+                    latest.payload,
+                )
+                .await?;
+            }
+            UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(UpdateTarget::Toolkit)
+        }
+        Err(e) => {
+            log::error!("toolkit update check failed: {e}");
+            DEFAULT_UPDATE_CHECK_DURATION
+        }
+    };
+    Ok(timeout)
+}
+
 #[tauri::command]
-async fn check_self_update_in_background(app: AppHandle) -> Result<()> {
+async fn check_updates_in_background(app: AppHandle) -> Result<()> {
+    let app_arc = Arc::new(app);
+    let app_clone = app_arc.clone();
+
     async_runtime::spawn(async move {
-        let manager = UpdateTarget::Manager;
-        let app_arc = Arc::new(app);
-
         loop {
-            let app_clone = app_arc.clone();
+            let timeout_for_manager = check_manager_update(&app_clone).await?;
+            let timeout_for_toolkit = check_toolkit_update(&app_clone).await?;
 
-            let next_check_timeout = match update::check_self_update(false).await {
-                Ok(update_kind) => {
-                    let Some(new_ver) = update_kind.newer_version() else {
-                        return Ok(());
-                    };
-
-                    show_self_update_notification_popup(&app_clone, new_ver).await?;
-                    UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(manager)
-                }
-                Err(e) => {
-                    log::error!("self update check failed: {e}");
-
-                    DEFAULT_UPDATE_CHECK_DURATION
-                }
-            };
-
-            utils::async_sleep(next_check_timeout).await;
+            let timeout = timeout_for_manager.min(timeout_for_toolkit);
+            println!("time for next check: {timeout:?}");
+            utils::async_sleep(timeout).await;
         }
     })
     .await?
@@ -250,30 +291,57 @@ async fn do_self_update(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-async fn show_self_update_notification_popup<S: Display>(
+async fn do_toolkit_update(app: &AppHandle, url: String) -> Result<Vec<Component>> {
+    // toolkit update requires the main window
+    WindowState::detect(app)?.show()?;
+    // show user the component selection page
+    handle_toolkit_install_click(url)
+}
+
+async fn show_update_notification_popup<C: Display, S: Display>(
     app_handle: &AppHandle,
+    target: UpdateTarget,
+    current_ver: C,
     new_ver: S,
+    payload: Option<String>,
 ) -> Result<()> {
+    let (title, content, update_cmd) = match target {
+        UpdateTarget::Manager => (
+            t!("self_update_available"),
+            t!("ask_self_update", current = current_ver, latest = new_ver),
+            ("self_update_now".into(), None),
+        ),
+        UpdateTarget::Toolkit => (
+            t!("toolkit_update_available"),
+            t!(
+                "ask_toolkit_update",
+                current = current_ver,
+                latest = new_ver,
+            ),
+            (
+                "toolkit_update_now".into(),
+                payload.map(|p| format!("{{ \"url\": \"{p}\" }}")),
+            ),
+        ),
+    };
+
     Notification::new(
-        t!("self_update_available").into(),
-        t!(
-            "ask_self_update",
-            current = env!("CARGO_PKG_VERSION"),
-            latest = new_ver
-        )
-        .into(),
+        title,
+        content,
         vec![
             NotificationAction {
                 label: t!("update").into(),
                 icon: Some("/update-icon.svg".into()),
-                command: ("self_update_now".into(), None),
+                command: update_cmd,
             },
             NotificationAction {
                 label: t!("skip_version").into(),
                 icon: Some("/stop-icon.svg".into()),
                 command: (
-                    "skip_self_version".into(),
-                    Some(format!("{{ \"version\": \"{new_ver}\" }}")),
+                    "skip_version".into(),
+                    Some(format!(
+                        "{{ \"version\": \"{new_ver}\", \"target\": \"{target}\" }}"
+                    )),
                 ),
             },
             NotificationAction {
@@ -296,12 +364,18 @@ async fn self_update_now(app: AppHandle) -> Result<()> {
 }
 
 #[tauri::command]
-async fn skip_self_version(app: AppHandle, version: String) -> Result<()> {
+async fn toolkit_update_now(app: AppHandle, url: String) -> Result<Vec<Component>> {
+    notification::close(app.clone()).await;
+    tauri::async_runtime::spawn(async move { do_toolkit_update(&app, url).await }).await?
+}
+
+#[tauri::command]
+async fn skip_version(app: AppHandle, target: UpdateTarget, version: String) -> Result<()> {
     notification::close(app.clone()).await;
     tauri::async_runtime::spawn(async move {
-        log::info!("skipping manager version: '{version}'");
+        log::info!("skipping version: '{version}' for '{target}'");
         UpdateCheckerOpt::load_from_install_dir()
-            .skip(UpdateTarget::Manager, version)
+            .skip(target, version)
             .write_to_install_dir()
     })
     .await??;

@@ -89,7 +89,8 @@
 
     "fetching": "fetching",
 
-    "fetch_latest_manager_version_failed": "failed to retrieve information about the latest manager version",
+    "fetch_latest_manager_version_failed": "unable to retrieve information about the latest manager version",
+    "fetch_latest_toolkit_version_failed": "unable to retrieve information about the latest toolkit version",
     "current": "current",
     "target": "target",
     "checking_manager_updates": "checking for manager updates...",
@@ -105,9 +106,11 @@
     "downloading_rustup_init": "downloading rustup-init...",
     "unable_to_remove": "unable to remove '%{path}' as it might be current used by other programs, please try manually remove it after.",
     "self_update_available": "self update available",
+    "toolkit_update_available": "toolkit update available",
     "skip_version": "Skip This Version",
     "close": "Close",
-    "ask_self_update": "detected new release version: %{latest}\ncurrently running: %{current}\nupdate now?",
+    "ask_self_update": "a newer version of manager has been found: %{latest}\ncurrently running: %{current}\ndo you wish to update now?",
+    "ask_toolkit_update": "a newer version of toolkit has been found: %{latest}\ncurrently installed: %{current}\ndo you wish to update now?",
     "self_update_complete": "update completed! If you are using the graphical interface, please close then re-open this program to avoid possible issues.",
     "latest_toolkit_installed": "already installed the latest toolkit (%{name}-%{version}), no need to update",
     "latest_manager_installed": "already running on the latest release version (%{version}), no need to update",

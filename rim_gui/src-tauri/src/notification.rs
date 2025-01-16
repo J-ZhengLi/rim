@@ -24,10 +24,14 @@ pub(crate) struct Notification {
 }
 
 impl Notification {
-    pub(crate) fn new(title: String, content: String, actions: Vec<NotificationAction>) -> Self {
+    pub(crate) fn new<T, C>(title: T, content: C, actions: Vec<NotificationAction>) -> Self
+    where
+        T: Into<String>,
+        C: Into<String>,
+    {
         let this = Self {
-            title,
-            content,
+            title: title.into(),
+            content: content.into(),
             actions,
         };
         if let Some(existing) = CONTENT.get() {
@@ -40,6 +44,7 @@ impl Notification {
 
     pub(crate) async fn show(self, app_handle: &AppHandle) -> Result<()> {
         if let Some(popup) = app_handle.get_window(WINDOW_LABEL) {
+            println!("popup already exists");
             popup.show()?;
             return Ok(());
         }

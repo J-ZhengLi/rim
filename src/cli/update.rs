@@ -8,6 +8,7 @@ use crate::core::toolkit::Toolkit;
 use crate::core::update::UpdateOpt;
 use crate::toolkit::latest_installable_toolkit;
 use crate::toolset_manifest::get_toolset_manifest;
+use crate::utils::blocking;
 use crate::InstallConfiguration;
 
 use super::common::{
@@ -28,28 +29,30 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
 
     let update_opt = UpdateOpt::new().insecure(*insecure);
     if !manager_only {
-        update_opt.update_toolkit(|path| update_toolkit_(path, *insecure, component.as_deref()))?;
+        update_opt.update_toolkit(|path| {
+            blocking!(update_toolkit_(path, *insecure, component.as_deref()))
+        })?;
     }
     if !toolkit_only {
-        tokio::runtime::Runtime::new()?.block_on(async { update_opt.self_update(false).await })?;
+        blocking!(update_opt.self_update(false))?;
     }
 
     Ok(true)
 }
 
-fn update_toolkit_(
+async fn update_toolkit_(
     install_dir: &Path,
     insecure: bool,
     user_selected_comps: Option<&[String]>,
 ) -> Result<()> {
-    let Some(installed) = Toolkit::installed(false)? else {
+    let Some(installed) = Toolkit::installed(false).await? else {
         info!("{}", t!("no_toolkit_installed"));
         return Ok(());
     };
-    let installed = &*installed.lock().unwrap();
+    let installed = &*installed.lock().await;
 
     // get possible update
-    let Some(latest_toolkit) = latest_installable_toolkit(installed, insecure)? else {
+    let Some(latest_toolkit) = latest_installable_toolkit(installed, insecure).await? else {
         return Ok(());
     };
     log::debug!(
