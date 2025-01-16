@@ -2,9 +2,11 @@ import { ref, Ref } from 'vue';
 import type { Component } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
+import { AppInfo } from './types/AppInfo';
 
 class InstallConf {
   path: Ref<string>;
+  info: Ref<AppInfo | null> = ref(null);
   checkComponents: Ref<CheckItem<Component>[]>;
   isCustomInstall: boolean;
   version: Ref<string>;
@@ -14,6 +16,21 @@ class InstallConf {
     this.checkComponents = ref(components);
     this.isCustomInstall = true;
     this.version = ref('');
+  }
+
+  /** The name and version of this application joined as a string. */
+  async appNameWithVersion() {
+    if (this.info.value) {
+      return this.info.value.version ? this.info.value.name + ' ' + this.info.value.version : this.info.value.name;
+    }
+    let info = await this.cacheAppInfo();
+    return info.version ? info.name + ' ' + info.version : info.name;
+  }
+
+  async cacheAppInfo() {
+    let info = await invokeCommand('app_info') as AppInfo;
+    this.info.value = info;
+    return info;
   }
 
   setPath(newPath: string) {

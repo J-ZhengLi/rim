@@ -9,7 +9,11 @@ use url::Url;
 use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
 use super::parser::TomlParser;
-use crate::{setter, utils};
+use crate::{
+    setter, toolkit,
+    updates::{UpdateCheckerOpt, UpdateTarget},
+    utils,
+};
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
 static LATEST_RELEASE: OnceLock<ReleaseInfo> = OnceLock::new();
@@ -48,10 +52,11 @@ impl UpdateOpt {
 
     /// Update self when applicable.
     ///
-    /// If the program is succesfully updated, this will return `Ok(true)`,
-    /// which indicates the program should be restarted.
-    pub fn self_update(&self) -> Result<bool> {
-        if !check_self_update(self.insecure).update_needed() {
+    /// Latest version check can be disabled by passing `skip_check` as `false`.
+    /// Otherwise, this function will check whether if the current version is older
+    /// than the latest one, if not, return `Ok(false)` indicates no update has been done.
+    pub async fn self_update(&self, skip_check: bool) -> Result<bool> {
+        if !skip_check && !check_self_update(self.insecure).await?.update_needed() {
             info!(
                 "{}",
                 t!(
@@ -68,7 +73,7 @@ impl UpdateOpt {
         let cli = "";
 
         let src_name = utils::exe!(format!("{}-manager{cli}", t!("vendor_en")));
-        let latest_version = &latest_manager_release(self.insecure)?.version;
+        let latest_version = &latest_manager_release(self.insecure).await?.version;
         let download_url = parse_download_url(&format!(
             "manager/archive/{latest_version}/{}/{src_name}",
             env!("TARGET"),
@@ -86,10 +91,11 @@ impl UpdateOpt {
         // dest file don't need the `-cli` suffix to confuse users
         let dest_name = utils::exe!(format!("{}-manager", t!("vendor_en")));
         let newer_manager = temp_root.path().join(dest_name);
-        utils::download("latest manager", &download_url, &newer_manager)?;
+        utils::DownloadOpt::new("latest manager")
+            .download(&download_url, &newer_manager)
+            .await?;
 
         // replace the current executable
-        // TODO: restart GUI when available.
         self_replace::self_replace(newer_manager)?;
 
         info!("{}", t!("self_update_complete"));
@@ -101,7 +107,7 @@ impl UpdateOpt {
 ///
 /// This will try to access the internet upon first call in order to
 /// read the `release.toml` file from the server, and the result will be "cached" after.
-fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
+async fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
     if let Some(release_info) = LATEST_RELEASE.get() {
         return Ok(release_info);
     }
@@ -109,55 +115,138 @@ fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
     let download_url = parse_download_url(&format!("manager/{}", ReleaseInfo::FILENAME))?;
     let raw = utils::DownloadOpt::new("manager release info")
         .insecure(insecure)
-        .read(&download_url)?;
+        .read(&download_url)
+        .await?;
     let release_info = ReleaseInfo::from_str(&raw)?;
 
     Ok(LATEST_RELEASE.get_or_init(|| release_info))
 }
 
-pub enum SelfUpdateKind<'a> {
-    Newer(&'a Version),
+#[derive(Debug)]
+pub enum UpdateKind<T: Sized> {
+    Newer { current: T, latest: T },
     Uncertain,
     UnNeeded,
 }
 
-impl SelfUpdateKind<'_> {
-    pub fn update_needed(&self) -> bool {
-        matches!(self, Self::Newer(_))
-    }
+#[derive(Debug)]
+pub struct UpdatePayload {
+    pub version: String,
+    pub payload: Option<String>,
 }
 
-impl SelfUpdateKind<'_> {
-    pub fn newer_version(&self) -> Option<&Version> {
-        match self {
-            Self::Newer(v) => Some(*v),
-            _ => None,
+impl UpdatePayload {
+    pub fn new<S: Into<String>>(version: S) -> Self {
+        Self {
+            version: version.into(),
+            payload: None,
         }
     }
+
+    setter!(with_payload(self.payload, Option<String>));
 }
 
-/// Returns `true` if current manager version is lower than its latest version.
+impl<T> UpdateKind<T> {
+    pub fn update_needed(&self) -> bool {
+        matches!(self, Self::Newer { .. })
+    }
+}
+
+/// Check self(manager) updates.
 ///
-/// If the version info could not be fetched, this will return `false` otherwise.
-pub fn check_self_update(insecure: bool) -> SelfUpdateKind<'static> {
+/// This will also read an [`Updates`] configuration to see whether
+/// the update should be checked.
+///
+/// # Error
+/// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
+/// status of updates checker.
+pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
     info!("{}", t!("checking_manager_updates"));
 
-    let latest_version = match latest_manager_release(insecure) {
-        Ok(release) => &release.version,
+    let mut updates_checker = UpdateCheckerOpt::load_from_install_dir();
+    // we mark it first then check, it sure seems pretty weird, but it sure preventing
+    // infinite loop running in a background thread.
+    updates_checker
+        .mark_checked(UpdateTarget::Manager)
+        .write_to_install_dir()?;
+
+    let latest_version = match latest_manager_release(insecure).await {
+        Ok(release) => release.version.clone(),
         Err(e) => {
             warn!("{}: {e}", t!("fetch_latest_manager_version_failed"));
-            return SelfUpdateKind::Uncertain;
+            return Ok(UpdateKind::Uncertain);
         }
     };
+    if updates_checker.is_skipped(UpdateTarget::Manager, latest_version.to_string()) {
+        return Ok(UpdateKind::UnNeeded);
+    }
 
     // safe to unwrap, otherwise cargo would fails the build
     let cur_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 
-    if &cur_version < latest_version {
-        SelfUpdateKind::Newer(latest_version)
+    let res = if &cur_version < &latest_version {
+        UpdateKind::Newer {
+            current: cur_version,
+            latest: latest_version,
+        }
     } else {
-        SelfUpdateKind::UnNeeded
+        UpdateKind::UnNeeded
+    };
+    Ok(res)
+}
+
+/// Check toolkit updates.
+///
+/// This will also read an [`Updates`] configuration to see whether
+/// the update should be checked.
+///
+/// # Error
+/// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
+/// status of updates checker.
+pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePayload>> {
+    let mut update_checker = UpdateCheckerOpt::load_from_install_dir();
+    // we mark it first then check, it sure seems pretty weird, but it sure preventing
+    // infinite loop running in a background thread.
+    update_checker
+        .mark_checked(UpdateTarget::Toolkit)
+        .write_to_install_dir()?;
+
+    let mutex = match toolkit::Toolkit::installed(false).await {
+        Ok(Some(installed)) => installed,
+        Ok(None) => {
+            info!("{}", t!("no_toolkit_installed"));
+            return Ok(UpdateKind::UnNeeded);
+        }
+        Err(e) => {
+            warn!("{}: {e}", t!("fetch_latest_toolkit_version_failed"));
+            return Ok(UpdateKind::Uncertain);
+        }
+    };
+    let installed = &*mutex.lock().await;
+
+    // get possible update
+    let latest_toolkit = match toolkit::latest_installable_toolkit(installed, insecure).await {
+        Ok(Some(tk)) => tk,
+        Ok(None) => {
+            info!("{}", t!("no_available_updates", toolkit = &installed.name));
+            return Ok(UpdateKind::UnNeeded);
+        }
+        Err(e) => {
+            warn!("{}: {e}", t!("fetch_latest_toolkit_version_failed"));
+            return Ok(UpdateKind::Uncertain);
+        }
+    };
+
+    if update_checker.is_skipped(UpdateTarget::Toolkit, &latest_toolkit.version) {
+        return Ok(UpdateKind::UnNeeded);
     }
+
+    let res = UpdateKind::Newer {
+        current: UpdatePayload::new(&installed.version),
+        latest: UpdatePayload::new(&latest_toolkit.version)
+            .with_payload(latest_toolkit.manifest_url.clone()),
+    };
+    Ok(res)
 }
 
 fn parse_download_url(source_path: &str) -> Result<Url> {

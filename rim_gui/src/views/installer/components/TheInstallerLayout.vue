@@ -4,7 +4,9 @@ import { useCustomRouter } from '@/router';
 import { useRoute } from 'vue-router';
 import TheAside from './TheAside.vue';
 import { installConf } from '@/utils';
+import { onMounted, ref } from 'vue';
 
+const appTitle = ref('');
 const route = useRoute();
 const { isBack } = useCustomRouter();
 const isHome = computed(() => route.name === 'Home');
@@ -14,11 +16,19 @@ const transitionName = computed(() => {
   if (isBack.value === false) return 'push';
   return '';
 });
+
 onBeforeMount(() => installConf.loadAll());
+
+onMounted(() => {
+  installConf.appNameWithVersion().then((res) => {
+    appTitle.value = res
+  });
+});
 </script>
 
 <template>
-  <div flex="~ items-stretch" absolute top-0 left-0 bottom-0 right-0>
+  <titlebar :title="appTitle" />
+  <div flex="~ items-stretch" absolute top-0 left-0 bottom-0 right-0 style="margin-top: 40px;">
     <transition name="aside">
       <aside
         v-if="!isHome"

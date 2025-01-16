@@ -22,7 +22,9 @@ const exitDisabled = ref(false);
 
 function minimize() { appWindow.minimize(); }
 function maximize() { appWindow.toggleMaximize() }
-function close() { appWindow.close() }
+function close() {
+    invokeCommand('close_window');
+}
 // function onLangSelected(value: string) {
 //     invokeCommand("set_locale", { language: value }).then(() => {
 //         location.reload();

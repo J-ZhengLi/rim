@@ -10,8 +10,9 @@ use rim::{
     components::Component,
     toolset_manifest::ToolsetManifest,
     utils::{self, Progress},
-    InstallConfiguration,
+    AppInfo, InstallConfiguration,
 };
+use tauri::Window;
 
 pub(crate) const MESSAGE_UPDATE_EVENT: &str = "update-message";
 pub(crate) const PROGRESS_UPDATE_EVENT: &str = "update-progress";
@@ -128,6 +129,11 @@ pub(crate) fn set_locale(language: String) -> Result<()> {
     Ok(())
 }
 
+#[tauri::command]
+pub(crate) fn app_info() -> AppInfo {
+    AppInfo::get().to_owned()
+}
+
 /// Add back rounded corners (on Windows) and shadow effects.
 ///
 // TODO: This is not needed if we migrate to tauri@2, also make sure to get rid
@@ -137,5 +143,14 @@ pub(crate) fn set_window_shadow(window: &tauri::Window) {
     #[cfg(any(windows, target_os = "macos"))]
     if let Err(e) = window_shadows::set_shadow(window, true) {
         log::error!("unable to apply window effects: {e}");
+    }
+}
+
+pub(crate) async fn close_window(win: &Window) {
+    if let Err(e) = win.close() {
+        // win.close() should never fail in async function,
+        // but if that ever happens, make sure to log it.
+        let label = win.label();
+        log::error!("failed when closing window '{label}': {e}");
     }
 }

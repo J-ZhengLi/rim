@@ -6,6 +6,14 @@ import path from 'path'; // 引入 path 模块
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
   plugins: [vue(), UnoCSS()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        notification: path.resolve(__dirname, 'notification.html'),
+      }
+    }
+  },
   // 添加路径别名：将 @ 映射到 ./src 目录
   resolve: {
     alias: {
