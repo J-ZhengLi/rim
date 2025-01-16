@@ -7,7 +7,6 @@ use indicatif::ProgressBar;
 use reqwest::{header, Client};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
-use tokio::runtime::Runtime;
 use url::Url;
 
 use super::progress_bar::{CliProgress, Style};
@@ -162,7 +161,7 @@ impl DownloadOpt<ProgressBar> {
     ///
     /// Note: This will block the current thread until the download is finished.
     pub fn blocking_download(self, url: &Url, path: &Path) -> Result<()> {
-        Runtime::new()?.block_on(async { self.download(url, path).await })
+        super::blocking!(self.download(url, path))
     }
 }
 

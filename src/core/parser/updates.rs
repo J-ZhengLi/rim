@@ -5,7 +5,7 @@ use super::{get_installed_dir, TomlParser};
 use anyhow::Result;
 use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, fmt::Display, time::Duration};
 
 /// Default update check timeout is 1440 minutes (1 day)
 const DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES: u64 = 1440;
@@ -20,6 +20,17 @@ pub const DEFAULT_UPDATE_CHECK_DURATION: Duration =
 pub enum UpdateTarget {
     Manager,
     Toolkit,
+}
+
+// The display implementation must return the same result as
+// serde's serialization, which means it should be in 'kebab-case' as well.
+impl Display for UpdateTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Manager => "manager",
+            Self::Toolkit => "toolkit",
+        })
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -118,7 +129,7 @@ impl UpdateCheckerOpt {
     }
 
     /// Update the `last-run` value for given target.
-    pub fn mark_checked(mut self, target: UpdateTarget) -> Self {
+    pub fn mark_checked(&mut self, target: UpdateTarget) -> &mut Self {
         let conf = self.conf_mut(target);
         conf.last_run = Utc::now().naive_utc();
         self
