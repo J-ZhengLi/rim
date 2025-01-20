@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { managerConf } from '@/utils';
+import { KitItem, managerConf } from '@/utils';
 import KitCard from './components/KitCard.vue';
 import { computed, onMounted, ref } from 'vue';
 import Pagination from '@/components/Pagination.vue';
 import { usePagination } from '@/utils/pagination';
 import { event } from '@tauri-apps/api';
+import { useCustomRouter } from '@/router';
 
 const installedKit = computed(() => managerConf.getInstalled())
 const kits = computed(() => managerConf.getKits());
@@ -14,6 +15,7 @@ const { current, size, total, list } = usePagination({
 });
 const loadingText = ref('');
 const loaded = ref(false);
+const { routerPush } = useCustomRouter();
 
 onMounted(() => {
   event.listen('loading-text', (event) => {
@@ -27,6 +29,13 @@ onMounted(() => {
       loaded.value = event.payload;
     }
   });
+
+  event.listen('toolkit-update', (event) => {
+    let kit = event.payload as KitItem;
+    managerConf.setCurrent(kit);
+    managerConf.setOperation('update');
+    routerPush('/manager/change');
+  })
 })
 
 </script>

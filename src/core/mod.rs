@@ -195,7 +195,7 @@ impl Default for AppInfo {
 
 impl AppInfo {
     pub fn get() -> &'static Self {
-        APP_INFO.get_or_init(|| Self::default())
+        APP_INFO.get_or_init(Self::default)
     }
     pub fn name() -> &'static str {
         &Self::get().name

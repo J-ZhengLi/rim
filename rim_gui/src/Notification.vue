@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, Ref, ref } from 'vue';
-import { Notification, NotificationAction } from './utils/types/Notification'
+import { Notification, NotificationAction, RustFunction } from './utils/types/Notification'
 import { appWindow } from '@tauri-apps/api/window';
 import { invokeCommand, managerConf } from './utils';
 import { message } from '@tauri-apps/api/dialog';
@@ -14,11 +14,12 @@ const actions: Ref<NotificationAction[]> = ref([]);
 
 function close() { appWindow.close() }
 
-function onAction(command: [string, string?]) {
-  let [func, args] = command;
-  
+function onAction(command: RustFunction) {
+  let func = command.name;
+  let args = command.args;
+
   try {
-    args ? invokeCommand(func, JSON.parse(args)) : invokeCommand(func);
+    args ? invokeCommand(func, Object.fromEntries(args)) : invokeCommand(func);
   } catch (err) {
     if (err instanceof SyntaxError && args) {
       message("无效的 JSON 语法: " + args, { type: 'error' });

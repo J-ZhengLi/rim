@@ -104,14 +104,6 @@ class ManagerConf {
     return Object.values(groups);
   }
 
-  public getCurrent() {
-    return this._current;
-  }
-
-  public getCurrentComponents(): Component[] | undefined {
-    return this._current.value?.components;
-  }
-
   public getOperation() {
     return this._target.value.operation;
   }

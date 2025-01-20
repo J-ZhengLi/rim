@@ -13,6 +13,7 @@ use crate::core::install::{
 };
 use crate::core::try_it;
 use crate::toolset_manifest::get_toolset_manifest;
+use crate::utils::blocking;
 use crate::{default_install_dir, utils};
 
 use super::common::{
@@ -44,7 +45,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     }
 
     let manifest_url = manifest_src.as_ref().map(|s| s.to_url()).transpose()?;
-    let mut manifest = get_toolset_manifest(manifest_url, *insecure)?;
+    let mut manifest = blocking!(get_toolset_manifest(manifest_url, *insecure))?;
 
     if *list_components {
         // print a list of available components then return, don't do anything else

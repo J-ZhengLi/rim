@@ -72,7 +72,7 @@ async fn update_toolkit_(
             must contains a valid `manifest_url`"
             )
         })?;
-    let manifest = get_toolset_manifest(Some(manifest_url), insecure)?;
+    let manifest = get_toolset_manifest(Some(manifest_url), insecure).await?;
     let new_components = manifest.current_target_components(false)?;
 
     // notify user that we will install the latest update to replace their current installation

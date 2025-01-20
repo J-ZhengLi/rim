@@ -202,7 +202,7 @@ impl DownloadHelper {
             // 416: server does not support download range, retry without resuming
             info!("download range not satisfiable, retrying without ranges header");
 
-            return Ok(Self::new_without_resume(client, url, path).await?);
+            return Self::new_without_resume(client, url, path).await;
         } else if !status.is_success() {
             bail!("server returns error when attempting download from '{url}': {status}");
         }

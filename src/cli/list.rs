@@ -131,9 +131,9 @@ async fn list_toolkits(installed_only: bool) -> Result<()> {
         }
     } else {
         let all_toolkits = toolkits_from_server(false).await?
-            .iter()
+            .into_iter()
             .map(|tk| async move {
-                let installed_suffix = if matches!(maybe_installed_tk, Some(mutex) if &*mutex.lock().await == tk) {
+                let installed_suffix = if matches!(maybe_installed_tk, Some(mutex) if *mutex.lock().await == tk) {
                     format!(" ({})", t!("installed"))
                 } else {
                     String::new()

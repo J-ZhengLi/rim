@@ -55,8 +55,8 @@ pub(super) fn main() -> Result<()> {
 }
 
 #[tauri::command]
-async fn close_window(window: tauri::Window) {
-    common::close_window(&window).await;
+fn close_window(window: tauri::Window) {
+    common::close_window(window);
 }
 
 #[tauri::command]
@@ -109,10 +109,10 @@ fn welcome_label() -> String {
 
 // Make sure this function is called first after launch.
 #[tauri::command]
-fn load_manifest_and_ret_version() -> Result<String> {
+async fn load_manifest_and_ret_version() -> Result<String> {
     // TODO: Give an option for user to specify another manifest.
     // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
-    let mut manifest = get_toolset_manifest(None, false)?;
+    let mut manifest = get_toolset_manifest(None, false).await?;
     manifest.adjust_paths()?;
 
     let m = TOOLSET_MANIFEST.get_or_init(|| manifest);

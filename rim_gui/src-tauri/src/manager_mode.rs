@@ -7,8 +7,8 @@ use std::{
 
 use crate::{
     common::{
-        self, BLOCK_EXIT_EVENT, LOADING_FINISHED, LOADING_TEXT, ON_COMPLETE_EVENT,
-        PROGRESS_UPDATE_EVENT,
+        self, FrontendFunctionPayload, BLOCK_EXIT_EVENT, LOADING_FINISHED, LOADING_TEXT,
+        ON_COMPLETE_EVENT, PROGRESS_UPDATE_EVENT, TOOLKIT_UPDATE_EVENT,
     },
     error::Result,
     notification::{self, Notification, NotificationAction},
@@ -30,9 +30,13 @@ use tauri::{
     async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
     SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
 };
+use url::Url;
 
 static SELECTED_TOOLSET: Mutex<Option<ToolsetManifest>> = Mutex::new(None);
 const MANAGER_WINDOW_LABEL: &str = "manager_window";
+// If adding more notification windows, make sure their label start with 'notification:'
+const MANAGER_UPD_POPUP_LABEL: &str = "notification:manager";
+const TOOLKIT_UPD_POPUP_LABEL: &str = "notification:toolkit";
 
 fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
     SELECTED_TOOLSET
@@ -56,7 +60,7 @@ pub(super) fn main() -> Result<()> {
             uninstall_toolkit,
             install_toolkit,
             check_updates_in_background,
-            handle_toolkit_install_click,
+            get_toolkit_from_url,
             common::supported_languages,
             common::set_locale,
             common::app_info,
@@ -90,16 +94,16 @@ pub(super) fn main() -> Result<()> {
 }
 
 // In manager mode, we don't want to close the window completely,
-// instead we should just "hide" it, so that we can later show it after click
-// on the tray icon.
+// instead we should just "hide" it (unless it fails),
+// so that we can later show it after user clicks the tray icon.
 #[tauri::command]
-async fn close_window(window: tauri::Window) {
+fn close_window(window: tauri::Window) {
     if let Err(e) = window.hide() {
         log::error!(
             "unable to hide the main window '{MANAGER_WINDOW_LABEL}', \
             forcing it to close instead: {e}"
         );
-        common::close_window(&window).await;
+        common::close_window(window);
     }
 }
 
@@ -114,11 +118,7 @@ async fn get_installed_kit(reload: bool) -> Result<Option<Toolkit>> {
 
 #[tauri::command]
 async fn get_available_kits(reload: bool) -> Result<Vec<Toolkit>> {
-    Ok(toolkit::installable_toolkits(reload, false)
-        .await?
-        .into_iter()
-        .cloned()
-        .collect())
+    Ok(toolkit::installable_toolkits(reload, false).await?)
 }
 
 #[tauri::command]
@@ -176,14 +176,8 @@ async fn check_manager_update(app: &AppHandle) -> Result<Duration> {
     let timeout = match update::check_self_update(false).await {
         Ok(update_kind) => {
             if let update::UpdateKind::Newer { current, latest } = update_kind {
-                show_update_notification_popup(
-                    &app,
-                    UpdateTarget::Manager,
-                    &current,
-                    &latest,
-                    None,
-                )
-                .await?;
+                show_update_notification_popup(app, UpdateTarget::Manager, &current, &latest, None)
+                    .await?;
             }
             UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(UpdateTarget::Manager)
         }
@@ -201,11 +195,11 @@ async fn check_toolkit_update(app: &AppHandle) -> Result<Duration> {
         Ok(update_kind) => {
             if let update::UpdateKind::Newer { current, latest } = update_kind {
                 show_update_notification_popup(
-                    &app,
+                    app,
                     UpdateTarget::Toolkit,
                     current.version,
                     latest.version,
-                    latest.payload,
+                    latest.url,
                 )
                 .await?;
             }
@@ -238,24 +232,24 @@ async fn check_updates_in_background(app: AppHandle) -> Result<()> {
 }
 
 /// When the `install` button in a toolkit's card was clicked,
-/// the URL of that toolkit was pass to this function. Which will be used to
-/// download its manifest from the server, and we can then return a list of
-/// components that are loaded from it.
+/// the URL of that toolkit was pass to this function, which we can download and
+/// deserialized the downloaded toolset-manifest and convert it to an installable toolkit format.
 #[tauri::command]
-fn handle_toolkit_install_click(url: String) -> Result<Vec<Component>> {
+fn get_toolkit_from_url(url: String) -> Result<Toolkit> {
     // the `url` input was converted from `Url`, so it will definitely be convert back without issue,
     // thus the below line should never panic
-    let url_ = utils::force_parse_url(&url);
+    let url_ = Url::parse(&url)?;
 
     // load the manifest for components information
-    let manifest = get_toolset_manifest(Some(url_), false)?;
-    let components = manifest.current_target_components(false)?;
+    let manifest = async_runtime::block_on(get_toolset_manifest(Some(url_), false))?;
+    // convert it to toolkit
+    let toolkit = Toolkit::try_from(&manifest)?;
 
     // cache the selected toolset manifest
     let mut guard = selected_toolset();
     *guard = Some(manifest);
 
-    Ok(components)
+    Ok(toolkit)
 }
 
 async fn do_self_update(app: &AppHandle) -> Result<()> {
@@ -291,25 +285,19 @@ async fn do_self_update(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-async fn do_toolkit_update(app: &AppHandle, url: String) -> Result<Vec<Component>> {
-    // toolkit update requires the main window
-    WindowState::detect(app)?.show()?;
-    // show user the component selection page
-    handle_toolkit_install_click(url)
-}
-
 async fn show_update_notification_popup<C: Display, S: Display>(
     app_handle: &AppHandle,
     target: UpdateTarget,
     current_ver: C,
     new_ver: S,
-    payload: Option<String>,
+    url: Option<String>,
 ) -> Result<()> {
-    let (title, content, update_cmd) = match target {
+    let (title, content, update_cmd, label) = match target {
         UpdateTarget::Manager => (
             t!("self_update_available"),
             t!("ask_self_update", current = current_ver, latest = new_ver),
-            ("self_update_now".into(), None),
+            FrontendFunctionPayload::new("self_update_now"),
+            MANAGER_UPD_POPUP_LABEL,
         ),
         UpdateTarget::Toolkit => (
             t!("toolkit_update_available"),
@@ -318,10 +306,9 @@ async fn show_update_notification_popup<C: Display, S: Display>(
                 current = current_ver,
                 latest = new_ver,
             ),
-            (
-                "toolkit_update_now".into(),
-                payload.map(|p| format!("{{ \"url\": \"{p}\" }}")),
-            ),
+            FrontendFunctionPayload::new("toolkit_update_now")
+                .with_args(url.into_iter().map(|p| ("url", p)).collect()),
+            TOOLKIT_UPD_POPUP_LABEL,
         ),
     };
 
@@ -337,48 +324,58 @@ async fn show_update_notification_popup<C: Display, S: Display>(
             NotificationAction {
                 label: t!("skip_version").into(),
                 icon: Some("/stop-icon.svg".into()),
-                command: (
-                    "skip_version".into(),
-                    Some(format!(
-                        "{{ \"version\": \"{new_ver}\", \"target\": \"{target}\" }}"
-                    )),
-                ),
+                command: FrontendFunctionPayload::new("skip_version").with_args(vec![
+                    ("version", new_ver.to_string()),
+                    ("target", target.to_string()),
+                ]),
             },
             NotificationAction {
                 label: t!("close").into(),
                 icon: Some("/close-icon.svg".into()),
-                command: ("close".into(), None),
+                command: FrontendFunctionPayload::new("close")
+                    .with_args(vec![("label", label.to_string())]),
             },
         ],
     )
-    .show(app_handle)
-    .await?;
+    .with_window_label(label)
+    .show(app_handle)?;
 
     Ok(())
 }
 
 #[tauri::command]
 async fn self_update_now(app: AppHandle) -> Result<()> {
-    notification::close(app.clone()).await;
-    tauri::async_runtime::spawn(async move { do_self_update(&app).await }).await?
+    notification::close_all_notification(app.clone());
+    do_self_update(&app).await
 }
 
 #[tauri::command]
-async fn toolkit_update_now(app: AppHandle, url: String) -> Result<Vec<Component>> {
-    notification::close(app.clone()).await;
-    tauri::async_runtime::spawn(async move { do_toolkit_update(&app, url).await }).await?
+fn toolkit_update_now(app: AppHandle, url: String) -> Result<()> {
+    notification::close_all_notification(app.clone());
+
+    // toolkit update requires the main window
+    WindowState::detect(&app)?.show()?;
+
+    // fetch the latest toolkit from the given url, and send it to the frontend.
+    // the frontend should know what to do with it.
+    let toolkit = get_toolkit_from_url(url)?;
+    app.emit_to(MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT, toolkit)?;
+
+    Ok(())
 }
 
 #[tauri::command]
-async fn skip_version(app: AppHandle, target: UpdateTarget, version: String) -> Result<()> {
-    notification::close(app.clone()).await;
-    tauri::async_runtime::spawn(async move {
-        log::info!("skipping version: '{version}' for '{target}'");
-        UpdateCheckerOpt::load_from_install_dir()
-            .skip(target, version)
-            .write_to_install_dir()
-    })
-    .await??;
+fn skip_version(app: AppHandle, target: UpdateTarget, version: String) -> Result<()> {
+    let label = match target {
+        UpdateTarget::Manager => MANAGER_UPD_POPUP_LABEL,
+        UpdateTarget::Toolkit => TOOLKIT_UPD_POPUP_LABEL,
+    };
+    notification::close(app, label.into());
+
+    log::info!("skipping version: '{version}' for '{target}'");
+    UpdateCheckerOpt::load_from_install_dir()
+        .skip(target, version)
+        .write_to_install_dir()?;
     Ok(())
 }
 
@@ -448,12 +445,9 @@ fn system_tray_event_handler(app: &AppHandle, event: SystemTrayEvent) {
 }
 
 fn window_event_handler(event: GlobalWindowEvent) {
-    match event.event() {
-        WindowEvent::CloseRequested { api, .. } => {
-            api.prevent_close();
-            tauri::async_runtime::block_on(close_window(event.window().clone()));
-        }
-        _ => {}
+    if let WindowEvent::CloseRequested { api, .. } = event.event() {
+        api.prevent_close();
+        close_window(event.window().clone());
     }
 }
 

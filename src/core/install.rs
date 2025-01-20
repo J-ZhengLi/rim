@@ -484,8 +484,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn init_install_config() {
+    #[tokio::test]
+    async fn init_install_config() {
         let mut cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         cache_dir.push("tests");
         cache_dir.push("cache");
@@ -493,7 +493,7 @@ mod tests {
         std::fs::create_dir_all(&cache_dir).unwrap();
 
         let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
-        let manifest = get_toolset_manifest(None, false).unwrap();
+        let manifest = get_toolset_manifest(None, false).await.unwrap();
         let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
         config.setup().unwrap();
 

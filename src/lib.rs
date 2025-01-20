@@ -1,5 +1,5 @@
 #![deny(unused_must_use)]
-#![allow(clippy::ptr_arg)]
+#![allow(clippy::ptr_arg, clippy::type_complexity)]
 
 #[macro_use]
 extern crate rust_i18n;

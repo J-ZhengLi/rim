@@ -8,10 +8,12 @@ use std::{
 use super::Result;
 use rim::{
     components::Component,
+    setter,
     toolset_manifest::ToolsetManifest,
     utils::{self, Progress},
     AppInfo, InstallConfiguration,
 };
+use serde::Serialize;
 use tauri::Window;
 
 pub(crate) const MESSAGE_UPDATE_EVENT: &str = "update-message";
@@ -21,6 +23,7 @@ pub(crate) const ON_FAILED_EVENT: &str = "on-failed";
 pub(crate) const BLOCK_EXIT_EVENT: &str = "toggle-exit-blocker";
 pub(crate) const LOADING_TEXT: &str = "loading-text";
 pub(crate) const LOADING_FINISHED: &str = "loading-finished";
+pub(crate) const TOOLKIT_UPDATE_EVENT: &str = "toolkit-update";
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs accrossing threads.
@@ -146,11 +149,38 @@ pub(crate) fn set_window_shadow(window: &tauri::Window) {
     }
 }
 
-pub(crate) async fn close_window(win: &Window) {
-    if let Err(e) = win.close() {
-        // win.close() should never fail in async function,
-        // but if that ever happens, make sure to log it.
-        let label = win.label();
-        log::error!("failed when closing window '{label}': {e}");
+/// Close the given window in a separated thread.
+#[tauri::command]
+pub(crate) fn close_window(win: Window) {
+    let label = win.label().to_owned();
+    thread::spawn(move || win.close())
+        .join()
+        .unwrap_or_else(|_| panic!("thread join failed when attemp to close window '{label}'"))
+        .unwrap_or_else(|e| log::error!("failed when closing window '{label}': {e}"))
+}
+
+/// Simple representation of a Rust's function signature, typically got sent
+/// to the frontend, therefore the frontend knows which and how to invoke a
+/// certain Rust function.
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct FrontendFunctionPayload {
+    pub(crate) name: String,
+    pub(crate) args: Vec<(&'static str, String)>,
+    /// The **identifier** of function return, not the actual return value,
+    /// because the frontend can retrieve the return value itself, but it
+    /// need to known how to deal with it base on an unique identifier.
+    pub(crate) ret_id: Option<&'static str>,
+}
+
+impl FrontendFunctionPayload {
+    pub(crate) fn new<S: Into<String>>(name: S) -> Self {
+        Self {
+            name: name.into(),
+            args: vec![],
+            ret_id: None,
+        }
     }
+
+    setter!(with_args(self.args, Vec<(&'static str, String)>));
+    setter!(with_ret_id(self.ret_id, identifier: &'static str) { Some(identifier) });
 }

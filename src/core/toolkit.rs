@@ -1,6 +1,7 @@
 use crate::core::parser::dist_manifest::DistManifest;
 use crate::core::parser::TomlParser;
 use crate::fingerprint::InstallationRecord;
+use crate::toolset_manifest::ToolsetManifest;
 use crate::{components, utils};
 use anyhow::Result;
 use semver::Version;
@@ -13,9 +14,6 @@ use super::parser::dist_manifest::DistPackage;
 /// A cached installed [`Toolkit`] struct to prevent the program doing
 /// excessive IO operations as in [`installed`](Toolkit::installed).
 static INSTALLED_KIT: OnceCell<Mutex<Toolkit>> = OnceCell::const_new();
-/// Cache the list of toolkit provided by the server, this will save the number of times
-/// that we need to make server request, in the exchange of memory usage.
-static ALL_TOOLKITS: OnceCell<Vec<Toolkit>> = OnceCell::const_new();
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -94,16 +92,31 @@ impl From<DistPackage> for Toolkit {
     }
 }
 
+impl TryFrom<&ToolsetManifest> for Toolkit {
+    type Error = anyhow::Error;
+    fn try_from(value: &ToolsetManifest) -> Result<Self> {
+        Ok(Self {
+            name: value
+                .name
+                .clone()
+                .unwrap_or_else(|| t!("unkown_toolkit").into()),
+            version: value.version.clone().unwrap_or_else(|| "N/A".to_string()),
+            desc: None,
+            info: None,
+            manifest_url: None,
+            components: value.current_target_components(false)?,
+        })
+    }
+}
+
 /// Download the dist manifest from server to get the list of all provided toolkits.
 ///
 /// Note the retrieved list will be reversed so that the newest toolkit will always be on top.
 ///
 /// The collection will always be cached to reduce the number of server requests.
-pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<&'static [Toolkit]> {
-    if let Some(cached) = ALL_TOOLKITS.get() {
-        return Ok(cached);
-    }
-
+// TODO: track how many times this function was called, are all server requests necessary?
+// if not, cached them locally.
+pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>> {
     let dist_server_env_ovr = std::env::var("RIM_DIST_SERVER");
     let dist_server = dist_server_env_ovr
         .as_deref()
@@ -122,37 +135,32 @@ pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<&'static [Too
 
     // load dist "pacakges" then convert them into `toolkit`s
     let packages = DistManifest::load(dist_m_file.path())?.packages;
-    let cached = ALL_TOOLKITS
-        .get_or_init(|| async { packages.into_iter().map(Toolkit::from).rev().collect() })
-        .await;
+    let toolkits: Vec<Toolkit> = packages.into_iter().map(Toolkit::from).rev().collect();
     debug!(
         "detected {} available toolkits by accessing server:\n{}",
-        cached.len(),
-        cached
+        toolkits.len(),
+        toolkits
             .iter()
             .map(|tk| format!("\t{} ({})", &tk.name, &tk.version))
             .collect::<Vec<_>>()
             .join("\n"),
     );
-    Ok(cached)
+    Ok(toolkits)
 }
 
 /// Return a list of all toolkits that are not currently installed.
-pub async fn installable_toolkits(
-    reload_cache: bool,
-    insecure: bool,
-) -> Result<Vec<&'static Toolkit>> {
+pub async fn installable_toolkits(reload_cache: bool, insecure: bool) -> Result<Vec<Toolkit>> {
     info!("{}", t!("checking_toolkit_updates"));
 
     let all_toolkits = toolkits_from_server(insecure).await?;
     let installable = if let Some(installed) = Toolkit::installed(reload_cache).await? {
         let installed = installed.lock().await;
         all_toolkits
-            .iter()
-            .filter(|tk| *tk != &*installed)
+            .into_iter()
+            .filter(|tk| tk != &*installed)
             .collect()
     } else {
-        all_toolkits.iter().collect()
+        all_toolkits
     };
     Ok(installable)
 }
@@ -162,12 +170,12 @@ pub async fn installable_toolkits(
 pub async fn latest_installable_toolkit(
     installed: &Toolkit,
     insecure: bool,
-) -> Result<Option<&'static Toolkit>> {
+) -> Result<Option<Toolkit>> {
     info!("{}", t!("checking_toolkit_updates"));
 
-    let all_toolkits = toolkits_from_server(insecure).await?;
-    let Some(maybe_latest) = all_toolkits
-        .iter()
+    let Some(maybe_latest) = toolkits_from_server(insecure)
+        .await?
+        .into_iter()
         // make sure they are the same **product**
         .find(|tk| tk.name == installed.name)
     else {

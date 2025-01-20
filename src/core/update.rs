@@ -132,18 +132,18 @@ pub enum UpdateKind<T: Sized> {
 #[derive(Debug)]
 pub struct UpdatePayload {
     pub version: String,
-    pub payload: Option<String>,
+    pub url: Option<String>,
 }
 
 impl UpdatePayload {
     pub fn new<S: Into<String>>(version: S) -> Self {
         Self {
             version: version.into(),
-            payload: None,
+            url: None,
         }
     }
 
-    setter!(with_payload(self.payload, Option<String>));
+    setter!(with_payload(self.url, Option<String>));
 }
 
 impl<T> UpdateKind<T> {
@@ -184,7 +184,7 @@ pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
     // safe to unwrap, otherwise cargo would fails the build
     let cur_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 
-    let res = if &cur_version < &latest_version {
+    let res = if cur_version < latest_version {
         UpdateKind::Newer {
             current: cur_version,
             latest: latest_version,
