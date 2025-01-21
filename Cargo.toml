@@ -56,6 +56,9 @@ semver = "1.0.23"
 self-replace = "1"
 os_pipe = "1.2.1"
 
+[dev-dependencies]
+rim-test-support = { version = "0.1.0", path = "rim_test/rim-test-support" }
+
 [target."cfg(windows)".dependencies]
 winreg = "0.52.0"
 winapi = { version = "0.3", features = ["winuser", "winbase"] }

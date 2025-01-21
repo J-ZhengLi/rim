@@ -1,0 +1,7 @@
+A subcommand to create a new Rust project template and let you start coding with it
+
+Usage: manager-cli[EXE] try-it [OPTIONS]
+
+Options:
+  -p, --path <PATH>  Specify another directory to create project template, defaulting to current directory
+  -h, --help         Print help

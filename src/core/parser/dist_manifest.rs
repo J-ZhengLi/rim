@@ -26,7 +26,7 @@ pub struct DistPackage {
 }
 
 impl TomlParser for DistManifest {
-    const FILENAME: &str = "distribution-manifest.toml";
+    const FILENAME: &'static str = "distribution-manifest.toml";
 }
 
 impl DistManifest {}
