@@ -37,7 +37,8 @@ macro_rules! installer_error {
 
 installer_error! {
     Anyhow(anyhow::Error),
-    Tauri(tauri::Error)
+    Tauri(tauri::Error),
+    Url(url::ParseError)
 }
 
 impl std::error::Error for InstallerError {
@@ -45,6 +46,7 @@ impl std::error::Error for InstallerError {
         match *self {
             Self::Anyhow(ref e) => Some(e.root_cause()),
             Self::Tauri(ref e) => Some(e),
+            Self::Url(ref e) => Some(e),
         }
     }
 }

@@ -3,7 +3,7 @@ name = "rim"
 version = "0.4.0"
 edition = "2021"
 description = "An interactive Rust installation manager"
-rust-version = "1.73.0" # Minimal required version to use `zip`
+rust-version = "1.80.0" # Dominated by 'std::sync::LazyLock'
 
 [features]
 default = []
@@ -32,7 +32,7 @@ fern = { version = "0.7", features = ["colored"] }
 anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
 indicatif = "0.17"
-reqwest = { version = "0.12", features = ["blocking", "native-tls-vendored"] }
+reqwest = { version = "0.12", features = ["stream", "native-tls-vendored"] }
 serde.workspace = true
 url.workspace = true
 libc = "0.2"
@@ -51,10 +51,11 @@ rust-i18n.workspace = true
 sys-locale = "0.3.1"
 log.workspace = true
 fern.workspace = true
-chrono = "0.4.38"
+chrono = { version = "0.4.38", features = ["serde"] }
 semver = "1.0.23"
 self-replace = "1"
 os_pipe = "1.2.1"
+tokio = { version = "1.43.0", features = ["time", "rt-multi-thread", "macros"] }
 
 [dev-dependencies]
 rim-test-support = { version = "0.1.0", path = "rim_test/rim-test-support" }

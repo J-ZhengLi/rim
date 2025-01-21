@@ -8,16 +8,17 @@ use super::{common, INSTALL_DIR};
 use crate::error::Result;
 use rim::components::Component;
 use rim::toolset_manifest::{get_toolset_manifest, ToolsetManifest};
-use rim::{try_it, utils};
+use rim::{try_it, utils, AppInfo};
 
 static TOOLSET_MANIFEST: OnceLock<ToolsetManifest> = OnceLock::new();
+const INSTALLER_WINDOW_LABEL: &str = "installer_window";
 
 pub(super) fn main() -> Result<()> {
     let msg_recv = common::setup_logger()?;
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            super::close_window,
+            close_window,
             default_install_dir,
             select_folder,
             check_install_path,
@@ -26,20 +27,21 @@ pub(super) fn main() -> Result<()> {
             run_app,
             welcome_label,
             load_manifest_and_ret_version,
-            window_title,
             common::supported_languages,
             common::set_locale,
+            common::app_info,
         ])
         .setup(|app| {
             let window = tauri::WindowBuilder::new(
                 app,
-                "installer_window",
+                INSTALLER_WINDOW_LABEL,
                 tauri::WindowUrl::App("index.html/#/installer".into()),
             )
             .inner_size(800.0, 600.0)
             .min_inner_size(640.0, 480.0)
             .decorations(false)
             .transparent(true)
+            .title(AppInfo::name())
             .build()?;
 
             common::set_window_shadow(&window);
@@ -53,12 +55,8 @@ pub(super) fn main() -> Result<()> {
 }
 
 #[tauri::command]
-fn window_title() -> String {
-    format!(
-        "{} v{}",
-        t!("installer_title", product = t!("product")),
-        env!("CARGO_PKG_VERSION")
-    )
+fn close_window(window: tauri::Window) {
+    common::close_window(window);
 }
 
 #[tauri::command]
@@ -111,10 +109,10 @@ fn welcome_label() -> String {
 
 // Make sure this function is called first after launch.
 #[tauri::command]
-fn load_manifest_and_ret_version() -> Result<String> {
+async fn load_manifest_and_ret_version() -> Result<String> {
     // TODO: Give an option for user to specify another manifest.
     // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
-    let mut manifest = get_toolset_manifest(None, false)?;
+    let mut manifest = get_toolset_manifest(None, false).await?;
     manifest.adjust_paths()?;
 
     let m = TOOLSET_MANIFEST.get_or_init(|| manifest);

@@ -64,7 +64,8 @@ impl Uninstallation for UninstallConfiguration<'_> {
     }
 }
 
-/// Module containing functions that are modified from `rustup`.
+/// A module that contains functions that are modified from `rustup`:
+/// https://github.com/rust-lang/rustup/blob/master/src/cli/self_update/windows.rs
 pub(crate) mod rustup {
     use super::GlobalOpts;
     use anyhow::{anyhow, Context, Result};
@@ -256,7 +257,7 @@ pub(crate) mod rustup {
                 winuser::HWND_BROADCAST,
                 winuser::WM_SETTINGCHANGE,
                 0 as minwindef::WPARAM,
-                "Environment\0".as_ptr() as minwindef::LPARAM,
+                c"Environment".as_ptr() as minwindef::LPARAM,
                 winuser::SMTO_ABORTIFHUNG,
                 5000,
                 std::ptr::null_mut(),

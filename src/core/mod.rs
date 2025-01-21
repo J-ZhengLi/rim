@@ -17,10 +17,13 @@ pub mod try_it;
 pub(crate) mod uninstall;
 pub mod update;
 
-use std::sync::OnceLock;
-
+// re-exports
 pub use locales::Language;
 pub(crate) use path_ext::PathExt;
+use serde::{Deserialize, Serialize};
+
+use crate::{cli, utils};
+use std::{env, sync::OnceLock};
 
 macro_rules! declare_env_vars {
     ($($key:ident),+) => {
@@ -39,6 +42,10 @@ declare_env_vars!(
 
 pub(crate) const RIM_DIST_SERVER: &str = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com";
 
+/// Globally cached values
+static GLOBAL_OPTS: OnceLock<GlobalOpts> = OnceLock::new();
+static APP_INFO: OnceLock<AppInfo> = OnceLock::new();
+
 /// Representing the options that user pass to the program, such as
 /// `--yes`, `--no-modify-path`, etc.
 ///
@@ -54,9 +61,6 @@ pub(crate) struct GlobalOpts {
     no_modify_env: bool,
     no_modify_path: bool,
 }
-
-/// Globally stored user options
-static GLOBAL_OPTS: OnceLock<GlobalOpts> = OnceLock::new();
 
 impl GlobalOpts {
     /// Initialize a new object and store it globally, will also return a
@@ -103,6 +107,105 @@ impl GlobalOpts {
     /// Return `true` if `no-modify-env` was set to `true`
     pub(crate) fn no_modify_env(&self) -> bool {
         self.no_modify_env
+    }
+}
+
+/// Representing the execution mode of this program.
+///
+/// # Example
+/// - In [`Installer`](Mode::Installer) (a.k.a `setup` mode), this program
+///     does initial setup and install rust toolkit for the user.
+/// - In [`Manager`](Mode::Manager) mode, this program can be used for
+///     updating, uninstalling the toolkits etc.
+pub enum Mode {
+    Manager(Box<cli::Manager>),
+    Installer(Box<cli::Installer>),
+}
+
+impl Mode {
+    fn manager(manager_callback: Option<Box<dyn FnOnce(&cli::Manager)>>) -> Self {
+        let cli = cli::parse_manager_cli();
+        if let Some(cb) = manager_callback {
+            cb(&cli);
+        }
+
+        // cache app info
+        APP_INFO.get_or_init(|| AppInfo {
+            name: t!("manager_title", product = t!("product")).into(),
+            version: format!("v{}", env!("CARGO_PKG_VERSION")),
+            is_manager: true,
+        });
+
+        Self::Manager(Box::new(cli))
+    }
+    fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
+        let cli = cli::parse_installer_cli();
+        if let Some(cb) = installer_callback {
+            cb(&cli);
+        }
+
+        // cache app info
+        APP_INFO.get_or_init(|| AppInfo {
+            name: t!("installer_title", product = t!("product")).into(),
+            version: format!("v{}", env!("CARGO_PKG_VERSION")),
+            is_manager: false,
+        });
+
+        Self::Installer(Box::new(cli))
+    }
+
+    /// Automatically determain which mode that this program is running as.
+    ///
+    /// Optional callback functions can be passed,
+    /// which will be run after a mode has been determined.
+    pub fn detect(
+        installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>,
+        manager_callback: Option<Box<dyn FnOnce(&cli::Manager)>>,
+    ) -> Self {
+        match env::var("MODE").as_deref() {
+            Ok("manager") => Self::manager(manager_callback),
+            // fallback to installer mode
+            Ok(_) => Self::installer(installer_callback),
+            Err(_) => match utils::lowercase_program_name() {
+                Some(s) if s.contains("manager") => Self::manager(manager_callback),
+                // fallback to installer mode
+                _ => Self::installer(installer_callback),
+            },
+        }
+    }
+}
+
+/// The meta information about this program.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AppInfo {
+    name: String,
+    version: String,
+    is_manager: bool,
+}
+
+impl Default for AppInfo {
+    fn default() -> Self {
+        Self {
+            name: env!("CARGO_PKG_NAME").to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            is_manager: false,
+        }
+    }
+}
+
+impl AppInfo {
+    pub fn get() -> &'static Self {
+        APP_INFO.get_or_init(Self::default)
+    }
+    pub fn name() -> &'static str {
+        &Self::get().name
+    }
+    pub fn version() -> &'static str {
+        &Self::get().version
+    }
+    /// Return `true` if this app is currently running in manager mode.
+    pub fn is_manager() -> bool {
+        Self::get().is_manager
     }
 }
 

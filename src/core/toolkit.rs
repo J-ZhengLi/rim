@@ -1,22 +1,19 @@
-use std::sync::{Mutex, OnceLock};
-
 use crate::core::parser::dist_manifest::DistManifest;
 use crate::core::parser::TomlParser;
 use crate::fingerprint::InstallationRecord;
+use crate::toolset_manifest::ToolsetManifest;
 use crate::{components, utils};
 use anyhow::Result;
 use semver::Version;
 use serde::Serialize;
+use tokio::sync::{Mutex, OnceCell};
 use url::Url;
 
 use super::parser::dist_manifest::DistPackage;
 
 /// A cached installed [`Toolkit`] struct to prevent the program doing
 /// excessive IO operations as in [`installed`](Toolkit::installed).
-static INSTALLED_KIT: OnceLock<Mutex<Toolkit>> = OnceLock::new();
-/// Cache the list of toolkit provided by the server, this will save the number of times
-/// that we need to make server request, in the exchange of memory usage.
-static ALL_TOOLKITS: OnceLock<Vec<Toolkit>> = OnceLock::new();
+static INSTALLED_KIT: OnceCell<Mutex<Toolkit>> = OnceCell::const_new();
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,7 +40,7 @@ impl Toolkit {
     /// The installed kit will be cached to reduce the number of IO operations.
     /// However, if `reload_cache` is `true`, the cache will be ignored, and will be
     /// updated once installed kit is being reloaded.
-    pub fn installed(reload_cache: bool) -> Result<Option<&'static Mutex<Self>>> {
+    pub async fn installed(reload_cache: bool) -> Result<Option<&'static Mutex<Self>>> {
         if INSTALLED_KIT.get().is_some() && !reload_cache {
             return Ok(INSTALLED_KIT.get());
         }
@@ -70,13 +67,13 @@ impl Toolkit {
 
         if let Some(existing) = INSTALLED_KIT.get() {
             // If we already have a cache, update the inner value of it.
-            let mut guard = existing.lock().unwrap();
+            let mut guard = existing.lock().await;
             *guard = tk;
             drop(guard);
             Ok(Some(existing))
         } else {
             // If we are creating a fresh cache, just return the inner mutex guard.
-            let mutex = INSTALLED_KIT.get_or_init(|| Mutex::new(tk));
+            let mutex = INSTALLED_KIT.get_or_init(|| async { Mutex::new(tk) }).await;
             Ok(Some(mutex))
         }
     }
@@ -95,16 +92,31 @@ impl From<DistPackage> for Toolkit {
     }
 }
 
+impl TryFrom<&ToolsetManifest> for Toolkit {
+    type Error = anyhow::Error;
+    fn try_from(value: &ToolsetManifest) -> Result<Self> {
+        Ok(Self {
+            name: value
+                .name
+                .clone()
+                .unwrap_or_else(|| t!("unkown_toolkit").into()),
+            version: value.version.clone().unwrap_or_else(|| "N/A".to_string()),
+            desc: None,
+            info: None,
+            manifest_url: None,
+            components: value.current_target_components(false)?,
+        })
+    }
+}
+
 /// Download the dist manifest from server to get the list of all provided toolkits.
 ///
 /// Note the retrieved list will be reversed so that the newest toolkit will always be on top.
 ///
 /// The collection will always be cached to reduce the number of server requests.
-pub(crate) fn toolkits_from_server(insecure: bool) -> Result<&'static [Toolkit]> {
-    if let Some(cached) = ALL_TOOLKITS.get() {
-        return Ok(cached);
-    }
-
+// TODO: track how many times this function was called, are all server requests necessary?
+// if not, cached them locally.
+pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>> {
     let dist_server_env_ovr = std::env::var("RIM_DIST_SERVER");
     let dist_server = dist_server_env_ovr
         .as_deref()
@@ -117,52 +129,53 @@ pub(crate) fn toolkits_from_server(insecure: bool) -> Result<&'static [Toolkit]>
     let dist_m_file = utils::make_temp_file("dist-manifest-", None)?;
     utils::DownloadOpt::new("distribution manifest")
         .insecure(insecure)
-        .download_file(&dist_m_url, dist_m_file.path(), false)?;
+        .download(&dist_m_url, dist_m_file.path())
+        .await?;
     debug!("distribution manifest file successfully downloaded!");
 
     // load dist "pacakges" then convert them into `toolkit`s
     let packages = DistManifest::load(dist_m_file.path())?.packages;
-    let cached =
-        ALL_TOOLKITS.get_or_init(|| packages.into_iter().map(Toolkit::from).rev().collect());
+    let toolkits: Vec<Toolkit> = packages.into_iter().map(Toolkit::from).rev().collect();
     debug!(
         "detected {} available toolkits by accessing server:\n{}",
-        cached.len(),
-        cached
+        toolkits.len(),
+        toolkits
             .iter()
             .map(|tk| format!("\t{} ({})", &tk.name, &tk.version))
             .collect::<Vec<_>>()
             .join("\n"),
     );
-    Ok(cached)
+    Ok(toolkits)
 }
 
 /// Return a list of all toolkits that are not currently installed.
-pub fn installable_toolkits(reload_cache: bool, insecure: bool) -> Result<Vec<&'static Toolkit>> {
+pub async fn installable_toolkits(reload_cache: bool, insecure: bool) -> Result<Vec<Toolkit>> {
     info!("{}", t!("checking_toolkit_updates"));
 
-    let all_toolkits = toolkits_from_server(insecure)?;
-    let installable = if let Some(installed) = Toolkit::installed(reload_cache)? {
+    let all_toolkits = toolkits_from_server(insecure).await?;
+    let installable = if let Some(installed) = Toolkit::installed(reload_cache).await? {
+        let installed = installed.lock().await;
         all_toolkits
-            .iter()
-            .filter(|tk| *tk != &*installed.lock().unwrap())
+            .into_iter()
+            .filter(|tk| tk != &*installed)
             .collect()
     } else {
-        all_toolkits.iter().collect()
+        all_toolkits
     };
     Ok(installable)
 }
 
 /// Get available toolkits from server, then return the latest one if it has
 /// not been installed yet.
-pub fn latest_installable_toolkit(
+pub async fn latest_installable_toolkit(
     installed: &Toolkit,
     insecure: bool,
-) -> Result<Option<&'static Toolkit>> {
+) -> Result<Option<Toolkit>> {
     info!("{}", t!("checking_toolkit_updates"));
 
-    let all_toolkits = toolkits_from_server(insecure)?;
-    let Some(maybe_latest) = all_toolkits
-        .iter()
+    let Some(maybe_latest) = toolkits_from_server(insecure)
+        .await?
+        .into_iter()
         // make sure they are the same **product**
         .find(|tk| tk.name == installed.name)
     else {

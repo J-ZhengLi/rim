@@ -9,6 +9,7 @@ use crate::{
     fingerprint::InstallationRecord,
     toolkit::{toolkits_from_server, Toolkit},
     toolset_manifest::ToolsetManifest,
+    utils::blocking,
 };
 
 #[derive(Subcommand, Debug, Default, Clone, Copy)]
@@ -24,7 +25,7 @@ impl ListCommand {
     fn execute(&self, installed: bool) -> Result<()> {
         match self {
             Self::Component => list_components(installed, None),
-            Self::Toolkit => list_toolkits(installed),
+            Self::Toolkit => blocking!(list_toolkits(installed)),
         }
     }
 }
@@ -116,23 +117,23 @@ pub(crate) fn list_components(
     Ok(())
 }
 
-fn list_toolkits(installed_only: bool) -> Result<()> {
-    let maybe_installed_tk = Toolkit::installed(false)?;
+async fn list_toolkits(installed_only: bool) -> Result<()> {
+    let maybe_installed_tk = Toolkit::installed(false).await?;
     let mut stdout = std::io::stdout();
 
     writeln!(&mut stdout)?;
     if installed_only {
         if let Some(mutex) = maybe_installed_tk {
-            let tk = mutex.lock().unwrap();
+            let tk = mutex.lock().await;
             writeln!(&mut stdout, "{} {}", tk.name, tk.version)?;
         } else {
             writeln!(&mut stdout, "{}", t!("no_toolkit_installed"))?;
         }
     } else {
-        let all_toolkits = toolkits_from_server(false)?
-            .iter()
-            .map(|tk| {
-                let installed_suffix = if matches!(maybe_installed_tk, Some(mutex) if &*mutex.lock().unwrap() == tk) {
+        let all_toolkits = toolkits_from_server(false).await?
+            .into_iter()
+            .map(|tk| async move {
+                let installed_suffix = if matches!(maybe_installed_tk, Some(mutex) if *mutex.lock().await == tk) {
                     format!(" ({})", t!("installed"))
                 } else {
                     String::new()
@@ -140,6 +141,7 @@ fn list_toolkits(installed_only: bool) -> Result<()> {
                 format!("{} {}{installed_suffix}", tk.name, tk.version)
             });
         for toolkit in all_toolkits {
+            let toolkit = toolkit.await;
             writeln!(&mut stdout, "{toolkit}")?;
         }
     }

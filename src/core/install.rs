@@ -90,8 +90,8 @@ impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
-            // Note: `InstallationRecord::load` creates `install_dir` if it does not exist
-            install_record: InstallationRecord::load(install_dir)?,
+            // Note: `InstallationRecord::load_from_dir` creates `install_dir` if it does not exist
+            install_record: InstallationRecord::load_from_dir(install_dir)?,
             cargo_registry: None,
             rustup_dist_server: default_rustup_dist_server().clone(),
             rustup_update_root: default_rustup_update_root().clone(),
@@ -312,7 +312,9 @@ impl<'a> InstallConfiguration<'a> {
                     .filter(|seg| !seg.is_empty())
                     .ok_or_else(|| anyhow!("'{url}' doesn't appear to be a downloadable file"))?;
                 let dest = temp_dir.path().join(downloaded_file_name);
-                utils::download_with_proxy(name, url, &dest, self.manifest.proxy.as_ref())?;
+                utils::DownloadOpt::new(name)
+                    .with_proxy(self.manifest.proxy.clone())
+                    .blocking_download(url, &dest)?;
 
                 self.try_install_from_path(name, tool_ver, &dest)?
             }
@@ -482,8 +484,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn init_install_config() {
+    #[tokio::test]
+    async fn init_install_config() {
         let mut cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         cache_dir.push("tests");
         cache_dir.push("cache");
@@ -491,7 +493,7 @@ mod tests {
         std::fs::create_dir_all(&cache_dir).unwrap();
 
         let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
-        let manifest = get_toolset_manifest(None, false).unwrap();
+        let manifest = get_toolset_manifest(None, false).await.unwrap();
         let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
         config.setup().unwrap();
 

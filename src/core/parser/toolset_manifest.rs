@@ -3,12 +3,13 @@
 
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use std::{collections::BTreeMap, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 use url::Url;
 
 use crate::components::Component;
@@ -538,7 +539,7 @@ fn baked_in_manifest_raw() -> &'static str {
 /// - Download from specific url, which could have file schema.
 /// - Load from `baked_in_manifest_raw`.
 ///
-pub fn get_toolset_manifest(url: Option<Url>, insecure: bool) -> Result<ToolsetManifest> {
+pub async fn get_toolset_manifest(url: Option<Url>, insecure: bool) -> Result<ToolsetManifest> {
     /// During the lifetime of program (in manager mode), manifest could be loaded multiple times,
     /// each time requires communicating with server if not cached, which is not ideal.
     /// Therefore we are caching those globally, identified by its URL.
@@ -552,7 +553,7 @@ pub fn get_toolset_manifest(url: Option<Url>, insecure: bool) -> Result<ToolsetM
         OnceLock::new();
 
     let mutex = CACHED_MANIFESTS.get_or_init(|| Mutex::new(HashMap::new()));
-    let mut guard = mutex.lock().unwrap();
+    let mut guard = mutex.lock().await;
 
     // ============ We have it cached, clone and return it directly ===================
     if let Some(mf) = guard.get(&url) {
@@ -566,7 +567,8 @@ pub fn get_toolset_manifest(url: Option<Url>, insecure: bool) -> Result<ToolsetM
         let temp = utils::make_temp_file("toolset-manifest-", None)?;
         utils::DownloadOpt::new("toolset manifest")
             .insecure(insecure)
-            .download_file(url, temp.path(), false)?;
+            .download(url, temp.path())
+            .await?;
         ToolsetManifest::load(temp.path())
     } else {
         debug!("loading built-in toolset manifest");

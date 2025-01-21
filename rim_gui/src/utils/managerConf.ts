@@ -4,6 +4,7 @@ import { Component } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
+import { AppInfo } from './types/AppInfo';
 
 type Target = {
   operation: 'update' | 'uninstall';
@@ -12,6 +13,7 @@ type Target = {
 
 class ManagerConf {
   path: Ref<string> = ref('');
+  info: Ref<AppInfo | null> = ref(null);
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
@@ -20,6 +22,24 @@ class ManagerConf {
   private _isUninstallManager: Ref<boolean> = ref(true);
 
   constructor() { }
+
+  /** The name of this application. */
+  async appName() {
+    if (this.info.value) {
+      return this.info.value.name;
+    }
+    let info = await this.cacheAppInfo();
+    return info.name;
+  }
+
+  /** The name and version of this application joined as a string. */
+  async appNameWithVersion() {
+    if (this.info.value) {
+      return this.info.value.version ? this.info.value.name + ' ' + this.info.value.version : this.info.value.name;
+    }
+    let info = await this.cacheAppInfo();
+    return info.version ? info.name + ' ' + info.version : info.name;
+  }
 
   public getUninstallManager() {
     return this._isUninstallManager.value;
@@ -84,14 +104,6 @@ class ManagerConf {
     return Object.values(groups);
   }
 
-  public getCurrent() {
-    return this._current;
-  }
-
-  public getCurrentComponents(): Component[] | undefined {
-    return this._current.value?.components;
-  }
-
   public getOperation() {
     return this._target.value.operation;
   }
@@ -126,6 +138,13 @@ class ManagerConf {
       ...components
     );
   }
+
+  async cacheAppInfo() {
+    let info = await invokeCommand('app_info') as AppInfo;
+    this.info.value = info;
+    return info;
+  }
+
   async loadConf() {
     let dir = await invokeCommand('get_install_dir');
     if (typeof dir === 'string' && dir.trim() !== '') {
@@ -133,8 +152,9 @@ class ManagerConf {
     }
 
     await this.reloadKits();
-    // check self update and ask user if they what to install it.
-    await invokeCommand('maybe_self_update');
+    // since this function is called immediately after app start, we call these functions
+    // to check updates in background then ask user if they what to install it.
+    await invokeCommand('check_updates_in_background');
   }
 
   async loadInstalledKit() {
