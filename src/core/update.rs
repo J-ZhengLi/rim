@@ -1,9 +1,11 @@
-use std::env;
 use std::path::Path;
-use std::sync::OnceLock;
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, OnceLock};
+use std::{env, sync::atomic::AtomicBool};
 
 use anyhow::{Context, Result};
 use semver::Version;
+use tokio::sync::Notify;
 use url::Url;
 
 use super::directories::RimDir;
@@ -11,7 +13,7 @@ use super::parser::release_info::ReleaseInfo;
 use super::parser::TomlParser;
 use crate::{
     setter, toolkit,
-    updates::{UpdateCheckerOpt, UpdateTarget},
+    update_checker::{UpdateCheckerOpt, UpdateTarget},
     utils,
 };
 
@@ -149,6 +151,36 @@ impl UpdatePayload {
 impl<T> UpdateKind<T> {
     pub fn update_needed(&self) -> bool {
         matches!(self, Self::Newer { .. })
+    }
+}
+
+static UPDATE_CHECKER_PAUSED: AtomicBool = AtomicBool::new(false);
+static UPDATE_CHECKER_PAUSE_NOTIFIER: OnceLock<Arc<Notify>> = OnceLock::new();
+/// An abstract struct that temporarily blocks the update checker task.
+///
+/// Since update check is running inside an infinite loop with an async task.
+/// In order to pause it, we need a [`Notify`] struct to help blocks the future,
+/// and can be resumed per demand.
+pub struct UpdateCheckBlocker;
+
+impl UpdateCheckBlocker {
+    fn inner_notify() -> &'static Arc<Notify> {
+        UPDATE_CHECKER_PAUSE_NOTIFIER.get_or_init(|| Arc::new(Notify::new()))
+    }
+    pub fn block() {
+        UPDATE_CHECKER_PAUSED.store(true, Ordering::Relaxed);
+        Self::inner_notify().notify_waiters();
+    }
+    pub fn unblock() {
+        UPDATE_CHECKER_PAUSED.store(false, Ordering::Relaxed);
+    }
+    pub fn is_blocked() -> bool {
+        UPDATE_CHECKER_PAUSED.load(Ordering::Relaxed)
+    }
+    pub async fn pause_if_blocked() {
+        if Self::is_blocked() {
+            Self::inner_notify().notified().await;
+        }
     }
 }
 

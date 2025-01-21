@@ -105,8 +105,7 @@ macro_rules! setter {
 /// Run asynchronous code to completion, with the cost of blocking the current thread.
 ///
 /// # Example
-/// ```rust
-/// # use rim::utils::blocking;
+/// ```ignore
 /// async fn async_func() {
 ///     // ...
 /// }

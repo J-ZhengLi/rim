@@ -1,30 +1,22 @@
 use std::{
     fmt::Display,
     sync::{Arc, Mutex, MutexGuard},
-    thread,
     time::Duration,
 };
 
 use crate::{
-    common::{
-        self, FrontendFunctionPayload, BLOCK_EXIT_EVENT, LOADING_FINISHED, LOADING_TEXT,
-        ON_COMPLETE_EVENT, PROGRESS_UPDATE_EVENT, TOOLKIT_UPDATE_EVENT,
-    },
+    common::{self, FrontendFunctionPayload, LOADING_FINISHED, LOADING_TEXT, TOOLKIT_UPDATE_EVENT},
     error::Result,
     notification::{self, Notification, NotificationAction},
 };
 use anyhow::Context;
+use rim::update_checker::{UpdateCheckerOpt, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION};
 use rim::{
     components::Component,
     toolkit::{self, Toolkit},
     toolset_manifest::{get_toolset_manifest, ToolsetManifest},
-    update::{self, UpdateOpt},
-    utils::{self, Progress},
-    AppInfo,
-};
-use rim::{
-    updates::{UpdateCheckerOpt, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION},
-    UninstallConfiguration,
+    update::{self, UpdateCheckBlocker, UpdateOpt},
+    utils, AppInfo,
 };
 use tauri::{
     async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
@@ -44,10 +36,19 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
         .expect("unable to lock global mutex")
 }
 
+#[derive(Clone, serde::Serialize)]
+struct SingleInstancePayload {
+    argv: Vec<String>,
+    cmd: String,
+}
+
 pub(super) fn main() -> Result<()> {
     let msg_recv = common::setup_logger()?;
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
+            _ = app.emit_all("single-instance", SingleInstancePayload { argv, cmd });
+        }))
         .plugin(tauri_plugin_positioner::init())
         .system_tray(system_tray())
         .on_system_tray_event(system_tray_event_handler)
@@ -127,29 +128,8 @@ fn get_install_dir() -> String {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn uninstall_toolkit(window: tauri::Window, remove_self: bool) -> Result<()> {
-    let window = Arc::new(window);
-
-    thread::spawn(move || -> anyhow::Result<()> {
-        // FIXME: this is needed to make sure the other thread could recieve the first couple messages
-        // we sent in this thread. But it feels very wrong, there has to be better way.
-        thread::sleep(Duration::from_millis(500));
-
-        window.emit(BLOCK_EXIT_EVENT, true)?;
-
-        let pos_cb =
-            |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
-        let progress = Progress::new(&pos_cb);
-
-        let config = UninstallConfiguration::init(Some(progress))?;
-        config.uninstall(remove_self)?;
-
-        window.emit(ON_COMPLETE_EVENT, ())?;
-        window.emit(BLOCK_EXIT_EVENT, false)?;
-        Ok(())
-    });
-
-    Ok(())
+fn uninstall_toolkit(window: tauri::Window, remove_self: bool) {
+    common::uninstall_toolkit_in_new_thread(window, remove_self);
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -220,11 +200,12 @@ async fn check_updates_in_background(app: AppHandle) -> Result<()> {
 
     async_runtime::spawn(async move {
         loop {
+            UpdateCheckBlocker::pause_if_blocked().await;
+
             let timeout_for_manager = check_manager_update(&app_clone).await?;
             let timeout_for_toolkit = check_toolkit_update(&app_clone).await?;
 
             let timeout = timeout_for_manager.min(timeout_for_toolkit);
-            println!("time for next check: {timeout:?}");
             utils::async_sleep(timeout).await;
         }
     })
@@ -253,6 +234,9 @@ fn get_toolkit_from_url(url: String) -> Result<Toolkit> {
 }
 
 async fn do_self_update(app: &AppHandle) -> Result<()> {
+    // block update checker without unblocking (app will restart)
+    UpdateCheckBlocker::block();
+
     // try show the window first, make sure it does not fails the process,
     // as we can still do self update without a window.
     show_manager_window_if_possible(app);
@@ -274,7 +258,7 @@ async fn do_self_update(app: &AppHandle) -> Result<()> {
         win.emit(LOADING_FINISHED, true)?;
         for eta in (1..=3).rev() {
             win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta))?;
-            thread::sleep(Duration::from_secs(1));
+            utils::async_sleep(Duration::from_secs(1)).await;
         }
         win.emit(LOADING_TEXT, "")?;
     }

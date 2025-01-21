@@ -257,7 +257,7 @@ pub(crate) mod rustup {
                 winuser::HWND_BROADCAST,
                 winuser::WM_SETTINGCHANGE,
                 0 as minwindef::WPARAM,
-                "Environment\0".as_ptr() as minwindef::LPARAM,
+                c"Environment".as_ptr() as minwindef::LPARAM,
                 winuser::SMTO_ABORTIFHUNG,
                 5000,
                 std::ptr::null_mut(),

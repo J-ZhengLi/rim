@@ -3,7 +3,7 @@ name = "rim"
 version = "0.4.0"
 edition = "2021"
 description = "An interactive Rust installation manager"
-rust-version = "1.73.0" # Minimal required version to use `zip`
+rust-version = "1.80.0" # Dominated by 'std::sync::LazyLock'
 
 [features]
 default = []

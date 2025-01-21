@@ -50,7 +50,6 @@ impl Notification {
     pub(crate) fn show(self, app_handle: &AppHandle) -> Result<()> {
         let label = self.window_label.as_deref().unwrap_or(WINDOW_LABEL);
         if let Some(popup) = app_handle.get_window(label) {
-            println!("popup already exists");
             popup.show()?;
             return Ok(());
         }
