@@ -22,6 +22,8 @@ pub(super) fn vendor() -> Result<()> {
         return Ok(());
     }
 
+    fs::create_dir_all(&pkg_dir)?;
+
     let list_content = fs::read_to_string(pkg_list)?;
     let list = list_content.split_ascii_whitespace().collect::<Vec<_>>();
 
