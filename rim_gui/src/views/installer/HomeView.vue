@@ -6,12 +6,8 @@ import { installConf, invokeCommand } from '@/utils/index';
 
 const { routerPush } = useCustomRouter();
 const isDialogVisible = ref(false);
-const explainText: string[] = `通过安装 Rustup，您同意以下条款：
-1. 软件许可：Rustup 由 Rust 社区开发，并遵循 MIT 和 Apache 2.0 许可协议。您可以自由使用、修改和分发 Rustup，但必须遵循相应的许可证条款。
-2. 责任限制：Rustup 是按“现状”提供的，不提供任何形式的明示或暗示保证。对于因使用 Rustup 导致的任何直接或间接损失，Rust 社区不承担责任。
-3. 更新与维护：Rustup 将定期发布更新，您同意在安装后接受这些更新。您可以选择不更新，但这可能会影响 Rustup 的功能和安全性。
-4. 隐私政策：Rustup 可能会收集和使用一些匿名数据以改善用户体验。具体的隐私政策请参见官方文档。
-5. 适用法律：本条款受适用法律管辖，任何争议将提交至相关法律机构解决。`.split(
+// TODO: add license and app description etc
+const explainText: string[] = ``.split(
   '\n'
 );
 
@@ -70,7 +66,7 @@ invokeCommand('welcome_label').then((lb) => {
           >安装</base-button
         >
       </div>
-      <base-check-box v-model="isUserAgree" mt="8px"
+      <!--base-check-box v-model="isUserAgree" mt="8px"
         >我同意
         <span
           @click="isDialogVisible = !isDialogVisible"
@@ -79,7 +75,7 @@ invokeCommand('welcome_label').then((lb) => {
           decoration="hover:underline"
           >许可协议</span
         >
-      </base-check-box>
+      </base-check-box -->
     </div>
     <base-dialog v-model="isDialogVisible" title="许可协议" width="80%">
       <scroll-box flex="1" overflow="auto">
