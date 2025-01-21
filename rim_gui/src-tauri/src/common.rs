@@ -33,6 +33,12 @@ pub(crate) const TOOLKIT_UPDATE_EVENT: &str = "toolkit-update";
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
     LazyLock::new(|| Mutex::new(vec![]));
 
+#[derive(Clone, serde::Serialize)]
+pub(crate) struct SingleInstancePayload {
+    pub(crate) argv: Vec<String>,
+    pub(crate) cmd: String,
+}
+
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs accrossing threads.
 ///

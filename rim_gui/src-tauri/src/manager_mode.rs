@@ -5,7 +5,10 @@ use std::{
 };
 
 use crate::{
-    common::{self, FrontendFunctionPayload, LOADING_FINISHED, LOADING_TEXT, TOOLKIT_UPDATE_EVENT},
+    common::{
+        self, FrontendFunctionPayload, SingleInstancePayload, LOADING_FINISHED, LOADING_TEXT,
+        TOOLKIT_UPDATE_EVENT,
+    },
     error::Result,
     notification::{self, Notification, NotificationAction},
 };
@@ -34,12 +37,6 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
     SELECTED_TOOLSET
         .lock()
         .expect("unable to lock global mutex")
-}
-
-#[derive(Clone, serde::Serialize)]
-struct SingleInstancePayload {
-    argv: Vec<String>,
-    cmd: String,
 }
 
 pub(super) fn main() -> Result<()> {

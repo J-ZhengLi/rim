@@ -3,6 +3,7 @@ use std::sync::OnceLock;
 
 use anyhow::Context;
 use tauri::api::dialog::FileDialogBuilder;
+use tauri::Manager;
 
 use super::{common, INSTALL_DIR};
 use crate::error::Result;
@@ -17,6 +18,12 @@ pub(super) fn main() -> Result<()> {
     let msg_recv = common::setup_logger()?;
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
+            _ = app.emit_all(
+                "single-instance",
+                common::SingleInstancePayload { argv, cmd },
+            );
+        }))
         .invoke_handler(tauri::generate_handler![
             close_window,
             default_install_dir,
