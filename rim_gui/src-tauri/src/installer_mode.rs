@@ -37,6 +37,7 @@ pub(super) fn main() -> Result<()> {
             common::supported_languages,
             common::set_locale,
             common::app_info,
+            common::get_label,
         ])
         .setup(|app| {
             let window = tauri::WindowBuilder::new(

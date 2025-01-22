@@ -1,12 +1,17 @@
 {
-    "vendor": "玄武",
-    "product": "玄武 Rust 一站式开发套件",
+    "vendor": "Rust 中国社区",
+    "product": "Rust 中国社区一站式开发套件",
     "installer_title": "%{product}安装工具",
     "manager_title": "%{product}管理工具",
+    "source_hint": "内容来源：Rust 中国社区，Rust 原生社区，第三方开源社区",
 
     "install": "安装",
     "update": "更新",
     "uninstall": "卸载",
+
+    "license_agreement": "许可协议",
+    "close": "关闭",
+    "agree": "我同意",
 
     "install_init": "初始化安装目录 '%{dir}' 中...",
     "install_env_config": "配置环境变量中...",
@@ -46,7 +51,7 @@
     "select_components_to_install": "请选择要安装的组件: (选择多个组件时请用空格键分隔；必要组件会自动添加，无需额外选择)",
     "select_components_to_update": "请选择要更新的组件: (选择多个组件时请用空格键分隔)",
     "question_try_demo": "是否要通过一个示例项目尝试 Rust 编程？",
-    
+
     "question_install_options": "是否应用以上安装选项？",
     "pause_prompt": "按回车键继续...",
     "confirm": "确认",

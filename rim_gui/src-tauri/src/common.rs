@@ -177,6 +177,16 @@ pub struct Language {
 }
 
 #[tauri::command]
+pub(crate) fn get_label(key: &str) -> String {
+    let label = t!(key);
+    if label == key {
+        format!("Label '{}' not found", key)
+    } else {
+        label.into()
+    }
+}
+
+#[tauri::command]
 pub(crate) fn supported_languages() -> Vec<Language> {
     rim::Language::possible_values()
         .iter()

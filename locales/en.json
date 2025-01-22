@@ -1,13 +1,18 @@
 {
-    "vendor": "XuanWu",
+    "vendor": "Rust China Community",
     "vendor_en": "xuanwu-rust",
-    "product": "XuanWu Rust Development Kit",
+    "product": "Rust China Community Development Kit",
     "installer_title": "%{product} Installer",
     "manager_title": "%{product} Manager",
+    "source_hint": "Content source: Rust China Community, Rust Native Community, Third-party open source community",
 
     "install": "install",
     "update": "Update",
     "uninstall": "Uninstall",
+
+    "license_agreement": "License Agreement",
+    "close": "Close",
+    "agree": "I agree",
 
     "install_init": "Initalizing & Creating directory '%{dir}'...",
     "install_env_config": "Configuring environment variables...",
@@ -51,7 +56,7 @@
     "select_components_to_update": "Choose what components to update: (separated multiple options by spaces)",
     "question_try_demo": "Do you want to try Rust with a demo project?",
     "demo_project_exported": "The demo project was successfully exported to '%{dir}'",
-    
+
     "question_install_options": "Proceed with above installation options?",
     "pause_prompt": "press ENTER key to continue...",
     "confirm": "Confirm",
