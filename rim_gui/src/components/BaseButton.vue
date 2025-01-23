@@ -43,6 +43,11 @@ const themeClasses = computed(() => {
 
 <style scoped>
 button {
+  font-size: clamp(12px, 1.6vw, 16px);
+  padding: 5px 25px 5px 25px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition:
     background-color 0.3s,
     border-color 0.3s;
