@@ -84,7 +84,7 @@ onMounted(() => {
 }
 .header-box {
   display: flex;
-  margin: 5px;
+  margin: 10px 10px 5px 10px;
   align-items: center;
 }
 .app-icon {
@@ -92,7 +92,7 @@ onMounted(() => {
   top: 0;
   left: 0;
   width: 48px;
-  margin-inline: 5px;
+  margin-right: 10px;
 }
 .title-box {
   align-items: start;
@@ -113,11 +113,14 @@ onMounted(() => {
 .notification-content {
   text-align: left;
   color: rgb(191, 191, 191);
-  position: relative;
-  margin-inline: 20px;
-  min-height: 25%;
-  font-size: clamp(8px, 3vw, 16px);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  min-height: 40%;
+  font-size: clamp(12px, 4vw, 16px);
   align-content: center;
+  white-space: pre-wrap;
 }
 .close-button {
   display: flex;
@@ -134,10 +137,13 @@ onMounted(() => {
   background-color: rgb(50, 50, 50);
 }
 .actions-box {
-  margin-inline: 50px;
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  justify-content: space-around;
 }
 .action-layout{
   cursor: pointer;

@@ -10,3 +10,5 @@ pub(crate) const TOOLKIT_UPDATE_EVENT: &str = "toolkit-update";
 // Window related
 pub(crate) const MANAGER_WINDOW_LABEL: &str = "manager_window";
 pub(crate) const INSTALLER_WINDOW_LABEL: &str = "installer_window";
+pub(crate) const NOTIFICATION_WINDOW_WIDTH: f64 = 360.0;
+pub(crate) const NOTIFICATION_WINDOW_HEIGHT: f64 = 220.0;

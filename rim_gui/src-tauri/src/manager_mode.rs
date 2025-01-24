@@ -43,7 +43,6 @@ pub(super) fn main() -> Result<()> {
         .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
             _ = app.emit_all("single-instance", SingleInstancePayload { argv, cmd });
         }))
-        .plugin(tauri_plugin_positioner::init())
         .system_tray(system_tray())
         .on_system_tray_event(system_tray_event_handler)
         .on_window_event(window_event_handler)
