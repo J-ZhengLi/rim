@@ -26,7 +26,7 @@ onMounted(() => {
     <router-view v-slot="{ Component }">
       <transition :name="transitionName">
         <keep-alive>
-          <component :is="Component" absolute w="full" style="height: calc(100% - 2rem)" />
+          <component :is="Component" absolute w="full" h="full" />
         </keep-alive>
       </transition>
     </router-view>

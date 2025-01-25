@@ -62,6 +62,7 @@ pub(super) fn main() -> Result<()> {
             common::supported_languages,
             common::set_locale,
             common::app_info,
+            common::get_label,
             self_update_now,
             toolkit_update_now,
             skip_version,

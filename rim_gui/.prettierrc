@@ -6,6 +6,12 @@
     {
       "files": ".prettierrc",
       "options": { "parser": "json" }
+    },
+    {
+      "files": "*.json",
+      "options": {
+        "tabWidth": 4
+      }
     }
   ]
 }
