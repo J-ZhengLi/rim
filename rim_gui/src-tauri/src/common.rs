@@ -178,12 +178,7 @@ pub struct Language {
 
 #[tauri::command]
 pub(crate) fn get_label(key: &str) -> String {
-    let label = t!(key);
-    if label == key {
-        format!("Label '{}' not found", key)
-    } else {
-        label.into()
-    }
+    t!(key).into()
 }
 
 #[tauri::command]
