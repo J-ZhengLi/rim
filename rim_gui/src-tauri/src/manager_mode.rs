@@ -4,11 +4,9 @@ use std::{
     time::Duration,
 };
 
+use crate::consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT};
 use crate::{
-    common::{
-        self, FrontendFunctionPayload, SingleInstancePayload, LOADING_FINISHED, LOADING_TEXT,
-        TOOLKIT_UPDATE_EVENT,
-    },
+    common::{self, FrontendFunctionPayload, SingleInstancePayload},
     error::Result,
     notification::{self, Notification, NotificationAction},
 };
@@ -19,7 +17,7 @@ use rim::{
     toolkit::{self, Toolkit},
     toolset_manifest::{get_toolset_manifest, ToolsetManifest},
     update::{self, UpdateCheckBlocker, UpdateOpt},
-    utils, AppInfo,
+    utils,
 };
 use tauri::{
     async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
@@ -28,7 +26,6 @@ use tauri::{
 use url::Url;
 
 static SELECTED_TOOLSET: Mutex<Option<ToolsetManifest>> = Mutex::new(None);
-const MANAGER_WINDOW_LABEL: &str = "manager_window";
 // If adding more notification windows, make sure their label start with 'notification:'
 const MANAGER_UPD_POPUP_LABEL: &str = "notification:manager";
 const TOOLKIT_UPD_POPUP_LABEL: &str = "notification:toolkit";
@@ -40,13 +37,12 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
 }
 
 pub(super) fn main() -> Result<()> {
-    let msg_recv = common::setup_logger()?;
+    let msg_recv = common::setup_logger();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
             _ = app.emit_all("single-instance", SingleInstancePayload { argv, cmd });
         }))
-        .plugin(tauri_plugin_positioner::init())
         .system_tray(system_tray())
         .on_system_tray_event(system_tray_event_handler)
         .on_window_event(window_event_handler)
@@ -70,21 +66,7 @@ pub(super) fn main() -> Result<()> {
             notification::notification_content,
         ])
         .setup(|app| {
-            let window = tauri::WindowBuilder::new(
-                app,
-                MANAGER_WINDOW_LABEL,
-                tauri::WindowUrl::App("index.html/#/manager".into()),
-            )
-            .inner_size(800.0, 600.0)
-            .min_inner_size(640.0, 480.0)
-            .decorations(false)
-            .transparent(true)
-            .title(AppInfo::name())
-            .build()?;
-
-            common::set_window_shadow(&window);
-            common::spawn_gui_update_thread(window, msg_recv);
-
+            common::setup_main_window(app, msg_recv)?;
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -45,6 +45,8 @@ fn global_root_dir() -> PathBuf {
 }
 
 thread_local! {
+    // this lint has FP on Windows-GNU target (https://github.com/rust-lang/rust-clippy/issues/13422)
+    #[allow(clippy::missing_const_for_thread_local)]
     static TEST_ID: RefCell<Option<usize>> = const { RefCell::new(None) };
 }
 

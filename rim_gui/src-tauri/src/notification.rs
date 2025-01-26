@@ -1,12 +1,28 @@
-use std::sync::{Mutex, OnceLock};
+use std::{
+    collections::VecDeque,
+    sync::{LazyLock, Mutex},
+};
 
 use crate::{common::FrontendFunctionPayload, Result};
 use rim::setter;
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
-use tauri_plugin_positioner::{Position, WindowExt};
+use tauri::{AppHandle, Manager, PhysicalPosition};
 
-static CONTENT: OnceLock<Mutex<Notification>> = OnceLock::new();
+/// The y-axis offset of each notification window.
+///
+/// The first notification will have an offset of 0,
+/// and the second notification will have an offset of `0 + WINDOW_HEIGHT`,
+/// so that new notification will always appear above the previous one.
+static WINDOW_POS_Y_OFFSET: Mutex<f64> = Mutex::new(0.0);
+/// A global collection of notification contents.
+///
+/// Once a new notification is created, its content will be pushed into this queue,
+/// and then a new window will be created once the `show()` method was called.
+/// Then after the windows complete the setup process, it invoke a certain command
+/// here and loads one content from here in a FIFO order.
+static CONTENT_QUEUE: LazyLock<Mutex<VecDeque<Notification>>> =
+    LazyLock::new(|| Mutex::new(VecDeque::new()));
+
 // If adding more notification windows, make sure their label start with 'notification:'
 pub(crate) const WINDOW_LABEL: &str = "notification:popup";
 
@@ -17,6 +33,7 @@ pub(crate) struct NotificationAction {
     pub(crate) command: FrontendFunctionPayload,
 }
 
+/// A customized notification, acting as a separated tauri window.
 #[derive(Debug, Serialize, Clone)]
 pub(crate) struct Notification {
     title: String,
@@ -31,28 +48,39 @@ impl Notification {
         T: Into<String>,
         C: Into<String>,
     {
-        let this = Self {
+        Self {
             title: title.into(),
             content: content.into(),
             actions,
             window_label: Some(WINDOW_LABEL.into()),
-        };
-        if let Some(existing) = CONTENT.get() {
-            *existing.lock().unwrap() = this.clone();
-        } else {
-            CONTENT.set(Mutex::new(this.clone())).unwrap();
         }
-        this
     }
 
     setter!(with_window_label(self.window_label, label: impl Into<String>) { Some(label.into()) });
 
+    /// Show notification as a separated window at the bottom right of the screen.
+    ///
+    /// Note: Although it's preferrable to use OS native notification system,
+    /// such as relying on third-party crate such as [`notify-rust`].
+    /// However, it doesn't seem like any of those crates supports
+    /// custom actions on Windows and MacOS yet. If that feature ever became available on
+    /// Windows and MacOS, this can be adjusted to show native notification instead.
     pub(crate) fn show(self, app_handle: &AppHandle) -> Result<()> {
-        let label = self.window_label.as_deref().unwrap_or(WINDOW_LABEL);
-        if let Some(popup) = app_handle.get_window(label) {
+        use crate::consts::{NOTIFICATION_WINDOW_HEIGHT, NOTIFICATION_WINDOW_WIDTH};
+
+        let label = self
+            .window_label
+            .as_deref()
+            .unwrap_or(WINDOW_LABEL)
+            .to_string();
+        if let Some(popup) = app_handle.get_window(&label) {
             popup.show()?;
             return Ok(());
         }
+
+        // this will be a new notification, push the content to the queue.
+        let mut guard = CONTENT_QUEUE.lock().unwrap();
+        guard.push_back(self);
 
         let popup = tauri::WindowBuilder::new(
             app_handle,
@@ -64,17 +92,37 @@ impl Notification {
         .resizable(false)
         .title("notification")
         .skip_taskbar(true)
-        .inner_size(360.0, 220.0)
+        .inner_size(NOTIFICATION_WINDOW_WIDTH, NOTIFICATION_WINDOW_HEIGHT)
+        // show the window after we move it, to prevent flashing white window for a split sec.
+        .visible(false)
         .build()?;
 
-        popup.move_window(Position::BottomRight)?;
+        if let Some(monitor) = popup.current_monitor()? {
+            // place the notification window at the bottom right corner
+            let monitor_size = monitor.size();
+            let monitor_pos = monitor.position();
+            let window_size = popup.outer_size()?;
+            let mut pos_y_offset = WINDOW_POS_Y_OFFSET.lock().unwrap();
+            let target_pos = PhysicalPosition::new(
+                monitor_pos.x + monitor_size.width as i32 - window_size.width as i32,
+                monitor_pos.y + monitor_size.height as i32
+                    - window_size.height as i32
+                    - *pos_y_offset as i32,
+            );
+
+            popup.set_position(target_pos)?;
+            popup.show()?;
+
+            *pos_y_offset += popup.outer_size()?.height as f64;
+        }
+
         Ok(())
     }
 }
 
 #[tauri::command]
 pub(crate) async fn notification_content() -> Option<Notification> {
-    Some(CONTENT.get()?.lock().unwrap().clone())
+    CONTENT_QUEUE.lock().unwrap().pop_front()
 }
 
 #[tauri::command]
@@ -83,6 +131,7 @@ pub(crate) fn close(app: AppHandle, label: String) {
         return;
     };
     crate::common::close_window(window);
+    *WINDOW_POS_Y_OFFSET.lock().unwrap() -= crate::consts::NOTIFICATION_WINDOW_HEIGHT;
 }
 
 pub(crate) fn close_all_notification(app: AppHandle) {
@@ -93,4 +142,5 @@ pub(crate) fn close_all_notification(app: AppHandle) {
     {
         crate::common::close_window(window.clone());
     }
+    *WINDOW_POS_Y_OFFSET.lock().unwrap() = 0.0;
 }

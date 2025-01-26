@@ -9,13 +9,12 @@ use super::{common, INSTALL_DIR};
 use crate::error::Result;
 use rim::components::Component;
 use rim::toolset_manifest::{get_toolset_manifest, ToolsetManifest};
-use rim::{try_it, utils, AppInfo};
+use rim::{try_it, utils};
 
 static TOOLSET_MANIFEST: OnceLock<ToolsetManifest> = OnceLock::new();
-const INSTALLER_WINDOW_LABEL: &str = "installer_window";
 
 pub(super) fn main() -> Result<()> {
-    let msg_recv = common::setup_logger()?;
+    let msg_recv = common::setup_logger();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
@@ -40,21 +39,7 @@ pub(super) fn main() -> Result<()> {
             common::get_label,
         ])
         .setup(|app| {
-            let window = tauri::WindowBuilder::new(
-                app,
-                INSTALLER_WINDOW_LABEL,
-                tauri::WindowUrl::App("index.html/#/installer".into()),
-            )
-            .inner_size(800.0, 600.0)
-            .min_inner_size(640.0, 480.0)
-            .decorations(false)
-            .transparent(true)
-            .title(AppInfo::name())
-            .build()?;
-
-            common::set_window_shadow(&window);
-            common::spawn_gui_update_thread(window, msg_recv);
-
+            common::setup_main_window(app, msg_recv)?;
             Ok(())
         })
         .run(tauri::generate_context!())

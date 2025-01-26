@@ -8,6 +8,7 @@ use std::{
     time::Duration,
 };
 
+use super::consts::*;
 use super::Result;
 use rim::{
     components::Component,
@@ -18,16 +19,7 @@ use rim::{
     AppInfo, InstallConfiguration, UninstallConfiguration,
 };
 use serde::Serialize;
-use tauri::Window;
-
-pub(crate) const MESSAGE_UPDATE_EVENT: &str = "update-message";
-pub(crate) const PROGRESS_UPDATE_EVENT: &str = "update-progress";
-pub(crate) const ON_COMPLETE_EVENT: &str = "on-complete";
-pub(crate) const ON_FAILED_EVENT: &str = "on-failed";
-pub(crate) const BLOCK_EXIT_EVENT: &str = "toggle-exit-blocker";
-pub(crate) const LOADING_TEXT: &str = "loading-text";
-pub(crate) const LOADING_FINISHED: &str = "loading-finished";
-pub(crate) const TOOLKIT_UPDATE_EVENT: &str = "toolkit-update";
+use tauri::{App, Window};
 
 #[allow(clippy::type_complexity)]
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
@@ -44,10 +36,16 @@ pub(crate) struct SingleInstancePayload {
 ///
 /// This will return a log message's receiver which can be used to emitting
 /// messages onto [`tauri::Window`]
-pub(crate) fn setup_logger() -> Result<Receiver<String>> {
+pub(crate) fn setup_logger() -> Receiver<String> {
     let (msg_sendr, msg_recvr) = mpsc::channel::<String>();
-    utils::Logger::new().sender(msg_sendr).setup()?;
-    Ok(msg_recvr)
+    if let Err(e) = utils::Logger::new().sender(msg_sendr).setup() {
+        // TODO: make this error more obvious
+        eprintln!(
+            "Unable to setup logger, cause: {e}\n\
+            The program will continues to run, but it might not functioning correctly."
+        );
+    }
+    msg_recvr
 }
 
 pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<String>) {
@@ -217,18 +215,6 @@ pub(crate) fn app_info() -> AppInfo {
     AppInfo::get().to_owned()
 }
 
-/// Add back rounded corners (on Windows) and shadow effects.
-///
-// TODO: This is not needed if we migrate to tauri@2, also make sure to get rid
-// of the `window_shadows` dependency at the time since it adds 6 dependencies in total.
-#[allow(unused_variables)]
-pub(crate) fn set_window_shadow(window: &tauri::Window) {
-    #[cfg(any(windows, target_os = "macos"))]
-    if let Err(e) = window_shadows::set_shadow(window, true) {
-        log::error!("unable to apply window effects: {e}");
-    }
-}
-
 /// Close the given window in a separated thread.
 #[tauri::command]
 pub(crate) fn close_window(win: Window) {
@@ -263,4 +249,29 @@ impl FrontendFunctionPayload {
 
     setter!(with_args(self.args, Vec<(&'static str, String)>));
     setter!(with_ret_id(self.ret_id, identifier: &'static str) { Some(identifier) });
+}
+
+/// Build the main window with shared configuration.
+pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String>) -> Result<()> {
+    let (label, url) = if AppInfo::is_manager() {
+        (MANAGER_WINDOW_LABEL, "index.html/#/manager".into())
+    } else {
+        (INSTALLER_WINDOW_LABEL, "index.html/#/installer".into())
+    };
+
+    let window = tauri::WindowBuilder::new(manager, label, tauri::WindowUrl::App(url))
+        .inner_size(800.0, 600.0)
+        .min_inner_size(640.0, 480.0)
+        .decorations(false)
+        .transparent(true)
+        .title(AppInfo::name())
+        .build()?;
+
+    #[cfg(not(target_os = "linux"))]
+    if let Err(e) = window_shadows::set_shadow(&window, true) {
+        log::error!("unable to apply window effects: {e}");
+    }
+
+    spawn_gui_update_thread(window, log_receiver);
+    Ok(())
 }

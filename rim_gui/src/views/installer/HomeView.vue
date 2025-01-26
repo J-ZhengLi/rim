@@ -9,7 +9,7 @@ const isDialogVisible = ref(false);
 // TODO: add license and app description etc
 const explainText: string[] = ``.split('\n');
 
-const isUserAgree = ref(false);
+const isUserAgree = ref(true);
 const welcomeLabel = ref('');
 const labels = ref<Record<string, string>>({});
 const version = computed(() => installConf.version);
@@ -52,7 +52,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div flex="~ col items-center" w="full">
+  <div class="svg-background" flex="~ col items-center" w="full">
     <div grow="2">
       <a
         block
@@ -69,8 +69,8 @@ onMounted(() => {
       </a>
     </div>
     <div grow="2" flex="~ col items-center">
-      <h1>{{ welcomeLabel }}</h1>
-      <h2>{{ version }}</h2>
+      <h1 class="welcome-text">{{ welcomeLabel }}</h1>
+      <h2 style="cursor: default;">{{ version }}</h2>
     </div>
     <div w="full" text="center">
       <div flex="~ items-end justify-center">
@@ -119,3 +119,19 @@ onMounted(() => {
     </base-dialog>
   </div>
 </template>
+
+<style lang="css" scoped>
+.welcome-text {
+  text-align: center;
+  line-height: 6dvw;
+  cursor: default;
+}
+.svg-background {
+  background-image: url("/installer_bg.svg");
+  background-repeat: no-repeat;
+  background-position:
+    top center,
+    bottom center;
+  background-size: 100% auto;
+}
+</style>
