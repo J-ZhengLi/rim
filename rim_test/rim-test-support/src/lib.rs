@@ -7,11 +7,9 @@ pub use snapbox::utils::current_dir;
 
 pub mod paths;
 pub mod project;
-pub mod worker;
 
 pub mod prelude {
     pub use crate::rim_test;
-    pub use crate::worker::SnapboxCommandExt;
 }
 
 /// Unwrap a `Result` with a useful panic message

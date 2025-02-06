@@ -99,7 +99,7 @@ pub(crate) fn generate_and_run_manager(no_gui: bool, args: &[String]) -> Result<
     // succeeded, so it's safe to unwrap
     let manager = &fake.manager_bin.unwrap();
 
-    let mocked_dist_server = super::server_dir_url();
+    let mocked_dist_server = common::path_to_url(super::rim_server_dir());
     // run the manager copy
     let status = Command::new(manager)
         .args(args)

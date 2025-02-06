@@ -167,3 +167,17 @@ pub fn install_gui_deps() {
         println!("{fail_msg}: {}", st.code().unwrap_or(-1));
     }
 }
+
+pub fn resources_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("resources")
+}
+
+/// Convert a local path to file URL (with file schema: `file://`)
+pub fn path_to_url<P: AsRef<Path>>(path: P) -> url::Url {
+    url::Url::from_directory_path(&path).unwrap_or_else(|_| {
+        panic!(
+            "path {} cannot be converted to URL",
+            path.as_ref().display()
+        )
+    })
+}

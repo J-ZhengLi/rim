@@ -4,8 +4,6 @@ use std::{
     sync::OnceLock,
 };
 
-use url::Url;
-
 pub mod installation;
 pub mod manager;
 pub mod server;
@@ -43,30 +41,27 @@ fn install_dir() -> &'static Path {
     })
 }
 
-fn server_dir() -> &'static Path {
-    static SERVER_DIR: OnceLock<PathBuf> = OnceLock::new();
-    SERVER_DIR.get_or_init(|| {
-        let dir = mocked_dir().join("server");
+fn rim_server_dir() -> &'static Path {
+    static RIM_SERVER_DIR: OnceLock<PathBuf> = OnceLock::new();
+    RIM_SERVER_DIR.get_or_init(|| {
+        let dir = mocked_dir().join("rim-server");
         fs::create_dir_all(&dir)
             .unwrap_or_else(|_| panic!("unable to create mocked server dir at {}", dir.display()));
         dir
     })
 }
 
-fn server_dir_url() -> Url {
-    let mocked_dist_dir = server_dir();
-    Url::from_directory_path(mocked_dist_dir).unwrap_or_else(|_| {
-        panic!(
-            "path {} cannot be converted to URL",
-            mocked_dist_dir.display()
-        )
-    })
+fn rustup_server_dir() -> PathBuf {
+    let dir = mocked_dir().join("rustup-server");
+    fs::create_dir_all(&dir)
+        .unwrap_or_else(|_| panic!("unable to create mocked server dir at {}", dir.display()));
+    dir
 }
 
 fn manager_dir() -> &'static Path {
     static MANAGER_DIR: OnceLock<PathBuf> = OnceLock::new();
     MANAGER_DIR.get_or_init(|| {
-        let dir = server_dir().join("manager");
+        let dir = rim_server_dir().join("manager");
         fs::create_dir_all(&dir).unwrap_or_else(|_| {
             panic!(
                 "unable to create mocked manager dist dir at {}",

@@ -3557,6 +3557,8 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "rust-i18n",
+ "sha2",
+ "tempfile",
  "url",
 ]
 
