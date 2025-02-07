@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -180,4 +181,28 @@ pub fn path_to_url<P: AsRef<Path>>(path: P) -> url::Url {
             path.as_ref().display()
         )
     })
+}
+
+pub fn compress_xz<S, D>(src: S, dest: D) -> Result<()>
+where
+    S: AsRef<Path>,
+    D: AsRef<Path>,
+{
+    use xz2::write::XzEncoder;
+
+    let tar_file = fs::File::create(dest)?;
+    // NB (J-ZhengLi): compression needs a level, which is a number between 0-9.
+    // The offcial example uses 9, but also says 6 is a reasonable default.
+    // Well, don't know what that means, but I'm just gonna put 6 here.
+    let encoding = XzEncoder::new(tar_file, 6);
+    let mut tar = tar::Builder::new(encoding);
+
+    let name = src.as_ref().file_name().unwrap_or(OsStr::new("/"));
+    if src.as_ref().is_file() {
+        tar.append_path_with_name(src.as_ref(), name)?;
+    } else {
+        tar.append_dir_all(name, src.as_ref())?;
+    }
+    tar.finish()?;
+    Ok(())
 }

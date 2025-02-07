@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
+use rim::utils::Extractable;
 use rim_test_support::prelude::*;
 use rim_test_support::project::ProjectBuilder;
 
@@ -21,10 +22,10 @@ fn mocked_dist_server() -> &'static str {
             let templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("resources")
                 .join("templates");
-            Command::new("tar")
-                .args(&["-xzf", "channel-rust.template"])
-                .current_dir(templates_dir)
-                .status()
+            let template = templates_dir.join("channel-rust.template");
+            Extractable::load(&template, Some("gz"))
+                .unwrap()
+                .extract_to(&templates_dir)
                 .unwrap();
             // generate now
             Command::new("cargo")

@@ -9,7 +9,7 @@ use std::{
 };
 
 use super::consts::*;
-use super::Result;
+use crate::error::Result;
 use rim::{
     components::Component,
     setter,
@@ -253,10 +253,16 @@ impl FrontendFunctionPayload {
 
 /// Build the main window with shared configuration.
 pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String>) -> Result<()> {
-    let (label, url) = if AppInfo::is_manager() {
-        (MANAGER_WINDOW_LABEL, "index.html/#/manager".into())
+    let (label, url, visible) = if AppInfo::is_manager() {
+        let opt = handle_manager_cli_args(manager);
+        let visible = !opt.silent;
+        (MANAGER_WINDOW_LABEL, "index.html/#/manager".into(), visible)
     } else {
-        (INSTALLER_WINDOW_LABEL, "index.html/#/installer".into())
+        (
+            INSTALLER_WINDOW_LABEL,
+            "index.html/#/installer".into(),
+            true,
+        )
     };
 
     let window = tauri::WindowBuilder::new(manager, label, tauri::WindowUrl::App(url))
@@ -265,6 +271,7 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
         .decorations(false)
         .transparent(true)
         .title(AppInfo::name())
+        .visible(visible)
         .build()?;
 
     #[cfg(not(target_os = "linux"))]
@@ -274,4 +281,19 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
 
     spawn_gui_update_thread(window, log_receiver);
     Ok(())
+}
+
+#[derive(Debug, Default)]
+struct CliOpt {
+    /// Launching the app without showing the main window.
+    silent: bool,
+}
+
+fn handle_manager_cli_args(app: &mut App) -> CliOpt {
+    let Ok(matches) = app.get_cli_matches() else {
+        return CliOpt::default();
+    };
+    let silent = matches.args.contains_key("silent");
+
+    CliOpt { silent }
 }

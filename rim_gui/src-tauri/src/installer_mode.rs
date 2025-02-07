@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::Receiver;
 use std::sync::OnceLock;
 
 use anyhow::Context;
@@ -13,9 +14,7 @@ use rim::{try_it, utils};
 
 static TOOLSET_MANIFEST: OnceLock<ToolsetManifest> = OnceLock::new();
 
-pub(super) fn main() -> Result<()> {
-    let msg_recv = common::setup_logger();
-
+pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
             _ = app.emit_all(

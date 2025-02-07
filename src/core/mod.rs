@@ -17,6 +17,7 @@ pub mod try_it;
 pub(crate) mod uninstall;
 pub mod update;
 
+use anyhow::Result;
 // re-exports
 pub use locales::Language;
 pub(crate) use path_ext::PathExt;
@@ -112,23 +113,21 @@ impl GlobalOpts {
 
 /// Representing the execution mode of this program.
 ///
+/// Each variant contains a parsed CLI arg matches, which can fail
+/// if the user pass some invalid args to the program.
+///
 /// # Example
 /// - In [`Installer`](Mode::Installer) (a.k.a `setup` mode), this program
 ///     does initial setup and install rust toolkit for the user.
 /// - In [`Manager`](Mode::Manager) mode, this program can be used for
 ///     updating, uninstalling the toolkits etc.
 pub enum Mode {
-    Manager(Box<cli::Manager>),
-    Installer(Box<cli::Installer>),
+    Manager(Result<cli::Manager>),
+    Installer(Result<cli::Installer>),
 }
 
 impl Mode {
     fn manager(manager_callback: Option<Box<dyn FnOnce(&cli::Manager)>>) -> Self {
-        let cli = cli::parse_manager_cli();
-        if let Some(cb) = manager_callback {
-            cb(&cli);
-        }
-
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
             name: t!("manager_title", product = t!("product")).into(),
@@ -136,14 +135,17 @@ impl Mode {
             is_manager: true,
         });
 
-        Self::Manager(Box::new(cli))
-    }
-    fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
-        let cli = cli::parse_installer_cli();
-        if let Some(cb) = installer_callback {
-            cb(&cli);
+        let maybe_args = cli::parse_manager_cli();
+        // execute callback function on cli args
+        if let Ok(args) = &maybe_args {
+            if let Some(cb) = manager_callback {
+                cb(args);
+            }
         }
 
+        Self::Manager(maybe_args)
+    }
+    fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
             name: t!("installer_title", product = t!("product")).into(),
@@ -151,7 +153,14 @@ impl Mode {
             is_manager: false,
         });
 
-        Self::Installer(Box::new(cli))
+        let maybe_args = cli::parse_installer_cli();
+        if let Ok(args) = &maybe_args {
+            if let Some(cb) = installer_callback {
+                cb(args);
+            }
+        }
+
+        Self::Installer(maybe_args)
     }
 
     /// Automatically determain which mode that this program is running as.

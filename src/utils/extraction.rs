@@ -26,22 +26,25 @@ pub struct Extractable<'a> {
 }
 
 impl<'a> Extractable<'a> {
-    pub fn load(path: &'a Path) -> Result<Self> {
-        let ext = path
-            .extension()
-            .ok_or_else(|| {
-                anyhow!(
-                    "'{}' is not extractable because it appears to have no file extension",
-                    path.display()
-                )
-            })?
-            .to_str()
-            .ok_or_else(|| {
-                anyhow!(
+    pub fn load(path: &'a Path, custom_kind: Option<&str>) -> Result<Self> {
+        let ext = if let Some(custom) = custom_kind {
+            custom
+        } else {
+            path.extension()
+                .ok_or_else(|| {
+                    anyhow!(
+                        "'{}' is not extractable because it appears to have no file extension",
+                        path.display()
+                    )
+                })?
+                .to_str()
+                .ok_or_else(|| {
+                    anyhow!(
                 "'{}' is not extractable because its extension contains invalid unicode characters",
                 path.display()
             )
-            })?;
+                })?
+        };
 
         let kind = match ext {
             "7z" => {

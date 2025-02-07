@@ -380,7 +380,7 @@ impl<'a> InstallConfiguration<'a> {
     /// If `maybe_file` is a path to compressed file, this will try to extract it to `dest`;
     /// otherwise this will copy that file into dest.
     fn extract_or_copy_to(&self, maybe_file: &Path, dest: &Path) -> Result<PathBuf> {
-        if let Ok(mut extractable) = Extractable::load(maybe_file) {
+        if let Ok(mut extractable) = Extractable::load(maybe_file, None) {
             extractable.extract_then_skip_solo_dir(dest, Some("bin"))
         } else {
             utils::copy_into(maybe_file, dest)

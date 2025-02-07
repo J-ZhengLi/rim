@@ -1,6 +1,6 @@
 use std::{
     fmt::Display,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{mpsc::Receiver, Arc, Mutex, MutexGuard},
     time::Duration,
 };
 
@@ -11,7 +11,7 @@ use crate::{
     notification::{self, Notification, NotificationAction},
 };
 use anyhow::Context;
-use rim::update_checker::{UpdateCheckerOpt, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION};
+use rim::configuration::{Configuration, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION};
 use rim::{
     components::Component,
     toolkit::{self, Toolkit},
@@ -36,9 +36,7 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
         .expect("unable to lock global mutex")
 }
 
-pub(super) fn main() -> Result<()> {
-    let msg_recv = common::setup_logger();
-
+pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
             _ = app.emit_all("single-instance", SingleInstancePayload { argv, cmd });
@@ -139,7 +137,9 @@ async fn check_manager_update(app: &AppHandle) -> Result<Duration> {
                 show_update_notification_popup(app, UpdateTarget::Manager, &current, &latest, None)
                     .await?;
             }
-            UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(UpdateTarget::Manager)
+            Configuration::load_from_install_dir()
+                .update
+                .duration_until_next_run(UpdateTarget::Manager)
         }
         Err(e) => {
             log::error!("manager update check failed: {e}");
@@ -163,7 +163,9 @@ async fn check_toolkit_update(app: &AppHandle) -> Result<Duration> {
                 )
                 .await?;
             }
-            UpdateCheckerOpt::load_from_install_dir().duration_until_next_run(UpdateTarget::Toolkit)
+            Configuration::load_from_install_dir()
+                .update
+                .duration_until_next_run(UpdateTarget::Toolkit)
         }
         Err(e) => {
             log::error!("toolkit update check failed: {e}");
@@ -337,8 +339,8 @@ fn skip_version(app: AppHandle, target: UpdateTarget, version: String) -> Result
     notification::close(app, label.into());
 
     log::info!("skipping version: '{version}' for '{target}'");
-    UpdateCheckerOpt::load_from_install_dir()
-        .skip(target, version)
+    Configuration::load_from_install_dir()
+        .skip_update(target, version)
         .write_to_install_dir()?;
     Ok(())
 }

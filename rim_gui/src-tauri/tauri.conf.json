@@ -7,6 +7,15 @@
     "withGlobalTauri": true
   },
   "tauri": {
+    "cli": {
+      "description": "An interactive Rust installation manager",
+      "args": [
+        {
+          "name": "silent",
+          "short": "s"
+        }
+      ]
+    },
     "allowlist": {
       "all": false,
       "shell": {

@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::LazyLock;
 
 /// The version list of rust toolchain
@@ -380,10 +379,8 @@ impl<'a> RustInstallerPackage<'a> {
 
         // Pack the `pre_packed` folder to tarball
         let tarball_name = format!("{pkg_name}.tar.xz");
-        Command::new("tar")
-            .args(["-cJf", &format!("../{tarball_name}"), &pkg_name])
-            .current_dir(temp_dir.path())
-            .status()?;
+        let tarball_path = root.join(&tarball_name);
+        common::compress_xz(pre_packed, tarball_path)?;
         // Generate checksum
         let tarball_path = root.join(&tarball_name);
         write_checksum(&tarball_path)
