@@ -9,6 +9,7 @@ mod uninstall;
 mod update;
 
 use anyhow::{anyhow, bail, Result};
+use clap::error::ErrorKind;
 use clap::{Parser, Subcommand, ValueHint};
 use common::handle_user_choice;
 use std::{
@@ -403,12 +404,23 @@ impl ManagerSubcommands {
     }
 }
 
-pub fn parse_installer_cli() -> Installer {
-    Installer::parse()
+/// Parsing commandline args for `Installer` mode.
+pub fn parse_installer_cli() -> Result<Installer> {
+    Installer::try_parse().map_err(manually_show_help_or_version)
 }
 
-pub fn parse_manager_cli() -> Manager {
-    Manager::parse()
+/// Parsing commandline args for `Manager` mode.
+pub fn parse_manager_cli() -> Result<Manager> {
+    Manager::try_parse().map_err(manually_show_help_or_version)
+}
+
+fn manually_show_help_or_version(error: clap::Error) -> anyhow::Error {
+    match error.kind() {
+        ErrorKind::DisplayHelp
+        | ErrorKind::DisplayVersion
+        | ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand => error.exit(),
+        _ => error.into(),
+    }
 }
 
 fn setup(

@@ -56,21 +56,21 @@ onMounted(() => {
     <div grow="2">
       <a
         block
-        mt="50%"
+        mt="15vw"
         decoration="none"
         flex="~ items-center"
         href="https://xuanwu.beta.atomgit.com/"
         target="_blank"
       >
-        <img src="/logo.png" alt="logo" h="80px" />
-        <div ml="12px" c="header" font="bold" text="32px">
+        <img class="logo" src="/logo.png" alt="logo" />
+        <div ml="12px" c="header" font="bold" text="[clamp(24px,4vw,40px)]">
           {{ labels.vendor }}
         </div>
       </a>
     </div>
     <div grow="2" flex="~ col items-center">
-      <h1 class="welcome-text">{{ welcomeLabel }}</h1>
-      <h2 style="cursor: default;">{{ version }}</h2>
+      <div class="bold-text" text="[clamp(22px,3.6vw,38px)]">{{ welcomeLabel }}</div>
+      <div class="bold-text" text="[clamp(12px,2vw,24px)]">{{ version }}</div>
     </div>
     <div w="full" text="center">
       <div flex="~ items-end justify-center">
@@ -78,7 +78,6 @@ onMounted(() => {
           theme="primary"
           w="12rem"
           mx="8px"
-          text="1.2rem"
           font="bold"
           @click="handleInstallClick(true)"
           >{{ labels.install }}</base-button
@@ -95,7 +94,7 @@ onMounted(() => {
         >
       </base-check-box> -->
     </div>
-    <div basis="30px" my="8px">
+    <div basis="30px" m="10px" text="center [clamp(11px,1vw,16px)]">
       {{ labels.source_hint }}
     </div>
     <base-dialog
@@ -121,10 +120,12 @@ onMounted(() => {
 </template>
 
 <style lang="css" scoped>
-.welcome-text {
+.bold-text {
   text-align: center;
   line-height: 6dvw;
   cursor: default;
+  font-weight: bold;
+  margin-inline: 10px;
 }
 .svg-background {
   background-image: url("/installer_bg.svg");
@@ -133,5 +134,8 @@ onMounted(() => {
     top center,
     bottom center;
   background-size: 100% auto;
+}
+.logo {
+  height: clamp(45px, 10vw, 80px);
 }
 </style>

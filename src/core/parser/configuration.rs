@@ -1,4 +1,4 @@
-//! The `update` configuration file, containing information about which version to skip,
+//! The major configuration file for this app, containing information about which version to skip,
 //! when the updates are checked, how long until next updates will be checked etc.
 
 use super::{get_installed_dir, TomlParser};
@@ -12,6 +12,63 @@ const DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES: u64 = 1440;
 /// Default update check timeout in duration
 pub const DEFAULT_UPDATE_CHECK_DURATION: Duration =
     Duration::from_secs(60 * DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES);
+
+fn default_autostart_policy() -> bool {
+    true
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Configuration {
+    #[serde(default = "default_autostart_policy")]
+    pub autostart: bool,
+    pub update: UpdateCheckerOpt,
+}
+
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            autostart: default_autostart_policy(),
+            update: UpdateCheckerOpt::default(),
+        }
+    }
+}
+
+impl TomlParser for Configuration {
+    const FILENAME: &'static str = "config.toml";
+}
+
+impl Configuration {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Mark a version as skipped.
+    ///
+    /// This function can be chained.
+    pub fn skip_update<T: Into<String>>(mut self, target: UpdateTarget, version: T) -> Self {
+        let conf = self.update.conf_mut(target);
+        conf.skip = Some(version.into());
+        self
+    }
+
+    /// Try loading from installation.
+    ///
+    /// This guarentee to return a [`VersionSkip`] object,
+    /// even if the file does not exists, the default will got returned.
+    pub fn load_from_install_dir() -> Self {
+        let install_dir = get_installed_dir();
+        Self::load_from_dir(install_dir).unwrap_or_default()
+    }
+
+    pub fn write_to_install_dir(&self) -> Result<()> {
+        let install_dir = get_installed_dir();
+        self.write_to_dir(install_dir)
+    }
+
+    pub fn update_skipped<T: AsRef<str>>(&self, target: UpdateTarget, version: T) -> bool {
+        self.update.is_skipped(target, version)
+    }
+}
 
 // If we ever need to support more things for update checker,
 // just add one in this enum, without breaking compatibility.
@@ -77,17 +134,13 @@ impl UpdateConf {
 /// # Configuration example
 ///
 /// ```toml
-/// [manager]
+/// [update.manager]
 /// last-run = "2024-01-01 10:30:05" # when was the last update check
 /// timeout = 1440  # how long (in minutes) until we need to check for update since `last-run`,
 /// skip = "0.5.0" # the version the user choose to skip
 /// ```
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct UpdateCheckerOpt(HashMap<UpdateTarget, UpdateConf>);
-
-impl TomlParser for UpdateCheckerOpt {
-    const FILENAME: &'static str = ".updates";
-}
 
 impl UpdateCheckerOpt {
     pub fn new() -> Self {
@@ -98,17 +151,8 @@ impl UpdateCheckerOpt {
         self.0.entry(target).or_default()
     }
 
-    /// Mark a version as skipped.
-    ///
-    /// This function can be chained.
-    pub fn skip<T: Into<String>>(mut self, target: UpdateTarget, version: T) -> Self {
-        let conf = self.conf_mut(target);
-        conf.skip = Some(version.into());
-        self
-    }
-
     /// Return `true` if the given `version` is marked as skipped before.
-    pub fn is_skipped<T: AsRef<str>>(&self, target: UpdateTarget, version: T) -> bool {
+    fn is_skipped<T: AsRef<str>>(&self, target: UpdateTarget, version: T) -> bool {
         let Some(skipped) = self.0.get(&target).and_then(|conf| conf.skip.as_deref()) else {
             return false;
         };
@@ -159,20 +203,6 @@ impl UpdateCheckerOpt {
             Duration::ZERO
         }
     }
-
-    /// Try loading from installation.
-    ///
-    /// This guarentee to return a [`VersionSkip`] object,
-    /// even if the file does not exists, the default will got returned.
-    pub fn load_from_install_dir() -> Self {
-        let install_dir = get_installed_dir();
-        Self::load_from_dir(install_dir).unwrap_or_default()
-    }
-
-    pub fn write_to_install_dir(&self) -> Result<()> {
-        let install_dir = get_installed_dir();
-        self.write_to_dir(install_dir)
-    }
 }
 
 #[cfg(test)]
@@ -182,28 +212,30 @@ mod tests {
     #[test]
     fn skip_update() {
         let input = r#"
+[update]
 manager = { skip = "0.1.0", last-run = "1970-01-01T00:00:00" }
 toolkit = { skip = "1.0.0", last-run = "1970-01-01T00:00:00" }"#;
-        let expected = UpdateCheckerOpt::from_str(input).unwrap();
-        assert!(expected.is_skipped(UpdateTarget::Manager, "0.1.0"));
-        assert!(expected.is_skipped(UpdateTarget::Toolkit, "1.0.0"));
+        let expected = Configuration::from_str(input).unwrap();
+        assert!(expected.update_skipped(UpdateTarget::Manager, "0.1.0"));
+        assert!(expected.update_skipped(UpdateTarget::Toolkit, "1.0.0"));
     }
 
     #[test]
     fn skip_update_programmatically() {
-        let vs = UpdateCheckerOpt::new()
-            .skip(UpdateTarget::Manager, "0.1.0")
-            .skip(UpdateTarget::Toolkit, "1.0.0");
-        assert!(vs.is_skipped(UpdateTarget::Manager, "0.1.0"));
-        assert!(vs.is_skipped(UpdateTarget::Toolkit, "1.0.0"));
+        let vs = Configuration::new()
+            .skip_update(UpdateTarget::Manager, "0.1.0")
+            .skip_update(UpdateTarget::Toolkit, "1.0.0");
+        assert!(vs.update_skipped(UpdateTarget::Manager, "0.1.0"));
+        assert!(vs.update_skipped(UpdateTarget::Toolkit, "1.0.0"));
     }
 
     #[test]
     fn remind_update_later() {
         let input = r#"
+[update]
 manager = { last-run = "1970-01-01T00:00:00" }"#;
 
-        let mut expected = UpdateCheckerOpt::from_str(input).unwrap();
+        let mut expected = Configuration::from_str(input).unwrap().update;
         let manager = UpdateTarget::Manager;
         assert_eq!(expected.conf_mut(manager).timeout, None);
         expected = expected.remind_later(manager, 60);

@@ -6,7 +6,7 @@ use std::{env, fs};
 use anyhow::{bail, Result};
 use cfg_if::cfg_if;
 
-use crate::common::{self, *};
+use crate::common::*;
 
 pub const DIST_HELP: &str = r#"
 Generate release binaries
@@ -94,9 +94,7 @@ impl DistWorker<'_> {
 
         // Copy packages to dest dir as well
         // TODO: download from web instead
-        let src_pkg_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .with_file_name("resources")
-            .join("packages");
+        let src_pkg_dir = resources_dir().join("packages");
         // Step 1: easiest, copy the folder with `target` as name
         let target_specific_pkgs_dir = src_pkg_dir.join(target);
         if target_specific_pkgs_dir.exists() {
@@ -153,7 +151,7 @@ pub fn dist(mode: DistMode, binary_only: bool) -> Result<()> {
     };
 
     if !matches!(mode, DistMode::Cli) {
-        common::install_gui_deps();
+        install_gui_deps();
     }
 
     for worker in workers {

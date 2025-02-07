@@ -58,12 +58,8 @@ pub fn rim_test(attr: TokenStream, item: TokenStream) -> TokenStream {
         };
 
         // 初始化一个临时目录
-        let mut init_resource = parse_to_token_stream(
-            r#"let _init_test = {
-                let tmp_dir = option_env!("RIM_TARGET_TMPDIR");
-                rim_test_support::paths::init_root(tmp_dir)
-            };"#,
-        );
+        let mut init_resource =
+            parse_to_token_stream(r#"let _init_test = rim_test_support::paths::init_root();"#);
 
         init_resource.extend(group.stream());
         ret.extend(Some(TokenTree::from(Group::new(

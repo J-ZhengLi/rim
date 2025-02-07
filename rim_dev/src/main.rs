@@ -27,6 +27,8 @@ Commands:
     dist, d         Generate release binaries
     run-manager     Run with manager mode
     vendor          Download packages that are specified in `resource/packages.txt`
+    mock-rustup-server
+                    Generate a mocked rustup dist server
 "#;
 
 const MANAGER_MODE_HELP: &str = r#"
@@ -39,21 +41,31 @@ Options:
         --gui       Run manager mode with graphical interface (default)
     -h, -help       Print this help message
 "#;
+const MOCK_HELP: &str = r#"
+Generate a mocked rustup dist server
+
+Usage: cargo dev mock-rustup-server [OPTIONS]
+
+Options:
+        --root      Specify another directory for generated files
+    -h, -help       Print this help message
+"#;
 
 #[derive(Debug)]
 enum DevCmd {
     Dist { mode: DistMode, binary_only: bool },
     RunManager { no_gui: bool, args: Vec<String> },
+    Mock { root: Option<PathBuf> },
     Vendor,
 }
 
 impl DevCmd {
-    fn execute(&self) -> Result<()> {
+    fn execute(self) -> Result<()> {
         match self {
-            Self::Dist { mode, binary_only } => dist::dist(*mode, *binary_only)?,
+            Self::Dist { mode, binary_only } => dist::dist(mode, binary_only)?,
             Self::RunManager { no_gui, args } => {
                 // a mocked server is needed to run most of function in manager
-                server::generate()?;
+                server::generate_rim_server_files()?;
 
                 // generate a fake manager binary with higher version so we
                 // can test the self update.
@@ -61,9 +73,10 @@ impl DevCmd {
                     manager::generate()?;
                 }
 
-                installation::generate_and_run_manager(*no_gui, args)?;
+                installation::generate_and_run_manager(no_gui, &args)?;
             }
             Self::Vendor => vendor::vendor()?,
+            Self::Mock { root } => server::generate_rustup_server_files(root)?,
         }
         Ok(())
     }
@@ -127,6 +140,16 @@ fn main() -> Result<ExitCode> {
                 no_gui: false,
                 args: args.collect(),
             },
+        },
+        "mock-rustup-server" => match args.next().as_deref() {
+            Some("-r" | "--root") => DevCmd::Mock {
+                root: Some(args.next().expect("missing arg value for 'root'").into()),
+            },
+            Some("-h" | "--help") => {
+                writeln!(&mut stdout, "{MOCK_HELP}")?;
+                return Ok(ExitCode::SUCCESS);
+            }
+            _ => DevCmd::Mock { root: None },
         },
         s => {
             writeln!(

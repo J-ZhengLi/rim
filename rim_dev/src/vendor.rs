@@ -1,4 +1,4 @@
-use crate::common::{ensure_dir, ensure_parent_dir};
+use crate::common::{ensure_dir, ensure_parent_dir, resources_dir};
 use anyhow::{bail, Result};
 use std::{
     fs,
@@ -14,7 +14,7 @@ Usage: cargo dev vendor
 "#;
 
 pub(super) fn vendor() -> Result<()> {
-    let res_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("resources");
+    let res_dir = resources_dir();
     let pkg_dir = res_dir.join("packages");
     let pkg_list = res_dir.join("packages.txt");
 

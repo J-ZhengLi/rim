@@ -1,9 +1,9 @@
 pub(crate) mod cargo_config;
+pub mod configuration;
 pub mod dist_manifest;
 pub mod fingerprint;
 pub(crate) mod release_info;
 pub mod toolset_manifest;
-pub mod update_checker;
 
 use anyhow::{bail, Context, Result};
 use fingerprint::InstallationRecord;

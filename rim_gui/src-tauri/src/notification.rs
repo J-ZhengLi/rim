@@ -113,7 +113,7 @@ impl Notification {
             popup.set_position(target_pos)?;
             popup.show()?;
 
-            *pos_y_offset += popup.outer_size()?.height as f64;
+            *pos_y_offset += window_size.height as f64;
         }
 
         Ok(())

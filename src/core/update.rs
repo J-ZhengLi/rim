@@ -11,11 +11,8 @@ use url::Url;
 use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
 use super::parser::TomlParser;
-use crate::{
-    setter, toolkit,
-    update_checker::{UpdateCheckerOpt, UpdateTarget},
-    utils,
-};
+use crate::configuration::{Configuration, UpdateTarget};
+use crate::{setter, toolkit, utils};
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
 static LATEST_RELEASE: OnceLock<ReleaseInfo> = OnceLock::new();
@@ -195,12 +192,11 @@ impl UpdateCheckBlocker {
 pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
     info!("{}", t!("checking_manager_updates"));
 
-    let mut updates_checker = UpdateCheckerOpt::load_from_install_dir();
+    let mut updates_checker = Configuration::load_from_install_dir();
     // we mark it first then check, it sure seems pretty weird, but it sure preventing
     // infinite loop running in a background thread.
-    updates_checker
-        .mark_checked(UpdateTarget::Manager)
-        .write_to_install_dir()?;
+    updates_checker.update.mark_checked(UpdateTarget::Manager);
+    updates_checker.write_to_install_dir()?;
 
     let latest_version = match latest_manager_release(insecure).await {
         Ok(release) => release.version.clone(),
@@ -209,7 +205,7 @@ pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
             return Ok(UpdateKind::Uncertain);
         }
     };
-    if updates_checker.is_skipped(UpdateTarget::Manager, latest_version.to_string()) {
+    if updates_checker.update_skipped(UpdateTarget::Manager, latest_version.to_string()) {
         return Ok(UpdateKind::UnNeeded);
     }
 
@@ -236,12 +232,11 @@ pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
 /// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
 /// status of updates checker.
 pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePayload>> {
-    let mut update_checker = UpdateCheckerOpt::load_from_install_dir();
+    let mut update_checker = Configuration::load_from_install_dir();
     // we mark it first then check, it sure seems pretty weird, but it sure preventing
     // infinite loop running in a background thread.
-    update_checker
-        .mark_checked(UpdateTarget::Toolkit)
-        .write_to_install_dir()?;
+    update_checker.update.mark_checked(UpdateTarget::Toolkit);
+    update_checker.write_to_install_dir()?;
 
     let mutex = match toolkit::Toolkit::installed(false).await {
         Ok(Some(installed)) => installed,
@@ -269,7 +264,7 @@ pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePay
         }
     };
 
-    if update_checker.is_skipped(UpdateTarget::Toolkit, &latest_toolkit.version) {
+    if update_checker.update_skipped(UpdateTarget::Toolkit, &latest_toolkit.version) {
         return Ok(UpdateKind::UnNeeded);
     }
 

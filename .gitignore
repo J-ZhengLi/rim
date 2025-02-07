@@ -11,6 +11,9 @@ example_project/
 
 # Local stored packages that are too big
 resources/packages/*
+# Template file with long text (*.template files are compressed, which is fine)
+resources/templates/*
+!resources/templates/*.template
 
 # Release artifacts
 /dist/

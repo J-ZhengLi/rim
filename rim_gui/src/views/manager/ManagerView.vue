@@ -80,8 +80,5 @@ onMounted(() => {
         my="12px"
       />
     </section>
-    <div text="center" my="8px">
-      {{ labels.source_hint }}
-    </div>
   </div>
 </template>
