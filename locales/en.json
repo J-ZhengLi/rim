@@ -113,7 +113,6 @@
     "self_update_available": "self update available",
     "toolkit_update_available": "toolkit update available",
     "skip_version": "Skip This Version",
-    "close": "Close",
     "ask_self_update": "a newer version of manager has been found: %{latest}\ncurrently running: %{current}\ndo you wish to update now?",
     "ask_toolkit_update": "a newer version of toolkit has been found: %{latest}\ncurrently installed: %{current}\ndo you wish to update now?",
     "self_update_complete": "update completed! If you are using the graphical interface, please close then re-open this program to avoid possible issues.",
