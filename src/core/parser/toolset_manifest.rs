@@ -527,9 +527,13 @@ impl ToolInfo {
 fn baked_in_manifest_raw() -> &'static str {
     cfg_if::cfg_if! {
         if #[cfg(feature = "no-web")] {
-            include_str!("../../../resources/toolset_manifest_noweb.toml")
+            include_str!(
+                concat!("../../../resources/toolkit-manifest/offline/", env!("EDITION"), ".toml")
+            )
         } else {
-            include_str!("../../../resources/toolset_manifest.toml")
+            include_str!(
+                concat!("../../../resources/toolkit-manifest/online/", env!("EDITION"), ".toml")
+            )
         }
     }
 }

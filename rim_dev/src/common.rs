@@ -1,7 +1,9 @@
 use std::ffi::OsStr;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -204,5 +206,30 @@ where
         tar.append_dir_all(name, src.as_ref())?;
     }
     tar.finish()?;
+    Ok(())
+}
+
+/// Download a file from `url` to local disk.
+pub fn download<P: AsRef<Path>>(url: &str, dest: P) -> Result<()> {
+    println!("downloading: {url}");
+    let resp = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(180))
+        .build()?
+        .get(url)
+        .send()?;
+    if !resp.status().is_success() {
+        bail!("failed when downloading from: {url}");
+    }
+
+    let mut temp_file = tempfile::Builder::new().tempfile_in(
+        dest.as_ref()
+            .parent()
+            .ok_or_else(|| anyhow!("cannot download to empty or root directory"))?,
+    )?;
+    let content = resp.bytes()?;
+    temp_file.write_all(&content)?;
+
+    // copy the tempfile to dest to prevent corrupt download
+    copy_as(temp_file.path(), dest)?;
     Ok(())
 }

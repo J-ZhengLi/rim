@@ -1,0 +1,116 @@
+# This configuration file stores information about every toolkits that we offer,
+# and all the component's information, including it's version, description, and it's
+# source URL.
+# This file is used to generate toolkit-manifest (aka toolset-manifest) for each toolkit,
+# also used to fetch component's package from web in order to pack the offline version,
+# check cargo dev command for more details.
+# This file is meant to be modified manually.
+#
+# 此配置文件存储了我们提供的所有工具包的信息，以及所有组件的信息，包括其版本、描述和源URL。
+# 此文件用于为每个工具包生成 `toolkit-manifest`（又称 `toolset-manifest`），还用于从网络获取组件包，以便打包离线版本。
+# 更多详情请查看 `cargo dev` 命令。
+# 此文件需要手动修改。
+
+[config]
+rust-server = "https://xuanwu.base.atomgit.com"
+rustup-server = "https://xuanwu.base.atomgit.com/rustup"
+# The folder path (under `resources` dir) to store downloaded packages, used for offline packaging.
+# package-dir = "packages"
+targets = [
+    "aarch64-unknown-linux-gnu",
+    { triple = "aarch64-unknown-linux-musl", release-mode = "cli" },
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+    { triple = "x86_64-unknown-linux-musl", release-mode = "cli" },
+]
+components = [
+    "cargo",
+    "clippy",
+    "rust-std",
+    { name = "rust-docs", excluded-targets = [ "aarch64-unknown-linux-musl" ] },
+    "rustc",
+    "rustc-dev",
+    "rustfmt",
+    "llvm-tools",
+    { name = "rust-mingw", target = "x86_64-pc-windows-gnu" },
+    { name = "rust-src", wildcard-target = true },
+]
+
+# ========================= Manifest For Basic (test) Toolkit START =========================
+[toolkit.basic.config]
+date = "2024-09-05"
+
+[toolkit.basic.value]
+name = "XuanWu Rust Development Kit"
+version = "stable v1.81.0"
+
+[toolkit.basic.value.rust]
+version = "1.81.0"
+group = "Rust"
+components = ["clippy", "rustfmt", "rust-src", "rust-docs"]
+optional-components = ["llvm-tools", "rustc-dev"]
+
+[toolkit.basic.value.rust.profile]
+name = "minimal"
+verbose-name = "Basic"
+description = "Basic set of tools to use Rust properly"
+
+[toolkit.basic.value.tools.descriptions]
+llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
+rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
+mingw64 = "(windows only) Requirement for Windows GNU toolchain"
+
+[toolkit.basic.value.tools.group]
+Prerequisites = ["mingw64"]
+
+[toolkit.basic.value.tools.target.x86_64-pc-windows-gnu]
+mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z" }
+# ========================= Manifest For Basic (test) Toolkit END =========================
+
+# ========================= Manifest For Community Toolkit START =========================
+[toolkit.community.config]
+date = "2025-01-30"
+
+[toolkit.community.value]
+name = "Rust 中国社区一站式开发套件"
+version = "stable v1.84.1"
+
+[toolkit.community.value.rust]
+version = "1.84.1"
+group = "Rust 基础工具集"
+components = ["clippy", "rustfmt", "rust-src", "rust-docs"]
+optional-components = ["llvm-tools", "rustc-dev"]
+
+[toolkit.community.value.rust.profile]
+name = "minimal"
+verbose-name = "Rust 官方工具"
+description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
+
+[toolkit.community.value.tools.descriptions]
+llvm-tools = "包含 LLVM 工具的集合"
+rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个; 仅当开发链接到编译器的工具时才需要它, 例如对 Clippy 进行修改"
+mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
+typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
+cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
+
+[toolkit.community.value.tools.group]
+"Rust 基础工具集" = ["mingw64"]
+"Rust 软件开发工具链" = ["typos", "cargo-nextest"]
+
+[toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
+mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z" }
+cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip" }
+typos = { optional = true, version = "1.28.4", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.28.4-x86_64-pc-windows-msvc.zip" }
+
+[toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
+cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip" }
+typos = { optional = true, version = "1.28.4", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.28.4-x86_64-pc-windows-msvc.zip" }
+
+[toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
+cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-x86_64-unknown-linux-gnu.tar.gz" }
+typos = { optional = true, version = "1.28.4", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz" }
+
+[toolkit.community.value.tools.target.aarch64-unknown-linux-gnu]
+cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-aarch64-unknown-linux-gnu.tar.gz" }
+# ========================= Manifest For Community Toolkit END =========================

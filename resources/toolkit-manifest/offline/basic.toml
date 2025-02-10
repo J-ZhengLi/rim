@@ -1,0 +1,38 @@
+
+# This file was automatically generated.
+# 此文件是自动生成的.
+name = "XuanWu Rust Development Kit"
+version = "stable v1.81.0"
+
+[rust]
+components = ["clippy", "rustfmt", "rust-src", "rust-docs"]
+group = "Rust"
+offline-dist-server = "packages/toolchain"
+optional-components = ["llvm-tools", "rustc-dev"]
+version = "1.81.0"
+
+[rust.profile]
+description = "Basic set of tools to use Rust properly"
+name = "minimal"
+verbose-name = "Basic"
+
+[rust.rustup]
+aarch64-unknown-linux-gnu = "packages/tools/rustup-init"
+aarch64-unknown-linux-musl = "packages/tools/rustup-init"
+x86_64-pc-windows-gnu = "packages/tools/rustup-init.exe"
+x86_64-pc-windows-msvc = "packages/tools/rustup-init.exe"
+x86_64-unknown-linux-gnu = "packages/tools/rustup-init"
+x86_64-unknown-linux-musl = "packages/tools/rustup-init"
+
+[tools.descriptions]
+llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
+mingw64 = "(windows only) Requirement for Windows GNU toolchain"
+rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
+
+[tools.group]
+Prerequisites = ["mingw64"]
+
+[tools.target.x86_64-pc-windows-gnu.mingw64]
+path = "packages/tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"
+required = true
+version = "14.2.0-rt_v12-rev0"

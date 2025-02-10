@@ -4,6 +4,7 @@ extern crate rust_i18n;
 mod common;
 mod dist;
 mod mocked;
+mod toolkits_parser;
 mod vendor;
 
 use anyhow::Result;
@@ -13,7 +14,7 @@ use std::env;
 use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
-use vendor::VENDOR_HELP;
+use vendor::{VendorMode, VENDOR_HELP};
 
 i18n!("../locales", fallback = "en");
 
@@ -53,10 +54,23 @@ Options:
 
 #[derive(Debug)]
 enum DevCmd {
-    Dist { mode: DistMode, binary_only: bool },
-    RunManager { no_gui: bool, args: Vec<String> },
-    Mock { root: Option<PathBuf> },
-    Vendor,
+    Dist {
+        mode: DistMode,
+        binary_only: bool,
+    },
+    RunManager {
+        no_gui: bool,
+        args: Vec<String>,
+    },
+    Mock {
+        root: Option<PathBuf>,
+    },
+    Vendor {
+        mode: VendorMode,
+        name: Option<String>,
+        target: Option<String>,
+        all_targets: bool,
+    },
 }
 
 impl DevCmd {
@@ -75,7 +89,12 @@ impl DevCmd {
 
                 installation::generate_and_run_manager(no_gui, &args)?;
             }
-            Self::Vendor => vendor::vendor()?,
+            Self::Vendor {
+                mode,
+                name,
+                target,
+                all_targets,
+            } => vendor::vendor(mode, name, target, all_targets)?,
             Self::Mock { root } => server::generate_rustup_server_files(root)?,
         }
         Ok(())
@@ -104,29 +123,49 @@ fn main() -> Result<ExitCode> {
             let mut binary_only = false;
             let mut mode = DistMode::Both;
 
-            match args.next().as_deref() {
-                Some("-h" | "--help") => {
-                    writeln!(&mut stdout, "{DIST_HELP}")?;
-                    return Ok(ExitCode::SUCCESS);
+            while let Some(arg) = args.next().as_deref() {
+                match arg {
+                    "-h" | "--help" => {
+                        writeln!(&mut stdout, "{DIST_HELP}")?;
+                        return Ok(ExitCode::SUCCESS);
+                    }
+                    "--cli" => mode = DistMode::Cli,
+                    "--gui" => mode = DistMode::Gui,
+                    "-b" | "--binary-only" => binary_only = true,
+                    _ => (),
                 }
-                Some("--cli") => mode = DistMode::Cli,
-                Some("--gui") => mode = DistMode::Gui,
-                Some("-b" | "--binary-only") => binary_only = true,
-                _ => (),
-            };
+            }
             DevCmd::Dist { mode, binary_only }
         }
-        "vendor" => match args.next().as_deref() {
-            Some("-h" | "--help") => {
-                writeln!(&mut stdout, "{VENDOR_HELP}")?;
-                return Ok(ExitCode::SUCCESS);
+        "vendor" => {
+            let mut name = None;
+            let mut mode = VendorMode::Regular;
+            let mut target = None;
+            let mut all_targets = false;
+            while let Some(arg) = args.next().as_deref() {
+                match arg {
+                    "-h" | "--help" => {
+                        writeln!(&mut stdout, "{VENDOR_HELP}")?;
+                        return Ok(ExitCode::SUCCESS);
+                    }
+                    "-a" | "--all-targets" => all_targets = true,
+                    "-n" | "--name" => name = args.next(),
+                    "--download-only" => mode = VendorMode::DownloadOnly,
+                    "--split-only" => mode = VendorMode::SplitOnly,
+                    "-t" | "--target" => target = args.next(),
+                    s => {
+                        writeln!(&mut stdout, "invalid argument '{s}'")?;
+                        return Ok(ExitCode::FAILURE);
+                    }
+                }
             }
-            Some(s) => {
-                writeln!(&mut stdout, "invalid argument '{s}'")?;
-                return Ok(ExitCode::FAILURE);
+            DevCmd::Vendor {
+                mode,
+                name,
+                target,
+                all_targets,
             }
-            None => DevCmd::Vendor,
-        },
+        }
         "run-manager" => match args.next().as_deref() {
             Some("-h" | "--help") => {
                 writeln!(&mut stdout, "{MANAGER_MODE_HELP}")?;
