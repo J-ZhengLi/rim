@@ -45,20 +45,6 @@ jobs:
       - name: checkout the source code
         uses: actions/checkout@v4
 
-      - name: Set up QEMU for ARM64
-        if: contains(matrix.target, 'aarch64')
-        uses: docker/setup-qemu-action@v2
-        with:
-          platforms: aarch64
-      
-      - name: Set up QEMU for multiple cores
-        if: contains(matrix.target, 'aarch64')
-        run: |
-          echo "Setting up QEMU with multiple cores"
-          export QEMU_CPUS=4  # 设置虚拟 CPU 核心数为 4
-          # 设置 QEMU 使用多个核心
-          echo "Using $QEMU_CPUS CPUs with QEMU"
-
       - name: run build job
         run: bash ci/run.sh
 
@@ -79,14 +65,24 @@ jobs:
           rm -f $NAME-${{ matrix.target }}/$NAME-installer-cli.exe
           7z a ../binaries/$NAME-${{ matrix.target }}.zip $NAME-${{ matrix.target }}
 
-      - name: prepare packages (unix)
-        if: matrix.os != 'windows-latest'
+      - name: prepare packages (unix x86_64-linux-gnu)
+        if: contains(matrix.name, 'x86-64-linux-gnu')
         run: |
           set -x
           NAME=$(grep -Po 'vendor_en": "\K[^"]*' locales/en.json)
           sudo mkdir ./dist/binaries/
           sudo mv ./dist/${{ matrix.target }}/$NAME-installer-cli ./dist/binaries/$NAME-installer-cli-${{ matrix.target }}
           sudo mv ./dist/${{ matrix.target }}/$NAME-installer ./dist/binaries/$NAME-installer-${{ matrix.target }}
+          cd ./dist/${{ matrix.target }}
+          sudo tar cjf ../binaries/$NAME-${{ matrix.target }}.tar.xz $NAME-${{ matrix.target }}
+      
+      - name: prepare packages (unix aarch64 and musl)
+        if: contains(matrix.name, 'aarch64') || contains(matrix.name, 'musl')
+        run: |
+          set -x
+          NAME=$(grep -Po 'vendor_en": "\K[^"]*' locales/en.json)
+          sudo mkdir ./dist/binaries/
+          sudo mv ./dist/${{ matrix.target }}/$NAME-installer-cli ./dist/binaries/$NAME-installer-cli-${{ matrix.target }}
           cd ./dist/${{ matrix.target }}
           sudo tar cjf ../binaries/$NAME-${{ matrix.target }}.tar.xz $NAME-${{ matrix.target }}
 

@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # 更新系统并安装必要的软件包
 RUN apt-get update && \
     apt-get install -y \
-      make \
+      build-essential \
       curl \
       wget \
       file \
@@ -40,4 +40,4 @@ RUN chmod +x /scripts/install-tauri-cli.sh && \
 
 # 执行项目构建
 CMD cargo dev vendor && \
-    cargo dev dist
+    cargo dev dist --cli
