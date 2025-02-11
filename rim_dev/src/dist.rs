@@ -40,19 +40,23 @@ struct DistWorker<'a> {
 }
 
 impl DistWorker<'_> {
-    fn cli(src_dir: &Path) -> Self {
+    fn cli() -> Self {
         Self {
             build_args: &["build", "--release", "--locked"],
-            source_bin: src_dir.join(format!("rim-cli{EXE_SUFFIX}")),
+            source_bin: format!("rim-cli{EXE_SUFFIX}").into(),
             dest_bin_name: format!("{}-installer-cli{EXE_SUFFIX}", t!("vendor_en")),
         }
     }
-    fn gui(src_dir: &Path) -> Self {
+    fn gui() -> Self {
         Self {
             build_args: &["tauri", "build", "-b", "none", "--", "--locked"],
-            source_bin: src_dir.join(format!("rim-gui{EXE_SUFFIX}")),
+            source_bin: format!("rim-gui{EXE_SUFFIX}").into(),
             dest_bin_name: format!("{}-installer{EXE_SUFFIX}", t!("vendor_en")),
         }
+    }
+    fn set_full_source_bin(&mut self, src_dir: &Path) -> &mut Self {
+        self.source_bin = src_dir.join(self.source_bin.clone());
+        self
     }
     fn dist_common_(&self, target: &str, noweb: bool) -> Result<PathBuf> {
         // Get the dest directory and create one if it does not exist
@@ -62,6 +66,9 @@ impl DistWorker<'_> {
         let mut cmd = Command::new("cargo");
         cmd.env("HOST_TRIPPLE", target);
         cmd.args(self.build_args);
+        if !target.contains("windows") {
+            cmd.args(["--target", target]);
+        }
 
         if noweb {
             dest_dir.push(format!("{}-{target}", t!("vendor_en")));
@@ -81,14 +88,16 @@ impl DistWorker<'_> {
         Ok(dest_dir)
     }
 
-    fn dist_net_installer(&self, specific_target: Option<&str>) -> Result<()> {
+    fn dist_net_installer(&mut self, specific_target: Option<&str>) -> Result<()> {
         let target = specific_target.unwrap_or(env!("TARGET"));
+        self.set_full_source_bin(&src_dir(target));
         self.dist_common_(target, false)?;
         Ok(())
     }
 
-    fn dist_noweb_installer(&self, specific_target: Option<&str>) -> Result<()> {
+    fn dist_noweb_installer(&mut self, specific_target: Option<&str>) -> Result<()> {
         let target = specific_target.unwrap_or(env!("TARGET"));
+        self.set_full_source_bin(&src_dir(target));
         let dest_pkg_dir = self.dist_common_(target, true)?.join("packages");
         ensure_dir(&dest_pkg_dir)?;
 
@@ -131,22 +140,19 @@ impl DistWorker<'_> {
 }
 
 pub fn dist(mode: DistMode, binary_only: bool) -> Result<()> {
-    // Get the target dir
-    let dev_bin = env::current_exe()?;
-    let release_dir = dev_bin.parent().unwrap().with_file_name("release");
-
+    // worker list
     let mut workers = vec![];
 
     match mode {
         DistMode::Cli => {
-            workers.push(DistWorker::cli(&release_dir));
+            workers.push(DistWorker::cli());
         }
         DistMode::Gui => {
-            workers.push(DistWorker::gui(&release_dir));
+            workers.push(DistWorker::gui());
         }
         DistMode::Both => {
-            workers.push(DistWorker::cli(&release_dir));
-            workers.push(DistWorker::gui(&release_dir));
+            workers.push(DistWorker::cli());
+            workers.push(DistWorker::gui());
         }
     };
 
@@ -154,7 +160,7 @@ pub fn dist(mode: DistMode, binary_only: bool) -> Result<()> {
         install_gui_deps();
     }
 
-    for worker in workers {
+    for mut worker in workers {
         cfg_if! {
             if #[cfg(all(windows, target_arch = "x86_64"))] {
                 let msvc_target = "x86_64-pc-windows-msvc";
@@ -176,4 +182,19 @@ pub fn dist(mode: DistMode, binary_only: bool) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Path to target release directory
+fn src_dir(target: &str) -> PathBuf {
+    let dev_bin = env::current_exe().unwrap();
+    let release_dir = match target.contains("windows") {
+        true => dev_bin.parent().unwrap().with_file_name("release"),
+        false => dev_bin
+            .parent()
+            .unwrap()
+            .with_file_name(target)
+            .join("release"),
+    };
+
+    release_dir
 }

@@ -1,12 +1,12 @@
-# 使用 Ubuntu 20.04 ARM 版本作为基础镜像
-FROM arm64v8/ubuntu:20.04
+# 使用 Ubuntu 20.04 版本作为基础镜像
+FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 # 更新系统并安装必要的软件包
 RUN apt-get update && \
     apt-get install -y \
-      make \
+      build-essential \
       curl \
       wget \
       file \
@@ -16,7 +16,13 @@ RUN apt-get update && \
       libappindicator3-dev \
       librsvg2-dev \
       perl \
-      musl-tools
+      git
+
+# 安装 musl gcc
+COPY ci/scripts/install-musl-gcc.sh /scripts/
+RUN chmod +x /scripts/install-musl-gcc.sh && \
+    /scripts/install-musl-gcc.sh
+ENV PATH=$PATH:/usr/local/musl/output/bin
 
 # 安装 Rust（确保是适用于 ARM 的目标）
 COPY ci/scripts/install-rust.sh /scripts/
@@ -26,6 +32,7 @@ ENV PATH=$PATH:/root/.cargo/bin
 
 RUN rustup target add aarch64-unknown-linux-musl
 ENV HOST_TRIPPLE aarch64-unknown-linux-musl
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER aarch64-linux-musl-gcc
 
 # 安装 Node.js 18.x
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
@@ -40,4 +47,4 @@ RUN chmod +x /scripts/install-tauri-cli.sh && \
 
 # 执行项目构建
 CMD cargo dev vendor && \
-    cargo dev dist
+    cargo dev dist --cli
