@@ -40,5 +40,5 @@ RUN chmod +x /scripts/install-tauri-cli.sh && \
     /scripts/install-tauri-cli.sh
 
 # 执行项目构建
-CMD cargo dev vendor && \
-    cargo dev dist --cli
+CMD cargo dev vendor --target aarch64-unknown-linux-gnu --name community && \
+    cargo dev dist --cli --target aarch64-unknown-linux-gnu --name community

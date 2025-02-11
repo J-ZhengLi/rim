@@ -1,7 +1,7 @@
 use env::consts::EXE_SUFFIX;
-use std::{env, fs};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, fs};
 
 use anyhow::{bail, Result};
 
@@ -97,7 +97,7 @@ impl<'a> DistWorker<'a> {
 
         let mut cmd = Command::new("cargo");
         cmd.env("HOST_TRIPPLE", target);
-        cmd.args(&self.build_args(target, noweb));
+        cmd.args(self.build_args(target, noweb));
 
         let status = cmd.status()?;
         if status.success() {
@@ -126,7 +126,7 @@ impl<'a> DistWorker<'a> {
             .join(PACKAGE_DIR)
             .join(self.toolkit.full_name())
             .join(target);
-        
+
         // copy the vendored packages to dist folder
         if !src_pkg_dir.exists() {
             bail!(
@@ -222,14 +222,10 @@ fn include_readme(dir: &Path) -> Result<()> {
 
 fn compress_offline_package(dir: &Path, name: &str, target: &str) -> Result<()> {
     if target.contains("windows") {
-        let dest = dist_dir()?.join(format!(
-            "{name}-{target}.zip"
-        ));
+        let dest = dist_dir()?.join(format!("{name}-{target}.zip"));
         compress_zip(dir, dest)?;
     } else {
-        let dest = dist_dir()?.join(format!(
-            "{name}-{target}.tar.xz"
-        ));
+        let dest = dist_dir()?.join(format!("{name}-{target}.tar.xz"));
         compress_xz(dir, dest)?;
     }
     Ok(())
