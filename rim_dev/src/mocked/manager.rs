@@ -33,7 +33,7 @@ edition = \"2021\"
         }
     }
 
-    fn build(self) -> Result<()> {
+    fn build(self, name: &str) -> Result<()> {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let temp_dir_root = manifest_dir.with_file_name("target").join("tmp");
         fs::create_dir_all(&temp_dir_root)?;
@@ -60,8 +60,8 @@ edition = \"2021\"
         dest_dir.push(env!("TARGET"));
         fs::create_dir_all(&dest_dir)?;
 
-        let gui_name = format!("{}-manager{EXE_SUFFIX}", t!("vendor_en"));
-        let cli_name = format!("{}-manager-cli{EXE_SUFFIX}", t!("vendor_en"));
+        let gui_name = format!("{name}-manager{EXE_SUFFIX}");
+        let cli_name = format!("{name}-manager-cli{EXE_SUFFIX}");
         fs::copy(&binary_path, dest_dir.join(gui_name))?;
         fs::copy(&binary_path, dest_dir.join(cli_name))?;
 
@@ -113,7 +113,8 @@ pub(crate) fn generate() -> Result<()> {
 
     gen_release_toml(&target_ver)?;
     // Generate mocked binaries
-    FakeRim::new(&target_ver).build()?;
+    // TODO: make the name configurable
+    FakeRim::new(&target_ver).build("xuanwu-rust")?;
 
     Ok(())
 }

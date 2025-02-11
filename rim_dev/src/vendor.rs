@@ -1,6 +1,6 @@
 use crate::{
     common::{download, ensure_dir, ensure_parent_dir, resources_dir},
-    toolkits_parser::{Component, GlobalConfig, Toolkits, PACKAGE_DIR},
+    toolkits_parser::{Component, GlobalConfig, Toolkits},
 };
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
@@ -65,10 +65,7 @@ pub(super) fn vendor(
     target: Option<String>,
     all_targets: bool,
 ) -> Result<()> {
-    let toolkits_path = resources_dir().join("toolkits.toml");
-    let toolkits_content = fs::read_to_string(toolkits_path)?;
-    let mut toolkits = Toolkits::parse(&toolkits_content)?;
-
+    let mut toolkits = Toolkits::load()?;
     gen_manifest_and_download_packages(
         mode,
         &mut toolkits,
@@ -116,10 +113,7 @@ fn gen_manifest_and_download_packages(
     for (name, toolkit) in &mut toolkits.toolkit {
         let toolkit_needs_downloading = toolkit_needs_downloading(name, name_to_dl);
 
-        let toolkit_root = toolkits.config.abs_package_dir().join(format!(
-            "{name}-{}",
-            toolkit.version().unwrap_or("noversion")
-        ));
+        let toolkit_root = toolkits.config.abs_package_dir().join(toolkit.full_name());
 
         // spliting online manifest is easy, because every manifest section was
         // already considered as online manifest, we just need to write its string
@@ -149,7 +143,7 @@ fn gen_manifest_and_download_packages(
                                 .rsplit_once("/")
                                 .ok_or_else(|| anyhow!("missing filename for URL: {url}"))?;
                             let dest = tools_dir.join(filename);
-                            let rel_path = format!("{PACKAGE_DIR}/{TOOLS_DIRNAME}/{filename}");
+                            let rel_path = format!("{TOOLS_DIRNAME}/{filename}");
 
                             if toolkit_needs_downloading
                                 && target_needs_downloading(target, target_to_dl, all_targets)
@@ -167,10 +161,9 @@ fn gen_manifest_and_download_packages(
         }
         // Then, insert `[rust.offline-dist-server]` value and `[rust.rustup]` section
         let rust_section = toolkit.rust_section_mut();
-        let toolchain_prefix = format!("{PACKAGE_DIR}/{TOOLCHAIN_DIRNAME}");
         rust_section.insert(
             "offline-dist-server".into(),
-            toml::Value::String(toolchain_prefix),
+            toml::Value::String(TOOLCHAIN_DIRNAME.into()),
         );
         // Make a `[rust.rustup]` map, download rustup-init if necessary
         let mut rustup_sources = IndexMap::new();
@@ -181,7 +174,7 @@ fn gen_manifest_and_download_packages(
             } else {
                 ""
             };
-            let value = format!("{PACKAGE_DIR}/{TOOLS_DIRNAME}/rustup-init{suffix}");
+            let value = format!("{TOOLS_DIRNAME}/rustup-init{suffix}");
 
             if toolkit_needs_downloading
                 && target_needs_downloading(triple, target_to_dl, all_targets)

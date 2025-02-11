@@ -7,7 +7,7 @@ version = "stable v1.84.1"
 [rust]
 components = ["clippy", "rustfmt", "rust-src", "rust-docs"]
 group = "Rust 基础工具集"
-offline-dist-server = "packages/toolchain"
+offline-dist-server = "toolchain"
 optional-components = ["llvm-tools", "rustc-dev"]
 version = "1.84.1"
 
@@ -17,12 +17,12 @@ name = "minimal"
 verbose-name = "Rust 官方工具"
 
 [rust.rustup]
-aarch64-unknown-linux-gnu = "packages/tools/rustup-init"
-aarch64-unknown-linux-musl = "packages/tools/rustup-init"
-x86_64-pc-windows-gnu = "packages/tools/rustup-init.exe"
-x86_64-pc-windows-msvc = "packages/tools/rustup-init.exe"
-x86_64-unknown-linux-gnu = "packages/tools/rustup-init"
-x86_64-unknown-linux-musl = "packages/tools/rustup-init"
+aarch64-unknown-linux-gnu = "tools/rustup-init"
+aarch64-unknown-linux-musl = "tools/rustup-init"
+x86_64-pc-windows-gnu = "tools/rustup-init.exe"
+x86_64-pc-windows-msvc = "tools/rustup-init.exe"
+x86_64-unknown-linux-gnu = "tools/rustup-init"
+x86_64-unknown-linux-musl = "tools/rustup-init"
 
 [tools.descriptions]
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
@@ -37,40 +37,40 @@ typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写�
 
 [tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
 optional = true
-path = "packages/tools/cargo-nextest-0.9.87-aarch64-unknown-linux-gnu.tar.gz"
+path = "tools/cargo-nextest-0.9.87-aarch64-unknown-linux-gnu.tar.gz"
 version = "0.9.87"
 
 [tools.target.x86_64-pc-windows-gnu.cargo-nextest]
 optional = true
-path = "packages/tools/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip"
+path = "tools/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip"
 version = "0.9.87"
 
 [tools.target.x86_64-pc-windows-gnu.mingw64]
-path = "packages/tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"
+path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"
 required = true
 version = "14.2.0-rt_v12-rev0"
 
 [tools.target.x86_64-pc-windows-gnu.typos]
 optional = true
-path = "packages/tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
+path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
 version = "1.28.4"
 
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
 optional = true
-path = "packages/tools/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip"
+path = "tools/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip"
 version = "0.9.87"
 
 [tools.target.x86_64-pc-windows-msvc.typos]
 optional = true
-path = "packages/tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
+path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
 version = "1.28.4"
 
 [tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
 optional = true
-path = "packages/tools/cargo-nextest-0.9.87-x86_64-unknown-linux-gnu.tar.gz"
+path = "tools/cargo-nextest-0.9.87-x86_64-unknown-linux-gnu.tar.gz"
 version = "0.9.87"
 
 [tools.target.x86_64-unknown-linux-gnu.typos]
 optional = true
-path = "packages/tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
+path = "tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
 version = "1.28.4"

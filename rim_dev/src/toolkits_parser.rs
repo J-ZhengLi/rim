@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
+use std::fs;
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
@@ -22,8 +23,10 @@ pub(crate) struct Toolkits {
 }
 
 impl Toolkits {
-    pub(crate) fn parse(raw: &str) -> Result<Self> {
-        Ok(toml::from_str(raw)?)
+    pub(crate) fn load() -> Result<Self> {
+        let toolkits_path = resources_dir().join("toolkits.toml");
+        let toolkits_content = fs::read_to_string(toolkits_path)?;
+        Ok(toml::from_str(&toolkits_content)?)
     }
 }
 
@@ -65,7 +68,6 @@ fn default_package_dir() -> PathBuf {
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-#[allow(dead_code)]
 pub(crate) enum Target {
     Simple(String),
     Detailed {
@@ -82,9 +84,15 @@ impl Target {
             Self::Detailed { triple, .. } => triple,
         }
     }
+    pub(crate) fn release_mode(&self) -> Option<ReleaseMode> {
+        match self {
+            Self::Simple(_) => None,
+            Self::Detailed { release_mode, .. } => *release_mode,
+        }
+    }
 }
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum ReleaseMode {
     Cli,
@@ -188,6 +196,31 @@ impl Toolkit {
             .as_str()
             .expect("invalid version format");
         Some(ver)
+    }
+
+    /// Try getting the **toolkit's** actual name.
+    ///
+    /// # Panic
+    /// Panic when this toolkit manifest is invalid.
+    pub(crate) fn name(&self) -> Option<&str> {
+        let ver = self
+            .manifest()
+            .unwrap()
+            .get("name")?
+            .as_str()
+            .expect("invalid version format");
+        Some(ver)
+    }
+
+    /// Get the full name of this toolkit, which is the combination of
+    /// its name and version.
+    pub(crate) fn full_name(&self) -> String {
+        format!(
+            "{}{}",
+            self.name().unwrap_or("UnknownToolkit"),
+            self.version().map(|s| format!("-{s}")).unwrap_or_default()
+        )
+        .replace(' ', "-")
     }
 
     /// Try getting the version of rust, which is specified as `[rust.version]`.

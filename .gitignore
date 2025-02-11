@@ -11,6 +11,7 @@ example_project/
 
 # Local stored packages that are too big
 resources/packages/*
+resources/vendor/*
 # Template file with long text (*.template files are compressed, which is fine)
 resources/templates/*
 !resources/templates/*.template

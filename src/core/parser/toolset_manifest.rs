@@ -147,17 +147,17 @@ impl ToolsetManifest {
     /// Get the path to bundled `rustup-init` binary if there has one.
     pub fn rustup_bin(&self) -> Result<Option<PathBuf>> {
         let cur_target = env!("TARGET");
-        let par_dir = self.parent_dir()?;
+        let par_dir = self.package_root()?;
         let rel_path = self.rust.rustup.get(cur_target);
 
         Ok(rel_path.map(|p| par_dir.join(p)))
     }
 
     pub fn offline_dist_server(&self) -> Result<Option<Url>> {
-        let par_dir = self.parent_dir()?;
         let Some(server) = &self.rust.offline_dist_server else {
             return Ok(None);
         };
+        let par_dir = self.package_root()?;
         let full_path = par_dir.join(server);
 
         Url::from_directory_path(&full_path)
@@ -259,18 +259,42 @@ impl ToolsetManifest {
             .collect()
     }
 
-    /// The parent directory of this manifest.
+    /// Returns the absolute path of the package root.
     ///
-    /// If this manifest is baked in, the parent dir will be the same as the parent
-    /// of current binary.
+    /// A package root is:
+    /// - The folder to store tools' packages such as `tools/hello-world.tar.xz`, etc.
+    /// - The folder to store local rustup dist server such as `toolchain/`, where all
+    ///     the rust installer stuffs stored, such as `toolchain/channel-rust-x.xx.x.toml`.
+    /// - Usually the parent directory of this manifest file.
     ///
-    /// Otherwise, if this manifest was loaded from a path, the parent dir will be the parent
-    /// of that path.
-    fn parent_dir(&self) -> Result<PathBuf> {
+    /// Note: In `release` build, because this program has an embedded toolkit manifest,
+    /// therefore it assumes the parent directory of this running binary as the package root.
+    /// But in `debug` build, because we have cached all those packages inside of
+    /// `resource/packages` folder, we will be assuming it as the pacakge root.
+    fn package_root(&self) -> Result<PathBuf> {
         let res = if let Some(p) = &self.path {
             p.to_path_buf()
         } else if env!("PROFILE") == "debug" {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources")
+            let mut dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            dir.push("resources");
+            dir.push("packages");
+            dir.push(format!(
+                "{}{}",
+                self.name.as_deref().unwrap_or("UnknownToolkit"),
+                self.version
+                    .as_ref()
+                    .map(|s| format!("-{s}"))
+                    .unwrap_or_default()
+            ));
+            dir.push(env!("TARGET"));
+            if !dir.is_dir() {
+                anyhow::bail!(
+                    "package root '{}' does not exists, \
+                perhaps you forgot to run `cargo dev vendor`?",
+                    dir.display()
+                );
+            }
+            dir
         } else {
             std::env::current_exe()?
                 .parent()
@@ -293,7 +317,7 @@ impl ToolsetManifest {
     /// Return `Result::Err` if the manifest was not loaded from path, and the current executable path
     /// cannot be determined as well.
     pub fn adjust_paths(&mut self) -> Result<()> {
-        let parent_dir = self.parent_dir()?;
+        let parent_dir = self.package_root()?;
 
         for tool in self.tools.target.values_mut() {
             for tool_info in tool.values_mut() {

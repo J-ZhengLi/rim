@@ -1,22 +1,18 @@
-#[macro_use]
-extern crate rust_i18n;
-
 mod common;
 mod dist;
 mod mocked;
 mod toolkits_parser;
 mod vendor;
 
-use anyhow::Result;
-use dist::{DistMode, DIST_HELP};
+use anyhow::{anyhow, Result};
+use dist::DIST_HELP;
 use mocked::{installation, manager, server};
 use std::env;
 use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use toolkits_parser::ReleaseMode;
 use vendor::{VendorMode, VENDOR_HELP};
-
-i18n!("../locales", fallback = "en");
 
 const HELP: &str = r#"
 Usage: cargo dev [OPTIONS] [COMMAND]
@@ -55,8 +51,10 @@ Options:
 #[derive(Debug)]
 enum DevCmd {
     Dist {
-        mode: DistMode,
+        mode: ReleaseMode,
         binary_only: bool,
+        targets: Vec<String>,
+        name: Option<String>,
     },
     RunManager {
         no_gui: bool,
@@ -76,7 +74,12 @@ enum DevCmd {
 impl DevCmd {
     fn execute(self) -> Result<()> {
         match self {
-            Self::Dist { mode, binary_only } => dist::dist(mode, binary_only)?,
+            Self::Dist {
+                mode,
+                binary_only,
+                targets,
+                name,
+            } => dist::dist(mode, binary_only, targets, name)?,
             Self::RunManager { no_gui, args } => {
                 // a mocked server is needed to run most of function in manager
                 server::generate_rim_server_files()?;
@@ -121,7 +124,9 @@ fn main() -> Result<ExitCode> {
         }
         "d" | "dist" => {
             let mut binary_only = false;
-            let mut mode = DistMode::Both;
+            let mut mode = ReleaseMode::Both;
+            let mut targets = vec![];
+            let mut name = None;
 
             while let Some(arg) = args.next().as_deref() {
                 match arg {
@@ -129,13 +134,24 @@ fn main() -> Result<ExitCode> {
                         writeln!(&mut stdout, "{DIST_HELP}")?;
                         return Ok(ExitCode::SUCCESS);
                     }
-                    "--cli" => mode = DistMode::Cli,
-                    "--gui" => mode = DistMode::Gui,
+                    "-n" | "--name" => name = args.next(),
+                    "-t" | "--target" => targets.extend(
+                        args.next()
+                            .map(|t| t.split(',').map(ToOwned::to_owned).collect::<Vec<_>>())
+                            .ok_or_else(|| anyhow!("expected a value for `target`"))?,
+                    ),
+                    "--cli" => mode = ReleaseMode::Cli,
+                    "--gui" => mode = ReleaseMode::Gui,
                     "-b" | "--binary-only" => binary_only = true,
                     _ => (),
                 }
             }
-            DevCmd::Dist { mode, binary_only }
+            DevCmd::Dist {
+                mode,
+                binary_only,
+                targets,
+                name,
+            }
         }
         "vendor" => {
             let mut name = None;

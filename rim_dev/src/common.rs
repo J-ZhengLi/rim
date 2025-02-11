@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::fs;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Duration;
@@ -9,26 +9,6 @@ use anyhow::{anyhow, bail, Context, Result};
 
 // NB: If we end up using too many util functions from `rim`,
 // consider separate the `utils` module as a separated crate.
-/// Copy file or directory into an existing directory.
-pub fn copy_into<P, Q>(from: P, to: Q) -> Result<PathBuf>
-where
-    P: AsRef<Path>,
-    Q: AsRef<Path>,
-{
-    if !to.as_ref().is_dir() {
-        bail!("'{}' is not a directory", to.as_ref().display());
-    }
-
-    let dest = to.as_ref().join(from.as_ref().file_name().ok_or_else(|| {
-        anyhow!(
-            "path '{}' does not have a file name",
-            from.as_ref().display()
-        )
-    })?);
-
-    copy_as(from, &dest)?;
-    Ok(dest)
-}
 
 /// Copy file or directory to a specified path.
 pub fn copy_as<P, Q>(from: P, to: Q) -> Result<()>
@@ -206,6 +186,40 @@ where
         tar.append_dir_all(name, src.as_ref())?;
     }
     tar.finish()?;
+    Ok(())
+}
+
+pub fn compress_zip<S, D>(src: S, dest: D) -> Result<()>
+where
+    S: AsRef<Path>,
+    D: AsRef<Path>,
+{
+    use zip::write::SimpleFileOptions;
+
+    let zip_file = fs::File::create(dest)?;
+    let mut zip = zip::ZipWriter::new(zip_file);
+
+    let options = SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        // in case the file is too large
+        .large_file(true)
+        .unix_permissions(0o755);
+
+    for path in walk_dir(src.as_ref(), true)? {
+        let name = path.strip_prefix(src.as_ref())?;
+
+        if path.is_file() {
+            let mut file = fs::File::open(&path)?;
+            let mut buffer = Vec::new();
+            file.read_to_end(&mut buffer)?;
+            zip.start_file(name.to_string_lossy(), options)?;
+            zip.write_all(&buffer)?;
+        } else if path.is_dir() {
+            zip.add_directory(name.to_string_lossy(), options)?;
+        }
+    }
+
+    zip.finish()?;
     Ok(())
 }
 

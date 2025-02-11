@@ -1,0 +1,21 @@
+# 简体中文
+## 安装指南
+
+如果您的系统具有桌面环境，您可以直接双击 `installer` 可执行文件以启动安装程序。
+
+如果您的系统不具备图形界面，请在终端中运行以下命令以启动命令行安装程序：`./installer-cli`
+
+## 错误报告
+
+安装日志存储于 `./log` 文件夹。如果在安装过程中遇到任何问题，欢迎前往本项目的代码仓库提交 Issue 进行反馈： https://gitcode.com/xuanwu/custom-rust-dist/issues
+
+# EN
+## How to install
+
+If you have a desktop environment, just double click the `installer` binary to execute the installer.
+
+If you are running on a system that does not have graphical interface, run the commandline executable with `./installer-cli`
+
+## Bug reporting
+
+Installation log could be found at `./log` folder, if you encounter any problem while running the installer, you are welcome to create new issue at this project's repository: https://gitcode.com/xuanwu/custom-rust-dist/issues.
