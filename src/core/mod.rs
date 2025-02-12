@@ -85,19 +85,11 @@ impl GlobalOpts {
     }
 
     /// Get the stored global options.
-    ///
-    /// # Panic
-    /// Will panic if `Self` has not been initialized, make sure [`GlobalOpts::new`] is called
-    /// prior to this call.
     pub(crate) fn get() -> &'static Self {
-        if let Some(opts) = GLOBAL_OPTS.get() {
-            opts
-        } else {
-            GLOBAL_OPTS.get_or_init(|| {
-                warn!("no running options set, fallback to using default options");
-                GlobalOpts::default()
-            })
-        }
+        GLOBAL_OPTS.get_or_init(|| {
+            // no running options set, fallback to default
+            GlobalOpts::default()
+        })
     }
 
     /// Return `true` if either one of `no-modify-path` or `no-modify-env` was set to `true`

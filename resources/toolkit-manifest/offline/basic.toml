@@ -5,10 +5,10 @@ name = "XuanWu Rust Development Kit"
 version = "stable v1.81.0"
 
 [rust]
-components = ["clippy", "rustfmt", "rust-src", "rust-docs"]
+components = ["clippy", "rustfmt", "rust-src"]
 group = "Rust"
 offline-dist-server = "toolchain"
-optional-components = ["llvm-tools", "rustc-dev"]
+optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
 version = "1.81.0"
 
 [rust.profile]
@@ -27,6 +27,7 @@ x86_64-unknown-linux-musl = "tools/rustup-init"
 [tools.descriptions]
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
 mingw64 = "(windows only) Requirement for Windows GNU toolchain"
+rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser useing the `rustup doc` command"
 rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
 
 [tools.group]

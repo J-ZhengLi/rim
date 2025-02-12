@@ -5,10 +5,10 @@ name = "Rust 中国社区一站式开发套件"
 version = "stable v1.84.1"
 
 [rust]
-components = ["clippy", "rustfmt", "rust-src", "rust-docs"]
+components = ["clippy", "rustfmt", "rust-src"]
 group = "Rust 基础工具集"
 offline-dist-server = "toolchain"
-optional-components = ["llvm-tools", "rustc-dev"]
+optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
 version = "1.84.1"
 
 [rust.profile]
@@ -28,17 +28,53 @@ x86_64-unknown-linux-musl = "tools/rustup-init"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
 llvm-tools = "包含 LLVM 工具的集合"
 mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
+rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个; 仅当开发链接到编译器的工具时才需要它, 例如对 Clippy 进行修改"
 typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
+vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
+"vscode-rust-analyzer (插件)" = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 编辑器提供代码补全、跳转到定义 等功能，提升 Rust 开发体验。"
 
 [tools.group]
+"Rust 优选工具集" = ["typos", "cargo-nextest"]
 "Rust 基础工具集" = ["mingw64"]
-"Rust 软件开发工具链" = ["typos", "cargo-nextest"]
+"Rust 软件开发工具链" = ["vscode", "vscode-rust-analyzer (插件)"]
 
 [tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
 optional = true
 path = "tools/cargo-nextest-0.9.87-aarch64-unknown-linux-gnu.tar.gz"
 version = "0.9.87"
+
+[tools.target.aarch64-unknown-linux-gnu.typos]
+identifier = "typos-cli"
+optional = true
+ver = "1.28.4"
+
+[tools.target.aarch64-unknown-linux-gnu.vscode]
+optional = true
+path = "tools/stable"
+version = "1.97.1"
+
+[tools.target.aarch64-unknown-linux-gnu."vscode-rust-analyzer (插件)"]
+path = "tools/rust-analyzer-linux-arm64.vsix"
+version = "0.3.2299"
+
+[tools.target.aarch64-unknown-linux-musl.cargo-nextest]
+optional = true
+ver = "0.9.87"
+
+[tools.target.aarch64-unknown-linux-musl.typos]
+identifier = "typos-cli"
+optional = true
+ver = "1.28.4"
+
+[tools.target.aarch64-unknown-linux-musl.vscode]
+optional = true
+path = "tools/stable"
+version = "1.97.1"
+
+[tools.target.aarch64-unknown-linux-musl."vscode-rust-analyzer (插件)"]
+path = "tools/rust-analyzer-linux-arm64.vsix"
+version = "0.3.2299"
 
 [tools.target.x86_64-pc-windows-gnu.cargo-nextest]
 optional = true
@@ -55,6 +91,14 @@ optional = true
 path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
 version = "1.28.4"
 
+[tools.target.x86_64-pc-windows-gnu.vscode]
+path = "tools/stable"
+version = "1.97.1"
+
+[tools.target.x86_64-pc-windows-gnu."vscode-rust-analyzer (插件)"]
+path = "tools/rust-analyzer-win32-x64.vsix"
+version = "0.3.2299"
+
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
 optional = true
 path = "tools/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip"
@@ -65,6 +109,14 @@ optional = true
 path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
 version = "1.28.4"
 
+[tools.target.x86_64-pc-windows-msvc.vscode]
+path = "tools/stable"
+version = "1.97.1"
+
+[tools.target.x86_64-pc-windows-msvc."vscode-rust-analyzer (插件)"]
+path = "tools/rust-analyzer-win32-x64.vsix"
+version = "0.3.2299"
+
 [tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
 optional = true
 path = "tools/cargo-nextest-0.9.87-x86_64-unknown-linux-gnu.tar.gz"
@@ -74,3 +126,30 @@ version = "0.9.87"
 optional = true
 path = "tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
 version = "1.28.4"
+
+[tools.target.x86_64-unknown-linux-gnu.vscode]
+optional = true
+path = "tools/stable"
+version = "1.97.1"
+
+[tools.target.x86_64-unknown-linux-gnu."vscode-rust-analyzer (插件)"]
+path = "tools/rust-analyzer-linux-x64.vsix"
+version = "0.3.2299"
+
+[tools.target.x86_64-unknown-linux-musl.cargo-nextest]
+optional = true
+ver = "0.9.87"
+
+[tools.target.x86_64-unknown-linux-musl.typos]
+optional = true
+path = "tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
+version = "1.28.4"
+
+[tools.target.x86_64-unknown-linux-musl.vscode]
+optional = true
+path = "tools/stable"
+version = "1.97.1"
+
+[tools.target.x86_64-unknown-linux-musl."vscode-rust-analyzer (插件)"]
+path = "tools/rust-analyzer-linux-x64.vsix"
+version = "0.3.2299"

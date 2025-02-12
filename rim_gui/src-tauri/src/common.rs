@@ -253,16 +253,16 @@ impl FrontendFunctionPayload {
 
 /// Build the main window with shared configuration.
 pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String>) -> Result<()> {
-    let (label, url, visible) = if AppInfo::is_manager() {
+    let mut visible = true;
+    let (label, url) = if AppInfo::is_manager() {
         let opt = handle_manager_cli_args(manager);
-        let visible = !opt.silent;
-        (MANAGER_WINDOW_LABEL, "index.html/#/manager".into(), visible)
+        if opt.silent {
+            info!("manager launched in silent mode");
+            visible = false;
+        }
+        (MANAGER_WINDOW_LABEL, "index.html/#/manager".into())
     } else {
-        (
-            INSTALLER_WINDOW_LABEL,
-            "index.html/#/installer".into(),
-            true,
-        )
+        (INSTALLER_WINDOW_LABEL, "index.html/#/installer".into())
     };
 
     let window = tauri::WindowBuilder::new(manager, label, tauri::WindowUrl::App(url))
@@ -289,11 +289,31 @@ struct CliOpt {
     silent: bool,
 }
 
+macro_rules! cli_value {
+    ($m:ident[$key:literal].$f:ident) => {{
+        $m.args
+            .get($key)
+            .unwrap_or_else(|| panic!("argument '{}' does not exists", $key))
+            .value
+            .$f()
+            .unwrap_or_default()
+    }};
+}
+
+impl From<tauri::api::cli::Matches> for CliOpt {
+    fn from(value: tauri::api::cli::Matches) -> Self {
+        Self {
+            silent: cli_value!(value["silent"].as_bool),
+        }
+    }
+}
+
 fn handle_manager_cli_args(app: &mut App) -> CliOpt {
     let Ok(matches) = app.get_cli_matches() else {
         return CliOpt::default();
     };
-    let silent = matches.args.contains_key("silent");
+    // log raw args
+    info!("application started with args: {:?}", &matches.args);
 
-    CliOpt { silent }
+    CliOpt::from(matches)
 }

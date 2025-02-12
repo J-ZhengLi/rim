@@ -14,7 +14,9 @@ pub const DEFAULT_UPDATE_CHECK_DURATION: Duration =
     Duration::from_secs(60 * DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES);
 
 fn default_autostart_policy() -> bool {
-    true
+    // We don't have a setting for auto-start yet,
+    // therefore it'd better to disable auto-start by default so it won't annoys the user.
+    false
 }
 
 #[derive(Debug, Deserialize, Serialize)]

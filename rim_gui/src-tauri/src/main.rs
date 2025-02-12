@@ -80,7 +80,7 @@ fn handle_autostart() -> Result<()> {
 
     if allow_autostart {
         auto.enable()?;
-    } else {
+    } else if auto.is_enabled().unwrap_or_default() {
         auto.disable()?;
     }
     Ok(())
