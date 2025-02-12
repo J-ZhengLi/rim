@@ -200,7 +200,10 @@ where
     let mut zip = zip::ZipWriter::new(zip_file);
 
     let options = SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated)
+        // NB (J-ZhengLi): Other methods appear to have a bug that causing
+        // `channel-rust.xxx.sha256` fails to extract by Windows's native zip program.
+        // https://github.com/zip-rs/zip2/issues/291
+        .compression_method(zip::CompressionMethod::Stored)
         // in case the file is too large
         .large_file(true)
         .unix_permissions(0o755);

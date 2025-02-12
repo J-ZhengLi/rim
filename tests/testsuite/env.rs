@@ -6,7 +6,7 @@ fn target_override() {
 
     println!("target: {target}");
 
-    if let Ok(override_target) = std::env::var("HOST_TRIPPLE") {
+    if let Ok(override_target) = std::env::var("HOST_TRIPLE") {
         assert_eq!(override_target, target);
         return;
     }

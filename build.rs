@@ -1,6 +1,6 @@
 use std::env;
 
-const TARGET_OVERRIDE_ENV: &str = "HOST_TRIPPLE";
+const TARGET_OVERRIDE_ENV: &str = "HOST_TRIPLE";
 const EDITION_OVERRIDE_ENV: &str = "EDITION";
 /// Default toolkit edition, such as `basic`, `community`, more to come.
 const DEFAULT_EDITION: &str = "basic";
@@ -8,6 +8,7 @@ const FILES_TO_TRIGGER_REBUILD: &[&str] = &["locales/en.json", "locales/zh-CN.js
 
 fn main() {
     println!("cargo:rerun-if-env-changed={TARGET_OVERRIDE_ENV}");
+    println!("cargo:rerun-if-env-changed={EDITION_OVERRIDE_ENV}");
     for file in FILES_TO_TRIGGER_REBUILD {
         println!("cargo:rerun-if-changed={file}");
     }

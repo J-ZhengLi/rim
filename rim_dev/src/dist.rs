@@ -16,8 +16,8 @@ Usage: cargo dev dist [OPTIONS]
 Options:
         --cli       Generate release binary for CLI mode only
         --gui       Generate release binary for GUI mode only
-    -n, --name      Choose a toolkit name to distribute, defaulting to `basic`
-    -t, --target    Specify a target to distribute, defaulting to current target
+    -t, --target    Specify another target to distribute, defaulting to current target
+    -n, --name      Specify another name of toolkit to distribute
     -b, --binary-only
                     Build binary only (net-installer), skip offline package generation
     -h, -help       Print this help message
@@ -31,19 +31,26 @@ Options:
 struct DistWorker<'a> {
     is_cli: bool,
     toolkit: &'a Toolkit,
+    target: &'a str,
+    edition: &'a str,
 }
 
 impl<'a> DistWorker<'a> {
-    fn new_(toolkit: &'a Toolkit, is_cli: bool) -> Self {
-        Self { toolkit, is_cli }
+    fn new_(toolkit: &'a Toolkit, target: &'a str, is_cli: bool, edition: &'a str) -> Self {
+        Self {
+            toolkit,
+            target,
+            is_cli,
+            edition,
+        }
     }
 
-    fn cli(toolkit: &'a Toolkit) -> Self {
-        Self::new_(toolkit, true)
+    fn cli(toolkit: &'a Toolkit, target: &'a str, edition: &'a str) -> Self {
+        Self::new_(toolkit, target, true, edition)
     }
 
-    fn gui(toolkit: &'a Toolkit) -> Self {
-        Self::new_(toolkit, false)
+    fn gui(toolkit: &'a Toolkit, target: &'a str, edition: &'a str) -> Self {
+        Self::new_(toolkit, target, false, edition)
     }
 
     /// The compiled binary name
@@ -57,28 +64,37 @@ impl<'a> DistWorker<'a> {
 
     /// The binary name that user see.
     ///
-    /// `simple` - the simple version of binary name, no toolkit info.
+    /// `simple` - the simple version of binary name, just `installer`.
     fn dest_binary_name(&self, simple: bool) -> String {
         format!(
-            "{}installer{}{EXE_SUFFIX}",
+            "{}installer{}{}{EXE_SUFFIX}",
             (!simple)
                 .then_some(format!("{}-", self.toolkit.full_name().replace(' ', "-")))
                 .unwrap_or_default(),
             self.is_cli.then_some("-cli").unwrap_or_default(),
+            (!simple)
+                .then_some(format!("-{}", self.target))
+                .unwrap_or_default()
         )
     }
 
-    fn build_args(&self, target: &'a str, noweb: bool) -> Vec<&'a str> {
+    fn build_args(&self, noweb: bool, host_target_differ: bool) -> Vec<&'a str> {
         if self.is_cli {
-            let mut base = vec!["build", "--release", "--locked", "--target", target];
+            let mut base = vec!["build", "--release", "--locked"];
             if noweb {
                 base.extend(["--features", "no-web"]);
             }
+            if !host_target_differ {
+                base.extend(["--target", self.target]);
+            }
             base
         } else {
-            let mut base = vec!["tauri", "build", "-b", "none", "--target", target];
+            let mut base = vec!["tauri", "build", "-b", "none"];
             if noweb {
                 base.extend(["--features", "no-web"]);
+            }
+            if !host_target_differ {
+                base.extend(["--target", self.target]);
             }
             base.extend(["--", "--locked"]);
             base
@@ -87,22 +103,31 @@ impl<'a> DistWorker<'a> {
 
     /// Run build command, move the built binary into a spefic location,
     /// then return the path to that location.
-    fn build_binary(&self, target: &str, noweb: bool) -> Result<PathBuf> {
+    fn build_binary(&self, noweb: bool) -> Result<PathBuf> {
         let dest_dir = if noweb {
-            dist_dir()?.join(format!("{}-{target}", self.toolkit.full_name()))
+            dist_dir()?.join(format!("{}-{}", self.toolkit.full_name(), self.target))
         } else {
             dist_dir()?
         };
         ensure_dir(&dest_dir)?;
 
+        // HACK: supports packaging for a target that is different than the one that
+        // rim is compiled with.
+        let host_target_differ = env!("BUILD_TARGET_OVERRIDEN") == "true";
+
         let mut cmd = Command::new("cargo");
-        cmd.env("HOST_TRIPPLE", target);
-        cmd.args(self.build_args(target, noweb));
+        cmd.env("HOST_TRIPLE", self.target);
+        cmd.env("EDITION", self.edition);
+        cmd.args(self.build_args(noweb, host_target_differ));
 
         let status = cmd.status()?;
         if status.success() {
+            // when host's target is different than the terget we are building with,
+            // such as `windows-gnu`, we can't run `cargo build` with target specified,
+            // therefore the release dir's path will not have a target in it.
+            let src = release_dir((!host_target_differ).then_some(self.target))
+                .join(self.source_binary_name());
             // copy and rename the binary with vendor name
-            let src = release_dir(target).join(self.source_binary_name());
             let to = dest_dir.join(self.dest_binary_name(noweb));
             copy(src, to)?;
         } else {
@@ -111,21 +136,21 @@ impl<'a> DistWorker<'a> {
         Ok(dest_dir)
     }
 
-    fn dist_net_installer(&self, target: &str) -> Result<()> {
-        self.build_binary(target, false)?;
+    fn dist_net_installer(&self) -> Result<()> {
+        self.build_binary(false)?;
         Ok(())
     }
 
     /// Build binary and copy the vendored packages into a specify location,
     /// then return the path that contains binary and packages.
-    fn dist_noweb_installer(&self, target: &str) -> Result<PathBuf> {
-        let dist_pkg_dir = self.build_binary(target, true)?;
+    fn dist_noweb_installer(&self) -> Result<PathBuf> {
+        let dist_pkg_dir = self.build_binary(true)?;
 
         // Copy packages to dest dir as well
         let src_pkg_dir = resources_dir()
             .join(PACKAGE_DIR)
             .join(self.toolkit.full_name())
-            .join(target);
+            .join(self.target);
 
         // copy the vendored packages to dist folder
         if !src_pkg_dir.exists() {
@@ -147,12 +172,12 @@ pub fn dist(
     mut targets: Vec<String>,
     name: Option<String>,
 ) -> Result<()> {
-    let name = name.as_deref().unwrap_or("basic");
+    let edition = name.as_deref().unwrap_or(env!("EDITION"));
     let toolkits = Toolkits::load()?;
     let toolkit = toolkits
         .toolkit
-        .get(name)
-        .ok_or_else(|| anyhow::anyhow!("toolkit '{name}' does not exists in `toolkits.toml`"))?;
+        .get(edition)
+        .ok_or_else(|| anyhow::anyhow!("toolkit '{edition}' does not exists in `toolkits.toml`"))?;
 
     if !matches!(mode, ReleaseMode::Cli) {
         install_gui_deps();
@@ -183,19 +208,19 @@ pub fn dist(
         };
 
         match mode {
-            ReleaseMode::Cli => workers.push(DistWorker::cli(toolkit)),
-            ReleaseMode::Gui => workers.push(DistWorker::gui(toolkit)),
+            ReleaseMode::Cli => workers.push(DistWorker::cli(toolkit, target, edition)),
+            ReleaseMode::Gui => workers.push(DistWorker::gui(toolkit, target, edition)),
             ReleaseMode::Both => {
-                workers.push(DistWorker::cli(toolkit));
-                workers.push(DistWorker::gui(toolkit));
+                workers.push(DistWorker::cli(toolkit, target, edition));
+                workers.push(DistWorker::gui(toolkit, target, edition));
             }
         }
 
         let mut offline_dist_dir = None;
         for worker in workers {
-            worker.dist_net_installer(target)?;
+            worker.dist_net_installer()?;
             if !binary_only {
-                offline_dist_dir = Some(worker.dist_noweb_installer(target)?);
+                offline_dist_dir = Some(worker.dist_noweb_installer()?);
             }
         }
 
@@ -232,12 +257,16 @@ fn compress_offline_package(dir: &Path, name: &str, target: &str) -> Result<()> 
 }
 
 /// Path to target release directory
-fn release_dir(target: &str) -> PathBuf {
-    env::var("CARGO_TARGET_DIR")
+fn release_dir(target: Option<&str>) -> PathBuf {
+    let mut res = env::var("CARGO_TARGET_DIR")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("target"))
-        .join(target)
-        .join("release")
+        .unwrap_or_else(|_| PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("target"));
+    if let Some(t) = target {
+        res.push(t);
+    }
+    res.push("release");
+
+    res
 }
 
 fn dist_dir() -> Result<PathBuf> {

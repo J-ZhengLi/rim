@@ -4,13 +4,12 @@ set -e
 
 dist_for() {
     target=$1
-    name=$2
 
     echo "Caching offline packages for $target"
-    cargo dev vendor --target $target --name $name
+    cargo dev vendor --target $target
 
     echo "Generating dist package for $target"
-    cargo dev dist --target $target --name $name
+    cargo dev dist --target $target
 }
 
 # 安装 Rust
@@ -31,10 +30,10 @@ if [[ -z "$HOST_TRIPLE" ]]; then
     exit 1
 fi
 
-dist_for $HOST_TRIPLE community
+dist_for $HOST_TRIPLE
 
 # dist for GNU as well if running on `msvc` abi
 if [[ $HOST_TRIPLE == *"windows-msvc"* ]]; then
     gnu=$(echo "$HOST_TRIPLE" | sed 's/msvc$/gnu/')
-    dist_for $gnu community
+    dist_for $gnu
 fi

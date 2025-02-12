@@ -287,13 +287,6 @@ impl ToolsetManifest {
                     .unwrap_or_default()
             ));
             dir.push(env!("TARGET"));
-            if !dir.is_dir() {
-                anyhow::bail!(
-                    "package root '{}' does not exists, \
-                perhaps you forgot to run `cargo dev vendor`?",
-                    dir.display()
-                );
-            }
             dir
         } else {
             std::env::current_exe()?
@@ -1131,14 +1124,18 @@ no-proxy = "localhost,some.domain.com"
     #[test]
     fn with_offline_dist_server() {
         let input = r#"
+name = "kit"
 [rust]
 version = "1.0.0"
 offline-dist-server = "packages/"
 "#;
         let expected = ToolsetManifest::from_str(input).unwrap();
-        let expected_offline_dist_server = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("resources")
-            .join("packages/");
+            .join("packages")
+            .join("kit")
+            .join(env!("TARGET"))
+            .join("packages");
         assert_eq!(
             expected
                 .offline_dist_server()
@@ -1146,31 +1143,34 @@ offline-dist-server = "packages/"
                 .unwrap()
                 .to_file_path()
                 .unwrap(),
-            expected_offline_dist_server
+            path
         );
     }
 
     #[test]
     fn with_bundled_rustup() {
         let input = r#"
+name = "kit"
 [rust]
 version = "1.0.0"
 [rust.rustup]
-x86_64-pc-windows-msvc = "packages/x86_64-pc-windows-msvc/rustup-init.exe"
-x86_64-pc-windows-gnu = "packages/x86_64-pc-windows-gnu/rustup-init.exe"
-x86_64-unknown-linux-gnu = "packages/x86_64-unknown-linux-gnu/rustup-init"
+x86_64-pc-windows-msvc = "tools/rustup-init.exe"
+x86_64-pc-windows-gnu = "tools/rustup-init.exe"
+x86_64-unknown-linux-gnu = "tools/rustup-init"
 "#;
         let expected = ToolsetManifest::from_str(input).unwrap();
 
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("resources");
+        path.push("packages");
+        path.push("kit");
         cfg_if::cfg_if! {
             if #[cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "msvc"))] {
-                path.push("packages/x86_64-pc-windows-msvc/rustup-init.exe");
+                path.push("x86_64-pc-windows-msvc/tools/rustup-init.exe");
             } else if #[cfg(all(target_arch = "x86_64", target_os = "windows", target_env = "gnu"))] {
-                path.push("packages/x86_64-pc-windows-gnu/rustup-init.exe");
+                path.push("x86_64-pc-windows-gnu/tools/rustup-init.exe");
             } else if #[cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))] {
-                path.push("packages/x86_64-unknown-linux-gnu/rustup-init");
+                path.push("x86_64-unknown-linux-gnu/tools/rustup-init");
             } else {
                 assert_eq!(expected.rustup_bin().unwrap(), None);
                 return;

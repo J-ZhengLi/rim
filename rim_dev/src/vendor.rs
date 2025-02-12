@@ -16,8 +16,8 @@ Split `toolkits.toml` and download packages specified in it for offline packagin
 Usage: cargo dev vendor [OPTIONS]
 
 Options:
-    -n, --name      Name of the toolkit to vendor for, if not provided, all toolkits will be vendored
-    -t, --target    Specify a target when downloading packages, defaulting to current running target
+    -n, --name      Specify another name of toolkit to download packages for
+    -t, --target    Specify another target when downloading packages, defaulting to current running target
     -a, --all-targets
                     Download packages for all supporting targets
         --download-only
@@ -76,10 +76,7 @@ pub(super) fn vendor(
 }
 
 fn toolkit_needs_downloading(toolkit_name: &str, name_to_dl: Option<&str>) -> bool {
-    match name_to_dl {
-        Some(s) => s == toolkit_name,
-        None => true,
-    }
+    toolkit_name == name_to_dl.unwrap_or(env!("EDITION"))
 }
 
 fn target_needs_downloading(target: &str, target_to_dl: Option<&str>, all_targets: bool) -> bool {
