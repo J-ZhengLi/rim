@@ -113,7 +113,8 @@ impl<'a> DistWorker<'a> {
 
         // HACK: supports packaging for a target that is different than the one that
         // rim is compiled with.
-        let host_target_differ = env!("BUILD_TARGET_OVERRIDEN") == "true";
+        let host_target_differ =
+            env!("BUILD_TARGET_OVERRIDEN") == "true" || self.target != env!("TARGET");
 
         let mut cmd = Command::new("cargo");
         cmd.env("HOST_TRIPLE", self.target);

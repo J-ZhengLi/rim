@@ -1,5 +1,3 @@
-ARG EDITION
-
 # 使用 Ubuntu 20.04 作为基础镜像
 FROM ubuntu:20.04
 
@@ -39,6 +37,5 @@ RUN chmod +x /scripts/install-tauri-cli.sh && \
     /scripts/install-tauri-cli.sh
 
 # 执行项目构建
-ENV EDITION $EDITION
 CMD cargo dev vendor && \
     cargo dev dist
