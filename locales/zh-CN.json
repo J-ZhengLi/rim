@@ -107,7 +107,6 @@
     "self_update_available": "检测到管理工具更新",
     "toolkit_update_available": "检测到开发套件更新",
     "skip_version": "跳过此版本",
-    "close": "关闭",
     "ask_self_update": "检测到最新管理器版本: %{latest}\n当前运行版本: %{current}\n是否现在更新?",
     "ask_toolkit_update": "检测到最新开发套件版本: %{latest}\n当前已安装: %{current}\n是否现在更新?",
     "self_update_complete": "更新完成! 为避免产生不必要的问题, 如果您正在使用此工具的图形界面版, 请关闭当前窗口并重新运行此应用程序。",

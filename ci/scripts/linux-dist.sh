@@ -32,7 +32,7 @@ docker_dir="ci/docker"
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
     dockerfile="$docker_dir/$image/Dockerfile"
     # build docker image.
-    docker buildx build --network host --rm -t rim-ci -f "$dockerfile" .
+    docker buildx build --network host --rm -t rim-ci -f "$dockerfile" --build-arg EDITION=$EDITION .
 else
     echo "Invalid docker image: $image"
 fi

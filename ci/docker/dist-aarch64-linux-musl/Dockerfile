@@ -1,3 +1,5 @@
+ARG EDITION
+
 # 使用 Ubuntu 20.04 版本作为基础镜像
 FROM ubuntu:20.04
 
@@ -6,17 +8,17 @@ ENV DEBIAN_FRONTEND=noninteractive
 # 更新系统并安装必要的软件包
 RUN apt-get update && \
     apt-get install -y \
-      build-essential \
-      curl \
-      wget \
-      file \
-      libssl-dev \
-      libgtk-3-dev \
-      libwebkit2gtk-4.0-dev \
-      libappindicator3-dev \
-      librsvg2-dev \
-      perl \
-      git
+    build-essential \
+    curl \
+    wget \
+    file \
+    libssl-dev \
+    libgtk-3-dev \
+    libwebkit2gtk-4.0-dev \
+    libappindicator3-dev \
+    librsvg2-dev \
+    perl \
+    git
 
 # 安装 musl gcc
 COPY ci/scripts/install-musl-gcc.sh /scripts/
@@ -31,7 +33,7 @@ RUN chmod +x /scripts/install-rust.sh && \
 ENV PATH=$PATH:/root/.cargo/bin
 
 RUN rustup target add aarch64-unknown-linux-musl
-ENV HOST_TRIPPLE aarch64-unknown-linux-musl
+ENV HOST_TRIPLE aarch64-unknown-linux-musl
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER aarch64-linux-musl-gcc
 
 # 安装 Node.js 18.x
@@ -46,5 +48,6 @@ RUN chmod +x /scripts/install-tauri-cli.sh && \
     /scripts/install-tauri-cli.sh
 
 # 执行项目构建
+ENV EDITION $EDITION
 CMD cargo dev vendor && \
     cargo dev dist --cli

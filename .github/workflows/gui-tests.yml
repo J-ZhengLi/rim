@@ -55,28 +55,3 @@ jobs:
         run: cargo clippy --no-deps -p rim-gui -- -D warnings
       - name: run tests
         run: cargo test -p rim-gui --verbose
-
-  try-build:
-    env:
-      CI_JOB_NAME: "${{ matrix.name }}"
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: dist-x86-64-linux-gnu
-            os: ubuntu-20.04
-            target: x86_64-unknown-linux-gnu
-
-          - name: dist-windows-msvc
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            target-gnu: x86_64-pc-windows-gnu
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: run build job
-        run: bash ci/run.sh

@@ -8,6 +8,9 @@ use rim::utils::Extractable;
 use rim_test_support::prelude::*;
 use rim_test_support::project::ProjectBuilder;
 
+// Clear the mocked server once to make sure it's always up-to-date
+static CLEAR_OBSCURE_MOCKED_SERVER_ONCE: OnceLock<()> = OnceLock::new();
+
 fn mocked_dist_server() -> &'static str {
     static DIST_SERVER: OnceLock<String> = OnceLock::new();
     DIST_SERVER.get_or_init(|| {
@@ -17,6 +20,9 @@ fn mocked_dist_server() -> &'static str {
             .unwrap()
             .with_file_name("mocked")
             .join("rustup-server");
+        CLEAR_OBSCURE_MOCKED_SERVER_ONCE.get_or_init(|| {
+            _ = std::fs::remove_dir_all(&rustup_server);
+        });
         if !rustup_server.is_dir() {
             // make sure the template file exists
             let templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
