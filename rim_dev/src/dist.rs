@@ -87,13 +87,13 @@ impl<'a> DistWorker<'a> {
         )
     }
 
-    fn build_args(&self, noweb: bool, host_target_differ: bool) -> Vec<&'a str> {
+    fn build_args(&self, noweb: bool, cross_compile: bool) -> Vec<&'a str> {
         if self.is_cli {
             let mut base = vec!["build", "--release", "--locked"];
             if noweb {
                 base.extend(["--features", "no-web"]);
             }
-            if !host_target_differ {
+            if cross_compile {
                 base.extend(["--target", self.target]);
             }
             base
@@ -102,7 +102,7 @@ impl<'a> DistWorker<'a> {
             if noweb {
                 base.extend(["--features", "no-web"]);
             }
-            if !host_target_differ {
+            if cross_compile {
                 base.extend(["--target", self.target]);
             }
             base.extend(["--", "--locked"]);
@@ -119,23 +119,24 @@ impl<'a> DistWorker<'a> {
             ensure_dir(&dest_dir)?;
         }
 
-        // HACK: supports packaging for a target that is different than the one that
-        // rim is compiled with.
-        let host_target_differ =
-            env!("BUILD_TARGET_OVERRIDEN") == "true" || self.target != env!("TARGET");
+        // HACK: Our CI only has cross compilation for linux, so we assume windows doesn't need
+        // it for now, but this is not a long term solution.
+        #[cfg(windows)]
+        let cross_compile = false;
+        #[cfg(not(windows))]
+        let cross_compile = true;
 
         let mut cmd = Command::new("cargo");
         cmd.env("HOST_TRIPLE", self.target);
         cmd.env("EDITION", self.edition);
-        cmd.args(self.build_args(noweb, host_target_differ));
+        cmd.args(self.build_args(noweb, cross_compile));
 
         let status = cmd.status()?;
         if status.success() {
-            // when host's target is different than the terget we are building with,
-            // such as `windows-gnu`, we can't run `cargo build` with target specified,
-            // therefore the release dir's path will not have a target in it.
-            let src = release_dir((!host_target_differ).then_some(self.target))
-                .join(self.source_binary_name());
+            // when not using cross comilation, we are not running `cargo build` with
+            // `--target` option, therefore the release dir's path will not have a target in it.
+            let src =
+                release_dir(cross_compile.then_some(self.target)).join(self.source_binary_name());
             // copy and rename the binary with vendor name
             let to = dest_dir.join(self.dest_binary_name(noweb));
             copy(src, to)?;

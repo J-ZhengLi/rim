@@ -16,14 +16,11 @@ fn main() {
     // this env was set by cargo, it's guaranteed to be present.
     let build_target = env::var("TARGET").unwrap();
     let host_triple = env::var(TARGET_OVERRIDE_ENV);
-    let mut differ = false;
     if let Ok(triple) = &host_triple {
         if triple != &build_target {
-            differ = true;
             println!("cargo::warning=overriding target triple from '{build_target}' to '{triple}'");
         }
     }
-    println!("cargo:rustc-env=BUILD_TARGET_OVERRIDEN={differ}");
     println!(
         "cargo:rustc-env=TARGET={}",
         host_triple.unwrap_or(build_target)
