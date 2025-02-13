@@ -45,16 +45,30 @@ pub(super) enum VendorMode {
     SplitOnly,
 }
 
-impl VendorMode {
-    fn write_manifest(&self, path: &Path, content: &str) -> Result<()> {
-        if !matches!(self, Self::DownloadOnly) {
-            fs::write(path, content)?;
-        }
-        Ok(())
+/// Helper struct to combine all options that passed from CLI.
+struct VendorArgs {
+    mode: VendorMode,
+    name: Option<String>,
+    target: Option<String>,
+    /// Whether packages of all supported targets should be downloaded.
+    all_targets: bool,
+}
+
+impl VendorArgs {
+    fn should_download_for_target(&self, target: &str) -> bool {
+        !matches!(self.mode, VendorMode::SplitOnly)
+            && (self.all_targets || self.target.as_deref().unwrap_or(env!("TARGET")) == target)
     }
 
-    fn download(&self, url: &str, path: &Path) -> Result<()> {
-        download_unless_exists(url, path)?;
+    fn should_download(&self, toolkit_name: &str, target: &str) -> bool {
+        self.should_download_for_target(target)
+            && self.name.as_deref().unwrap_or(env!("EDITION")) == toolkit_name
+    }
+
+    fn write_manifest_if_needed(&self, path: &Path, content: &str) -> Result<()> {
+        if !matches!(self.mode, VendorMode::DownloadOnly) {
+            fs::write(path, content)?;
+        }
         Ok(())
     }
 }
@@ -65,26 +79,14 @@ pub(super) fn vendor(
     target: Option<String>,
     all_targets: bool,
 ) -> Result<()> {
-    let mut toolkits = Toolkits::load()?;
-    gen_manifest_and_download_packages(
+    let args = VendorArgs {
         mode,
-        &mut toolkits,
-        name.as_deref(),
-        target.as_deref(),
+        name,
+        target,
         all_targets,
-    )
-}
-
-fn toolkit_needs_downloading(toolkit_name: &str, name_to_dl: Option<&str>) -> bool {
-    toolkit_name == name_to_dl.unwrap_or(env!("EDITION"))
-}
-
-fn target_needs_downloading(target: &str, target_to_dl: Option<&str>, all_targets: bool) -> bool {
-    if all_targets {
-        return true;
-    }
-    let target_to_dl = target_to_dl.unwrap_or(env!("TARGET"));
-    target_to_dl == target
+    };
+    let mut toolkits = Toolkits::load()?;
+    gen_manifest_and_download_packages(&args, &mut toolkits)
 }
 
 /// Reads the `toolkits` value, and:
@@ -94,13 +96,7 @@ fn target_needs_downloading(target: &str, target_to_dl: Option<&str>, all_target
 /// - In `DownloadOnly` mode, this will just try download the packages to
 ///     specific location, and will not split `toolkits` into `toolkit-manifest`s.
 /// - In `Regular` mode, this does both things above.
-fn gen_manifest_and_download_packages(
-    mode: VendorMode,
-    toolkits: &mut Toolkits,
-    name_to_dl: Option<&str>,
-    target_to_dl: Option<&str>,
-    all_targets: bool,
-) -> Result<()> {
+fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits) -> Result<()> {
     let toolkit_manifests_dir = resources_dir().join("toolkit-manifest");
     let online_manifests_dir = toolkit_manifests_dir.join("online");
     let offline_manifests_dir = toolkit_manifests_dir.join("offline");
@@ -108,8 +104,6 @@ fn gen_manifest_and_download_packages(
     ensure_dir(&offline_manifests_dir)?;
 
     for (name, toolkit) in &mut toolkits.toolkit {
-        let toolkit_needs_downloading = toolkit_needs_downloading(name, name_to_dl);
-
         let toolkit_root = toolkits.config.abs_package_dir().join(toolkit.full_name());
 
         // spliting online manifest is easy, because every manifest section was
@@ -118,7 +112,7 @@ fn gen_manifest_and_download_packages(
         let online_manifest = toolkit.manifest_string()?;
         let online_manifest_path = online_manifests_dir.join(format!("{name}.toml"));
         let online_manifest_content = format!("{TOOLSET_MANIFEST_HEADER}{online_manifest}");
-        mode.write_manifest(&online_manifest_path, &online_manifest_content)?;
+        args.write_manifest_if_needed(&online_manifest_path, &online_manifest_content)?;
 
         // offline manifest need some extra steps,
         // first we need to find the `[tools.target]` section,
@@ -128,30 +122,35 @@ fn gen_manifest_and_download_packages(
         let offline_manifest_path = offline_manifests_dir.join(format!("{name}.toml"));
         if let Some(targeted_tools) = toolkit.targeted_tools_mut() {
             for (target, tool) in targeted_tools {
+                let Some(tool_info) = tool.as_table_mut() else {
+                    continue;
+                };
                 let tools_dir = toolkit_root.join(target).join(TOOLS_DIRNAME);
 
-                if let Some(tool_info) = tool.as_table_mut() {
-                    for (_name, info) in tool_info {
-                        let Some(info_table) = info.as_table_mut() else {
-                            continue;
+                for (_name, info) in tool_info {
+                    let Some(info_table) = info.as_table_mut() else {
+                        continue;
+                    };
+                    if let Some(url) = info_table.get("url").and_then(|v| v.as_str()) {
+                        let filename = if let Some(name) =
+                            info_table.get("filename").and_then(|v| v.as_str())
+                        {
+                            name
+                        } else {
+                            url.rsplit_once("/")
+                                .ok_or_else(|| anyhow!("missing filename for URL: {url}"))?
+                                .1
                         };
-                        if let Some(url) = info_table.get("url").and_then(|v| v.as_str()) {
-                            let (_, filename) = url
-                                .rsplit_once("/")
-                                .ok_or_else(|| anyhow!("missing filename for URL: {url}"))?;
+                        let rel_path = format!("{TOOLS_DIRNAME}/{filename}");
+
+                        if args.should_download(name, target) {
                             let dest = tools_dir.join(filename);
-                            let rel_path = format!("{TOOLS_DIRNAME}/{filename}");
-
-                            if toolkit_needs_downloading
-                                && target_needs_downloading(target, target_to_dl, all_targets)
-                            {
-                                ensure_parent_dir(&dest)?;
-                                mode.download(url, &dest)?;
-                            }
-
-                            info_table.remove("url");
-                            info_table.insert("path".into(), toml::Value::String(rel_path));
+                            ensure_parent_dir(&dest)?;
+                            download(url, &dest)?;
                         }
+
+                        info_table.remove("url");
+                        info_table.insert("path".into(), toml::Value::String(rel_path));
                     }
                 }
             }
@@ -173,9 +172,7 @@ fn gen_manifest_and_download_packages(
             };
             let value = format!("{TOOLS_DIRNAME}/rustup-init{suffix}");
 
-            if toolkit_needs_downloading
-                && target_needs_downloading(triple, target_to_dl, all_targets)
-            {
+            if args.should_download(name, triple) {
                 let rustup_init = format!("rustup-init{suffix}");
                 let url = format!(
                     "{}/dist/{triple}/{rustup_init}",
@@ -184,7 +181,7 @@ fn gen_manifest_and_download_packages(
                 let tools_dir = toolkit_root.join(triple).join(TOOLS_DIRNAME);
                 ensure_dir(&tools_dir)?;
                 let dest = tools_dir.join(rustup_init);
-                mode.download(&url, &dest)?;
+                download(&url, &dest)?;
             }
 
             rustup_sources.insert(triple.into(), Value::String(value));
@@ -195,21 +192,25 @@ fn gen_manifest_and_download_packages(
         );
 
         // Download rust-toolchain component packages if necessary
-        if !matches!(mode, VendorMode::SplitOnly) && toolkit_needs_downloading {
-            let toolchain_ver = toolkit.rust_version();
+        for target in &toolkits.config.targets {
+            let triple = target.triple();
+            if !args.should_download(name, triple) {
+                continue;
+            }
+
             download_toolchain_components(
                 &toolkits.config,
                 &toolkit_root,
-                toolchain_ver,
+                toolkit.rust_version(),
                 toolkit.date(),
-                target_to_dl,
-                all_targets,
+                triple,
+                args,
             )?;
         }
 
         let offline_manifest = toolkit.manifest_string()?;
         let offline_manifest_content = format!("{TOOLSET_MANIFEST_HEADER}{offline_manifest}");
-        mode.write_manifest(&offline_manifest_path, &offline_manifest_content)?;
+        args.write_manifest_if_needed(&offline_manifest_path, &offline_manifest_content)?;
     }
     Ok(())
 }
@@ -219,73 +220,55 @@ fn download_toolchain_components(
     root: &Path,
     version: &str,
     date: &str,
-    target_to_dl: Option<&str>,
-    all_targets: bool,
+    triple: &str,
+    args: &VendorArgs,
 ) -> Result<()> {
-    let targets = &config.targets;
     let components = &config.components;
 
-    for triple in targets.iter().map(|t| t.triple()) {
-        if !target_needs_downloading(triple, target_to_dl, all_targets) {
-            continue;
-        }
+    let toolchain_dir = root.join(triple).join(TOOLCHAIN_DIRNAME).join("dist");
+    let date_dir = toolchain_dir.join(date);
+    ensure_dir(&date_dir)?;
 
-        let toolchain_dir = root.join(triple).join(TOOLCHAIN_DIRNAME).join("dist");
-        let date_dir = toolchain_dir.join(date);
-        ensure_dir(&date_dir)?;
+    // download channel manifest first
+    let manifest_name = format!("channel-rust-{version}.toml");
+    let manifest_hash_name = format!("{manifest_name}.sha256");
+    let manifest_src = config.rust_dist_url(&manifest_name);
+    let manifest_hash_src = format!("{manifest_src}.sha256");
+    let manifest_dest = toolchain_dir.join(manifest_name);
+    let manifest_hash_dest = toolchain_dir.join(manifest_hash_name);
+    download(&manifest_src, &manifest_dest)?;
+    download(&manifest_hash_src, &manifest_hash_dest)?;
 
-        // download channel manifest first
-        let manifest_name = format!("channel-rust-{version}.toml");
-        let manifest_hash_name = format!("{manifest_name}.sha256");
-        let manifest_src = config.rust_dist_url(&manifest_name);
-        let manifest_hash_src = format!("{manifest_src}.sha256");
-        let manifest_dest = toolchain_dir.join(manifest_name);
-        let manifest_hash_dest = toolchain_dir.join(manifest_hash_name);
-        download_unless_exists(&manifest_src, &manifest_dest)?;
-        download_unless_exists(&manifest_hash_src, &manifest_hash_dest)?;
+    for component in components {
+        let comp_name = match component {
+            Component::Simple(name) => format!("{name}-{version}-{triple}.tar.xz"),
+            Component::Detailed {
+                name,
+                target,
+                wildcard_target,
+                excluded_targets,
+            } => {
+                if excluded_targets.contains(triple) {
+                    continue;
+                }
 
-        for component in components {
-            let comp_name = match component {
-                Component::Simple(name) => format!("{name}-{version}-{triple}.tar.xz"),
-                Component::Detailed {
-                    name,
-                    target,
-                    wildcard_target,
-                    excluded_targets,
-                } => {
-                    if excluded_targets.contains(triple) {
+                if *wildcard_target {
+                    format!("{name}-{version}.tar.xz")
+                } else if let Some(tg) = target {
+                    if !args.should_download_for_target(tg) {
                         continue;
                     }
-
-                    if *wildcard_target {
-                        format!("{name}-{version}.tar.xz")
-                    } else if let Some(tg) = target {
-                        if !target_needs_downloading(tg, target_to_dl, all_targets) {
-                            continue;
-                        }
-                        format!("{name}-{version}-{tg}.tar.xz")
-                    } else {
-                        format!("{name}-{version}-{triple}.tar.xz")
-                    }
+                    format!("{name}-{version}-{tg}.tar.xz")
+                } else {
+                    format!("{name}-{version}-{triple}.tar.xz")
                 }
-            };
-            // let comp_hash_name = format!("{comp_name}.sha256");
+            }
+        };
 
-            let pkg_src = config.rust_dist_url(&format!("{date}/{comp_name}"));
-            // let sha_src = config.rust_dist_url(&format!("{date}/{comp_name}.sha256"));
-            let pkg_dest = date_dir.join(&comp_name);
-            // let sha_dest = date_dir.join(&comp_hash_name);
-            download_unless_exists(&pkg_src, &pkg_dest)?;
-            // download_unless_exists(&sha_src, &sha_dest)?;
-        }
+        let pkg_src = config.rust_dist_url(&format!("{date}/{comp_name}"));
+        let pkg_dest = date_dir.join(&comp_name);
+        download(&pkg_src, &pkg_dest)?;
     }
 
-    Ok(())
-}
-
-fn download_unless_exists(src: &str, dest: &Path) -> Result<()> {
-    if !dest.is_file() {
-        download(src, dest)?;
-    }
     Ok(())
 }

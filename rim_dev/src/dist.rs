@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 
 use crate::common::*;
 use crate::toolkits_parser::{ReleaseMode, Toolkit, Toolkits, PACKAGE_DIR};
@@ -62,19 +62,28 @@ impl<'a> DistWorker<'a> {
         }
     }
 
+    fn release_name(&self) -> String {
+        format!(
+            "{}-{}-{}",
+            t!("vendor_en"),
+            self.toolkit
+                .version()
+                .unwrap_or(self.toolkit.rust_version()),
+            self.target
+        )
+        .replace(' ', "-")
+    }
+
     /// The binary name that user see.
     ///
     /// `simple` - the simple version of binary name, just `installer`.
     fn dest_binary_name(&self, simple: bool) -> String {
         format!(
-            "{}installer{}{}{EXE_SUFFIX}",
+            "{}installer{}{EXE_SUFFIX}",
             (!simple)
-                .then_some(format!("{}-", self.toolkit.full_name().replace(' ', "-")))
+                .then_some(format!("{}-", self.release_name()))
                 .unwrap_or_default(),
             self.is_cli.then_some("-cli").unwrap_or_default(),
-            (!simple)
-                .then_some(format!("-{}", self.target))
-                .unwrap_or_default()
         )
     }
 
@@ -104,12 +113,11 @@ impl<'a> DistWorker<'a> {
     /// Run build command, move the built binary into a spefic location,
     /// then return the path to that location.
     fn build_binary(&self, noweb: bool) -> Result<PathBuf> {
-        let dest_dir = if noweb {
-            dist_dir()?.join(format!("{}-{}", self.toolkit.full_name(), self.target))
-        } else {
-            dist_dir()?
-        };
-        ensure_dir(&dest_dir)?;
+        let mut dest_dir = dist_dir()?;
+        if noweb {
+            dest_dir.push(self.release_name());
+            ensure_dir(&dest_dir)?;
+        }
 
         // HACK: supports packaging for a target that is different than the one that
         // rim is compiled with.
@@ -231,7 +239,7 @@ pub fn dist(
             // the reason why we compress it here after `dist_noweb_installer` in the previous
             // loop is because there's no need to pack it multiple times for `cli` and `gui`,
             // if the only difference is the installer binary, this could save tons of time.
-            compress_offline_package(&dir, &toolkit.full_name(), target)?;
+            compress_offline_package(&dir, target)?;
             fs::remove_dir_all(&dir)?;
         }
     }
@@ -246,12 +254,19 @@ fn include_readme(dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn compress_offline_package(dir: &Path, name: &str, target: &str) -> Result<()> {
+fn compress_offline_package(dir: &Path, target: &str) -> Result<()> {
+    let filename = dir.file_name().and_then(|n| n.to_str()).with_context(|| {
+        format!(
+            "directory to compress does not have valid name: {}",
+            dir.display()
+        )
+    })?;
+
     if target.contains("windows") {
-        let dest = dist_dir()?.join(format!("{name}-{target}.zip"));
+        let dest = dist_dir()?.join(format!("{filename}.zip"));
         compress_zip(dir, dest)?;
     } else {
-        let dest = dist_dir()?.join(format!("{name}-{target}.tar.xz"));
+        let dest = dist_dir()?.join(format!("{filename}.tar.xz"));
         compress_xz(dir, dest)?;
     }
     Ok(())

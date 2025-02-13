@@ -302,15 +302,20 @@ impl<'a> InstallConfiguration<'a> {
             ToolInfo::Path { path, .. } => self.try_install_from_path(name, tool_ver, path)?,
             // TODO: Have a dedicated download folder, do not use temp dir to store downloaded artifacts,
             // so then we can have the `resume download` feature.
-            ToolInfo::Url { url, .. } => {
+            ToolInfo::Url { url, filename, .. } => {
                 let temp_dir = self.create_temp_dir("download")?;
-                let downloaded_file_name = url
-                    .path_segments()
-                    .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
-                    .last()
-                    // Sadly, a path segment could be empty string, so we need to filter that out
-                    .filter(|seg| !seg.is_empty())
-                    .ok_or_else(|| anyhow!("'{url}' doesn't appear to be a downloadable file"))?;
+                let downloaded_file_name = if let Some(name) = filename {
+                    name
+                } else {
+                    url.path_segments()
+                        .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
+                        .last()
+                        // Sadly, a path segment could be empty string, so we need to filter that out
+                        .filter(|seg| !seg.is_empty())
+                        .ok_or_else(|| {
+                            anyhow!("'{url}' doesn't appear to be a downloadable file")
+                        })?
+                };
                 let dest = temp_dir.path().join(downloaded_file_name);
                 utils::DownloadOpt::new(name)
                     .with_proxy(self.manifest.proxy.clone())

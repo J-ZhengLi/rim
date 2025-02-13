@@ -3621,6 +3621,7 @@ dependencies = [
  "cfg-if",
  "indexmap 2.5.0",
  "reqwest",
+ "rust-i18n",
  "serde",
  "sha2",
  "tar",

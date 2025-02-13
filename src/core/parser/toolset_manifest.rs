@@ -483,6 +483,7 @@ pub enum ToolInfo {
         #[serde(default)]
         optional: bool,
         identifier: Option<String>,
+        filename: Option<String>,
     },
 }
 
@@ -617,6 +618,7 @@ mod tests {
                 required: false,
                 optional: false,
                 identifier: None,
+                filename: None,
             }
         };
         ($git:literal, $branch:expr, $tag:expr, $rev:expr) => {

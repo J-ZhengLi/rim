@@ -50,8 +50,9 @@ optional = true
 ver = "1.28.4"
 
 [tools.target.aarch64-unknown-linux-gnu.vscode]
+filename = "vscode.tar.gz"
 optional = true
-path = "tools/stable"
+path = "tools/vscode.tar.gz"
 version = "1.97.1"
 
 [tools.target.aarch64-unknown-linux-gnu."vscode-rust-analyzer (插件)"]
@@ -68,8 +69,9 @@ optional = true
 ver = "1.28.4"
 
 [tools.target.aarch64-unknown-linux-musl.vscode]
+filename = "vscode.tar.gz"
 optional = true
-path = "tools/stable"
+path = "tools/vscode.tar.gz"
 version = "1.97.1"
 
 [tools.target.aarch64-unknown-linux-musl."vscode-rust-analyzer (插件)"]
@@ -92,7 +94,8 @@ path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
 version = "1.28.4"
 
 [tools.target.x86_64-pc-windows-gnu.vscode]
-path = "tools/stable"
+filename = "vscode.zip"
+path = "tools/vscode.zip"
 version = "1.97.1"
 
 [tools.target.x86_64-pc-windows-gnu."vscode-rust-analyzer (插件)"]
@@ -110,7 +113,8 @@ path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
 version = "1.28.4"
 
 [tools.target.x86_64-pc-windows-msvc.vscode]
-path = "tools/stable"
+filename = "vscode.zip"
+path = "tools/vscode.zip"
 version = "1.97.1"
 
 [tools.target.x86_64-pc-windows-msvc."vscode-rust-analyzer (插件)"]
@@ -128,8 +132,9 @@ path = "tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
 version = "1.28.4"
 
 [tools.target.x86_64-unknown-linux-gnu.vscode]
+filename = "vscode.tar.gz"
 optional = true
-path = "tools/stable"
+path = "tools/vscode.tar.gz"
 version = "1.97.1"
 
 [tools.target.x86_64-unknown-linux-gnu."vscode-rust-analyzer (插件)"]
@@ -146,8 +151,9 @@ path = "tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
 version = "1.28.4"
 
 [tools.target.x86_64-unknown-linux-musl.vscode]
+filename = "vscode.tar.gz"
 optional = true
-path = "tools/stable"
+path = "tools/vscode.tar.gz"
 version = "1.97.1"
 
 [tools.target.x86_64-unknown-linux-musl."vscode-rust-analyzer (插件)"]

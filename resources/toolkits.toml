@@ -104,39 +104,39 @@ cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo te
 "Rust 软件开发工具链" = ["vscode", "vscode-rust-analyzer (插件)"]
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
-"vscode" = { version = "1.97.1", url = "https://update.code.visualstudio.com/1.97.1/win32-x64-archive/stable" }
+"vscode" = { version = "1.97.1", filename = "vscode.zip", url = "https://update.code.visualstudio.com/1.97.1/win32-x64-archive/stable" }
 "vscode-rust-analyzer (插件)" = { version = "0.3.2299", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2025-02-10/rust-analyzer-win32-x64.vsix" }
 mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z" }
 cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.28.4", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.28.4-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
-"vscode" = { version = "1.97.1", url = "https://update.code.visualstudio.com/1.97.1/win32-x64-archive/stable" }
+"vscode" = { version = "1.97.1", filename = "vscode.zip", url = "https://update.code.visualstudio.com/1.97.1/win32-x64-archive/stable" }
 "vscode-rust-analyzer (插件)" = { version = "0.3.2299", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2025-02-10/rust-analyzer-win32-x64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.28.4", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.28.4-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
 # Make vscode optional on Linux, because not everyone has desktop environment, we might add such check later but entil then, this is the safetest option
-"vscode" = { optional = true, version = "1.97.1", url = "https://update.code.visualstudio.com/1.97.1/linux-x64/stable" }
+"vscode" = { optional = true, version = "1.97.1", filename = "vscode.tar.gz", url = "https://update.code.visualstudio.com/1.97.1/linux-x64/stable" }
 "vscode-rust-analyzer (插件)" = { version = "0.3.2299", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2025-02-10/rust-analyzer-linux-x64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-x86_64-unknown-linux-gnu.tar.gz" }
 typos = { optional = true, version = "1.28.4", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-musl]
-"vscode" = { optional = true, version = "1.97.1", url = "https://update.code.visualstudio.com/1.97.1/linux-x64/stable" }
+"vscode" = { optional = true, version = "1.97.1", filename = "vscode.tar.gz", url = "https://update.code.visualstudio.com/1.97.1/linux-x64/stable" }
 "vscode-rust-analyzer (插件)" = { version = "0.3.2299", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2025-02-10/rust-analyzer-linux-x64.vsix" }
 cargo-nextest = { optional = true, ver = "0.9.87" }
 typos = { optional = true, version = "1.28.4", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz" }
 
 [toolkit.community.value.tools.target.aarch64-unknown-linux-gnu]
-"vscode" = { optional = true, version = "1.97.1", url = "https://update.code.visualstudio.com/1.97.1/linux-arm64/stable" }
+"vscode" = { optional = true, version = "1.97.1", filename = "vscode.tar.gz", url = "https://update.code.visualstudio.com/1.97.1/linux-arm64/stable" }
 "vscode-rust-analyzer (插件)" = { version = "0.3.2299", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2025-02-10/rust-analyzer-linux-arm64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.87", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.87-aarch64-unknown-linux-gnu.tar.gz" }
 typos = { optional = true, ver = "1.28.4", identifier = "typos-cli" }
 
 [toolkit.community.value.tools.target.aarch64-unknown-linux-musl]
-"vscode" = { optional = true, version = "1.97.1", url = "https://update.code.visualstudio.com/1.97.1/linux-arm64/stable" }
+"vscode" = { optional = true, version = "1.97.1", filename = "vscode.tar.gz", url = "https://update.code.visualstudio.com/1.97.1/linux-arm64/stable" }
 "vscode-rust-analyzer (插件)" = { version = "0.3.2299", url = "https://github.com/rust-lang/rust-analyzer/releases/download/2025-02-10/rust-analyzer-linux-arm64.vsix" }
 cargo-nextest = { optional = true, ver = "0.9.87" }
 typos = { optional = true, ver = "1.28.4", identifier = "typos-cli" }

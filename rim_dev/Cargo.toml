@@ -9,6 +9,7 @@ anyhow.workspace = true
 cfg-if.workspace = true
 indexmap.workspace = true
 reqwest.workspace = true
+rust-i18n.workspace = true
 serde.workspace = true
 sha2 = "0.10"
 tar.workspace = true

@@ -226,8 +226,12 @@ where
     Ok(())
 }
 
-/// Download a file from `url` to local disk.
+/// Download a file from `url` to local disk, do nothing if it already exists.
 pub fn download<P: AsRef<Path>>(url: &str, dest: P) -> Result<()> {
+    if dest.as_ref().is_file() {
+        return Ok(());
+    }
+
     println!("downloading: {url}");
     let resp = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(180))
