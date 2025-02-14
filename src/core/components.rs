@@ -73,14 +73,14 @@ pub(crate) fn all_components_from_installation(
         ToolsetManifest::load_from_install_dir()?.current_target_components(false)?;
 
     // components that are installed by rim previously.
-    let installed_toolchain = record.installed_toolchain().map(|(name, _)| name);
+    let installed_toolchain = record.installed_toolchain();
     let installed_tools: HashSet<&str> = record.installed_tools().collect();
 
     for comp in &mut full_components {
         if comp.is_toolchain_component {
-            if let Some(tc) = installed_toolchain {
+            if let Some((tc, install_comps)) = installed_toolchain {
                 comp.version = Some(tc.into());
-                comp.installed = true;
+                comp.installed = install_comps.iter().any(|c| c == &comp.name);
             }
             continue;
         }

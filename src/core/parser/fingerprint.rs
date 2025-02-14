@@ -141,13 +141,10 @@ impl InstallationRecord {
 
     /// Returns the rust toolchain channel name (such as `stable`, `nightly`, `1.80.1`, etc.),
     /// and an iterator of installed components.
-    pub fn installed_toolchain(&self) -> Option<(&str, impl Iterator<Item = &str>)> {
-        self.rust.as_ref().map(|rr| {
-            (
-                rr.version.as_str(),
-                rr.components.iter().map(|s| s.as_str()),
-            )
-        })
+    pub fn installed_toolchain(&self) -> Option<(&str, &[String])> {
+        self.rust
+            .as_ref()
+            .map(|rr| (rr.version.as_str(), rr.components.as_slice()))
     }
 
     pub(crate) fn print_installation(&self) -> String {

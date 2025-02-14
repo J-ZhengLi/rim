@@ -13,6 +13,10 @@
         {
           "name": "silent",
           "short": "s"
+        },
+        {
+          "name": "rustup-dist-server",
+          "takesValue": true
         }
       ]
     },

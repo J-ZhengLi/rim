@@ -2,7 +2,7 @@ use std::{
     path::PathBuf,
     sync::{
         mpsc::{self, Receiver},
-        LazyLock, Mutex,
+        LazyLock, Mutex, OnceLock,
     },
     thread::{self, JoinHandle},
     time::Duration,
@@ -24,6 +24,7 @@ use tauri::{App, Window};
 #[allow(clippy::type_complexity)]
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
     LazyLock::new(|| Mutex::new(vec![]));
+static CLI_OPT: OnceLock<CliOpt> = OnceLock::new();
 
 #[derive(Clone, serde::Serialize)]
 pub(crate) struct SingleInstancePayload {
@@ -118,8 +119,11 @@ pub(crate) fn install_toolkit_in_new_thread(
         let progress = Progress::new(&pos_cb);
 
         // TODO: Use continuous progress
-        let config = InstallConfiguration::new(&install_dir, &manifest)?
+        let mut config = InstallConfiguration::new(&install_dir, &manifest)?
             .with_progress_indicator(Some(progress));
+        if let Some(rustup_dist_server) = get_cli().rustup_dist_server.as_deref() {
+            config = config.with_rustup_dist_server(rustup_dist_server.parse()?);
+        }
         if is_update {
             config.update(components_list)?;
         } else {
@@ -255,7 +259,7 @@ impl FrontendFunctionPayload {
 pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String>) -> Result<()> {
     let mut visible = true;
     let (label, url) = if AppInfo::is_manager() {
-        let opt = handle_manager_cli_args(manager);
+        let opt = handle_cli_args(manager);
         if opt.silent {
             info!("manager launched in silent mode");
             visible = false;
@@ -287,6 +291,11 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
 struct CliOpt {
     /// Launching the app without showing the main window.
     silent: bool,
+    rustup_dist_server: Option<String>,
+}
+
+fn get_cli() -> &'static CliOpt {
+    CLI_OPT.get_or_init(CliOpt::default)
 }
 
 macro_rules! cli_value {
@@ -296,24 +305,28 @@ macro_rules! cli_value {
             .unwrap_or_else(|| panic!("argument '{}' does not exists", $key))
             .value
             .$f()
-            .unwrap_or_default()
     }};
 }
 
 impl From<tauri::api::cli::Matches> for CliOpt {
     fn from(value: tauri::api::cli::Matches) -> Self {
         Self {
-            silent: cli_value!(value["silent"].as_bool),
+            silent: cli_value!(value["silent"].as_bool).unwrap_or_default(),
+            rustup_dist_server: cli_value!(value["rustup-dist-server"].as_str)
+                .map(ToOwned::to_owned),
         }
     }
 }
 
-fn handle_manager_cli_args(app: &mut App) -> CliOpt {
+fn handle_cli_args(app: &mut App) -> &'static CliOpt {
     let Ok(matches) = app.get_cli_matches() else {
-        return CliOpt::default();
+        return get_cli();
     };
     // log raw args
     info!("application started with args: {:?}", &matches.args);
 
-    CliOpt::from(matches)
+    CLI_OPT
+        .set(CliOpt::from(matches))
+        .expect("unable to to set CLI options");
+    get_cli()
 }

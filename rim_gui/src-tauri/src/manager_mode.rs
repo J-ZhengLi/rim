@@ -72,11 +72,18 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     Ok(())
 }
 
-// In manager mode, we don't want to close the window completely,
+// In manager mode, we normally don't want to close the window completely,
 // instead we should just "hide" it (unless it fails),
 // so that we can later show it after user clicks the tray icon.
+//
+// Unless this function was called with an exit code, which indicates that
+// we should exit the program completely.
 #[tauri::command]
-fn close_window(window: tauri::Window) {
+fn close_window(window: tauri::Window, code: Option<i32>) {
+    if let Some(code) = code {
+        window.app_handle().exit(code);
+        return;
+    }
     if let Err(e) = window.hide() {
         log::error!(
             "unable to hide the main window '{MANAGER_WINDOW_LABEL}', \
@@ -413,7 +420,7 @@ fn system_tray_event_handler(app: &AppHandle, event: SystemTrayEvent) {
 fn window_event_handler(event: GlobalWindowEvent) {
     if let WindowEvent::CloseRequested { api, .. } = event.event() {
         api.prevent_close();
-        close_window(event.window().clone());
+        close_window(event.window().clone(), None);
     }
 }
 

@@ -8,7 +8,7 @@ const isUninstallManger = computed(() => managerConf.getUninstallManager());
 
 function closeOrReturn() {
   if (isUninstallManger.value) {
-    invokeCommand('close_window');
+    invokeCommand('close_window', { code: 0 });
   } else {
     // FIXME: refresh `kit` list, since the `installed` kit should no longer exist after uninstallation.
     routerPush('/manager');
