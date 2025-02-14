@@ -7,10 +7,16 @@ export interface Component {
   installed: boolean;
   desc: string;
   groupName: string | null;
-  isToolchainComponent: boolean;
+  kind: ComponentType;
   toolInstaller?: {
     required: boolean;
     optional: boolean;
     path?: string;
   };
+}
+
+export enum ComponentType {
+  Tool = "Tool",
+  ToolchainComponent = "ToolchainComponent",
+  ToolchainProfile = "ToolchainProfile",
 }

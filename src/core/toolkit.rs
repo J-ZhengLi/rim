@@ -51,13 +51,13 @@ impl Toolkit {
         }
 
         let fp = InstallationRecord::load_from_install_dir()?;
+        let Some(name) = fp.name.clone() else {
+            return Ok(None);
+        };
         let components = components::all_components_from_installation(&fp)?;
 
         let tk = Self {
-            name: fp
-                .name
-                .clone()
-                .unwrap_or_else(|| t!("unknown_toolkit").to_string()),
+            name,
             version: fp.version.as_deref().unwrap_or("N/A").to_string(),
             desc: None,
             info: None,

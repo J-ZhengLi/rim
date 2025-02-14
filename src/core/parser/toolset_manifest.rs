@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use url::Url;
 
-use crate::components::Component;
+use crate::components::{Component, ComponentType};
 use crate::core::custom_instructions;
-use crate::utils;
+use crate::{setter, utils};
 
 use super::TomlParser;
 
@@ -24,6 +24,24 @@ use super::TomlParser;
 /// the needs of tools' installation and uninstallation.
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
 pub struct ToolMap(IndexMap<String, ToolInfo>);
+
+/// A Rust toolchain component, such as `rustc`, `cargo`, `rust-docs`
+/// or even toolchain profile as as `minimal`, `default`.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ToolchainComponent {
+    pub name: String,
+    pub is_profile: bool,
+}
+
+impl ToolchainComponent {
+    pub fn new<T: ToString>(name: T) -> Self {
+        Self {
+            name: name.to_string(),
+            is_profile: false,
+        }
+    }
+    setter!(is_profile(self.is_profile, bool));
+}
 
 pub struct ToolMapIter<'a> {
     iter: indexmap::map::Iter<'a, String, ToolInfo>,
@@ -195,7 +213,7 @@ impl ToolsetManifest {
             profile.description.as_deref().unwrap_or_default(),
         )
         .with_group(Some(self.toolchain_group_name()))
-        .set_toolchain_component(true)
+        .set_kind(ComponentType::ToolchainProfile)
         .required(true)
         .with_version(Some(tc_channel))];
 
@@ -207,7 +225,7 @@ impl ToolsetManifest {
                 )
                 .with_group(Some(self.toolchain_group_name()))
                 .optional(true)
-                .set_toolchain_component(true)
+                .set_kind(ComponentType::ToolchainComponent)
                 // toolchain component's version are unified
                 .with_version(Some(tc_channel)),
             );
@@ -324,6 +342,13 @@ impl ToolsetManifest {
 
     pub fn rust_version(&self) -> &str {
         self.rust.version.as_str()
+    }
+
+    pub fn toolchain_display_name(&self) -> Option<&str> {
+        self.rust
+            .profile
+            .as_ref()
+            .and_then(|p| p.verbose_name.as_deref())
     }
 }
 

@@ -5,7 +5,10 @@ use std::path::{Path, PathBuf};
 
 use crate::{core::tools::ToolKind, setter, utils};
 
-use super::{toolset_manifest::ToolsetManifest, TomlParser};
+use super::{
+    toolset_manifest::{ToolchainComponent, ToolsetManifest},
+    TomlParser,
+};
 
 /// Re-load fingerprint file just to get the list of installed tools,
 /// therefore we can use this list to uninstall, while avoiding race condition.
@@ -96,18 +99,12 @@ impl InstallationRecord {
         self.version = None;
     }
 
-    pub(crate) fn add_rust_record(&mut self, version: &str, components: &[String]) {
+    /// Adds installation record for Rust toolchain
+    pub(crate) fn add_rust_record(&mut self, version: &str, components: &[ToolchainComponent]) {
         self.rust = Some(RustRecord {
             version: version.to_string(),
-            components: components.to_vec(),
+            components: components.iter().map(|tc| tc.name.clone()).collect(),
         });
-    }
-
-    pub(crate) fn update_rust(&mut self, version: &str) {
-        if let Some(rust) = self.rust.as_mut() {
-            rust.version = version.into();
-            debug!("toolchain installation record was updated to '{version}'");
-        }
     }
 
     pub(crate) fn add_tool_record(&mut self, name: &str, record: ToolRecord) {
@@ -167,6 +164,8 @@ impl InstallationRecord {
 #[serde(rename_all = "kebab-case")]
 pub struct RustRecord {
     version: String,
+    /// Rust toolchain components, including the base profile (minimal/default/etc.),
+    /// and extra components selected by user.
     #[serde(default)]
     pub(crate) components: Vec<String>,
 }
@@ -261,7 +260,10 @@ mod tests {
     fn create_local_install_info() {
         let install_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
         let mut fp = InstallationRecord::load_from_dir(&install_dir).unwrap();
-        let rust_components = vec![String::from("rustfmt"), String::from("cargo")];
+        let rust_components = vec![
+            ToolchainComponent::new("rustfmt"),
+            ToolchainComponent::new("cargo"),
+        ];
 
         fp.add_rust_record("stable", &rust_components);
         fp.add_tool_record(

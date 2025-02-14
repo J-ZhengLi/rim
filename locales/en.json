@@ -87,7 +87,6 @@
     "path_to_installation_not_found": "path to the it's installation at '%{path}' cannot be found.",
 
     "linux_source_hint": "Please restart the current shell or run `%{cmd}` for the environment changes to take effect",
-    "unknown_toolkit": "Unknown Toolkit",
 
     "notify_empty_path": "Please enter an installation path, or choose one using the button above",
     "notify_root_dir": "Cannot install in root directory, please select another one",

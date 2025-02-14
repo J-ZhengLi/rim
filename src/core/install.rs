@@ -1,5 +1,5 @@
 use super::{
-    components::{component_list_to_tool_map, Component},
+    components::{component_list_to_tool_map, Component, ComponentType},
     directories::RimDir,
     parser::{
         cargo_config::CargoConfig,
@@ -14,7 +14,7 @@ use super::{
 use crate::{
     core::os::add_to_path,
     setter,
-    toolset_manifest::ToolMap,
+    toolset_manifest::{ToolMap, ToolchainComponent},
     utils::{self, Extractable, Progress},
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -106,13 +106,11 @@ impl<'a> InstallConfiguration<'a> {
     /// This is suitable for first-time installation.
     pub fn setup(&mut self) -> Result<()> {
         let install_dir = &self.install_dir;
-        let manifest = self.manifest;
 
         info!("{}", t!("install_init", dir = install_dir.display()));
 
         // Create a copy of the manifest which is later used for component management.
-        let manifest_out_path = install_dir.join(ToolsetManifest::FILENAME);
-        utils::write_file(manifest_out_path, &manifest.to_toml()?, false)?;
+        self.manifest.write_to_dir(install_dir)?;
 
         // Create a copy of this binary
         let self_exe = std::env::current_exe()?;
@@ -244,22 +242,20 @@ impl<'a> InstallConfiguration<'a> {
         self.install_tools_(true, tools, 30.0)
     }
 
-    pub fn install_rust(&mut self, optional_components: &[String]) -> Result<()> {
+    pub fn install_rust(&mut self, components: &[ToolchainComponent]) -> Result<()> {
         info!("{}", t!("install_toolchain"));
 
         let manifest = self.manifest;
 
-        ToolchainInstaller::init().insecure(self.insecure).install(
-            self,
-            manifest,
-            optional_components,
-        )?;
+        ToolchainInstaller::init()
+            .insecure(self.insecure)
+            .install(self, manifest, components)?;
         add_to_path(self.cargo_bin())?;
         self.cargo_is_installed = true;
 
         // Add the rust info to the fingerprint.
         self.install_record
-            .add_rust_record(manifest.rust_version(), optional_components);
+            .add_rust_record(manifest.rust_version(), components);
         // record meta info
         // TODO(?): Maybe this should be moved as a separate step?
         self.install_record
@@ -396,19 +392,25 @@ impl<'a> InstallConfiguration<'a> {
 // For updates
 impl InstallConfiguration<'_> {
     pub fn update(mut self, components: Vec<Component>) -> Result<()> {
-        let (_, tools) = split_components(components);
+        // Create a copy of the manifest which is later used for component management.
+        self.manifest.write_to_dir(&self.install_dir)?;
+
+        let (toolchain, tools) = split_components(components);
         // setup env for current process
         for (key, val) in self.env_vars()? {
             std::env::set_var(key, val);
         }
         self.inc_progress(10.0)?;
 
-        self.update_toolchain()?;
+        // don't update toolchain if no toolchain components are selected
+        if !toolchain.is_empty() {
+            self.update_toolchain(&toolchain)?;
+        }
         self.update_tools(&tools)?;
         Ok(())
     }
 
-    fn update_toolchain(&mut self) -> Result<()> {
+    fn update_toolchain(&mut self, components: &[ToolchainComponent]) -> Result<()> {
         info!("{}", t!("update_toolchain"));
 
         let manifest = self.manifest;
@@ -419,7 +421,7 @@ impl InstallConfiguration<'_> {
 
         let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        record.update_rust(manifest.rust_version());
+        record.add_rust_record(manifest.rust_version(), components);
         // record meta info
         record.clone_toolkit_meta_from_manifest(manifest);
         // write changes
@@ -445,24 +447,24 @@ pub fn default_install_dir() -> PathBuf {
 /// Split components list to `toolchain_components` and `toolset_components`,
 /// as we are running `rustup` to install toolchain components, but using other methods
 /// for toolset components.
-fn split_components(components: Vec<Component>) -> (Vec<String>, ToolMap) {
+///
+/// Note: the splited `toolchain_components` contains the base profile name
+/// such as `minimal` at first index.
+fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, ToolMap) {
     let toolset_components = component_list_to_tool_map(
         components
             .iter()
-            .filter(|cm| !cm.is_toolchain_component)
+            .filter(|cm| !cm.kind.is_from_toolchain())
             .collect(),
     );
-    let toolchain_components: Vec<String> = components
+    let toolchain_components: Vec<ToolchainComponent> = components
         .into_iter()
-        // Skip the mocked `rust toolchain` component that we added first,
-        // it will be installed as requirement anyway.
-        .skip(1)
-        .filter_map(|comp| {
-            if comp.is_toolchain_component {
-                Some(comp.name)
-            } else {
-                None
+        .filter_map(|comp| match comp.kind {
+            ComponentType::ToolchainComponent => Some(ToolchainComponent::new(&comp.name)),
+            ComponentType::ToolchainProfile => {
+                Some(ToolchainComponent::new(&comp.name).is_profile(true))
             }
+            _ => None,
         })
         .collect();
 

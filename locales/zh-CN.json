@@ -81,7 +81,6 @@
     "path_to_installation_not_found": "找不到工具安装路径 '%{path}'。",
 
     "linux_source_hint": "请重启当前终端窗口或执行 `%{cmd}` 以使环境变更生效",
-    "unknown_toolkit": "未知工具集",
 
     "notify_empty_path": "请输入安装路径，或点击上方按钮选择一个路径",
     "notify_root_dir": "无法安装至根目录，请重新选择",

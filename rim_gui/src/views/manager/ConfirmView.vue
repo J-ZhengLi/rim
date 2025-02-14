@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { invokeCommand, managerConf, Component } from '@/utils';
+import { invokeCommand, managerConf, Component, ComponentType } from '@/utils';
 import { computed } from 'vue';
 import ComponentLabel from './components/Label.vue';
 
@@ -11,7 +11,8 @@ const labels = computed(() => {
   const installed = managerConf.getInstalled();
   return components.value.map((item) => {
     const installedComponent = installed?.components.find((i) => i.name === item.name);
-    let installedVersion = item.isToolchainComponent ? installed?.version : installedComponent?.version;
+    let isFromToolchain = item.kind === ComponentType.ToolchainComponent || item.kind === ComponentType.ToolchainProfile;
+    let installedVersion = isFromToolchain ? installed?.version : installedComponent?.version;
     return {
       label: item.name,
       originVer: installedVersion,
