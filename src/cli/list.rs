@@ -69,7 +69,7 @@ pub(crate) fn list_components(
         components::all_components_from_installation(&fp)?
     };
 
-    let comp_iter = components.iter().skip(1);
+    let comp_iter = components.iter();
     let verbose = GlobalOpts::get().verbose;
     let mut stdout = std::io::stdout();
 

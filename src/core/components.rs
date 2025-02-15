@@ -13,6 +13,20 @@ use crate::{
 
 static COMPONENTS_COUNTER: AtomicU32 = AtomicU32::new(0);
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+pub enum ComponentType {
+    Tool,
+    ToolchainComponent,
+    ToolchainProfile,
+}
+
+impl ComponentType {
+    /// Return `true` if this type is a toolchain component or a toolchain profile.
+    pub fn is_from_toolchain(&self) -> bool {
+        matches!(self, Self::ToolchainComponent | Self::ToolchainProfile)
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Component {
@@ -24,7 +38,7 @@ pub struct Component {
     pub required: bool,
     pub optional: bool,
     pub tool_installer: Option<ToolInfo>,
-    pub is_toolchain_component: bool,
+    pub kind: ComponentType,
     /// Indicates whether this component was already installed or not.
     pub installed: bool,
 }
@@ -41,7 +55,7 @@ impl Component {
             required: false,
             optional: false,
             tool_installer: None,
-            is_toolchain_component: false,
+            kind: ComponentType::Tool,
             installed: false,
         };
         COMPONENTS_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -52,7 +66,7 @@ impl Component {
     setter!(required(self.required, bool));
     setter!(optional(self.optional, bool));
     setter!(installed(self.installed, bool));
-    setter!(set_toolchain_component(self.is_toolchain_component, bool));
+    setter!(set_kind(self.kind, ComponentType));
     setter!(with_group(self.group_name, group: Option<&str>) { group.map(ToOwned::to_owned) });
     setter!(with_tool_installer(self.tool_installer, installer: &ToolInfo) { Some(installer.clone()) });
     setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });
@@ -73,14 +87,14 @@ pub(crate) fn all_components_from_installation(
         ToolsetManifest::load_from_install_dir()?.current_target_components(false)?;
 
     // components that are installed by rim previously.
-    let installed_toolchain = record.installed_toolchain().map(|(name, _)| name);
+    let installed_toolchain = record.installed_toolchain();
     let installed_tools: HashSet<&str> = record.installed_tools().collect();
 
     for comp in &mut full_components {
-        if comp.is_toolchain_component {
-            if let Some(tc) = installed_toolchain {
+        if comp.kind.is_from_toolchain() {
+            if let Some((tc, opt_comps)) = installed_toolchain {
                 comp.version = Some(tc.into());
-                comp.installed = true;
+                comp.installed = opt_comps.iter().any(|c| c == &comp.name);
             }
             continue;
         }

@@ -15,6 +15,7 @@ use super::RUSTUP_DIST_SERVER;
 use super::RUSTUP_HOME;
 use crate::setter;
 use crate::toolset_manifest::Proxy;
+use crate::toolset_manifest::ToolchainComponent;
 use crate::utils::{self, set_exec_permission, url_join};
 
 #[cfg(windows)]
@@ -78,18 +79,21 @@ impl ToolchainInstaller {
         &self,
         config: &InstallConfiguration,
         manifest: &ToolsetManifest,
-        optional_components: &[String],
+        components: &[ToolchainComponent],
     ) -> Result<()> {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
 
-        let components_to_install = manifest
+        let extra_comps = components
+            .iter()
+            .filter_map(|c| (!c.is_profile).then_some(&c.name));
+        let all_components = manifest
             .rust
             .components
             .iter()
+            .chain(extra_comps)
             .map(|s| s.as_str())
-            .chain(optional_components.iter().map(|s| s.as_str()))
             .collect();
-        self.install_toolchain_via_rustup(&rustup, manifest, components_to_install)?;
+        self.install_toolchain_via_rustup(&rustup, manifest, all_components)?;
 
         // Remove the `rustup` uninstall entry on windows, because we don't want users to
         // accidently uninstall `rustup` thus removing the tools installed by this program.

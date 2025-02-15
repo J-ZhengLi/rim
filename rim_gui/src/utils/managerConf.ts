@@ -18,8 +18,7 @@ class ManagerConf {
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
   private _target: Ref<Target> = ref({ operation: 'update', components: [] });
-  // TODO: change to `false` after implementing toolkit installation
-  private _isUninstallManager: Ref<boolean> = ref(true);
+  private _isUninstallManager: Ref<boolean> = ref(false);
 
   constructor() { }
 
@@ -60,13 +59,14 @@ class ManagerConf {
           (c) => c.name === item.name
         );
         let installedVersion = installedItem?.version;
-        let isVerDifferent = installedVersion && installedVersion !== item.version ? true : false;
+        let isVerDifferent = installedVersion !== undefined && installedVersion !== item.version;
+        let isRequiredButNotInstalled = item.required && installedItem === undefined;
 
         let versionStr = isVerDifferent ? `(${installedVersion} -> ${item.version})` : ` (${item.version})`;
 
         return {
           label: `${item.name}${versionStr}`,
-          checked: isVerDifferent && (installedItem !== undefined || item.required),
+          checked: isVerDifferent || isRequiredButNotInstalled,
           required: item.required,
           disabled: false,
 

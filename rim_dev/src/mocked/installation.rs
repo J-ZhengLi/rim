@@ -100,8 +100,18 @@ pub(crate) fn generate_and_run_manager(no_gui: bool, args: &[String]) -> Result<
     let manager = &fake.manager_bin.unwrap();
 
     let mocked_dist_server = common::path_to_url(super::rim_server_dir());
+    let mocked_rustup_server_path = super::rustup_server_dir();
+    let mut command = Command::new(manager);
+
+    if !no_gui {
+        command.args([
+            "--rustup-dist-server",
+            common::path_to_url(mocked_rustup_server_path).as_str(),
+        ]);
+    }
+
     // run the manager copy
-    let status = Command::new(manager)
+    let status = command
         .args(args)
         .env("RIM_DIST_SERVER", mocked_dist_server.as_str())
         .status()?;

@@ -78,6 +78,7 @@
     "uninstalling_third_party_tools": "Uninstalling third-party tools",
     "uninstalling_for": "Uninstalling '%{name}'",
     "uninstalling_rust_toolchain": "Uninstalling Rust toolchain",
+    "uninstall_rust_toolchain_failed": "Unable to remove Rust toolchain",
     "rust_toolchain_uninstalled": "Rust toolchain uninstalled",
     "uninstall_env_config": "Removing environment variables...",
     "uninstall_self": "Removing self & wrapping up",
@@ -86,7 +87,6 @@
     "path_to_installation_not_found": "path to the it's installation at '%{path}' cannot be found.",
 
     "linux_source_hint": "Please restart the current shell or run `%{cmd}` for the environment changes to take effect",
-    "unknown_toolkit": "Unknown Toolkit",
 
     "notify_empty_path": "Please enter an installation path, or choose one using the button above",
     "notify_root_dir": "Cannot install in root directory, please select another one",

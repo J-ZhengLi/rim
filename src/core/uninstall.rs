@@ -61,7 +61,12 @@ impl<'a> UninstallConfiguration<'a> {
 
         // Remove rust toolchain via rustup.
         if self.install_record.rust.is_some() {
-            ToolchainInstaller::init().remove_self(&self)?;
+            if let Err(e) = ToolchainInstaller::init().remove_self(&self) {
+                // if user has manually uninstall rustup, this will fails,
+                // then we can assume it has been removed.
+                // TODO: add an error type to indicate `rustup` cannot be found
+                warn!("{}: {e}", t!("uninstall_rust_toolchain_failed"));
+            }
             self.install_record.remove_rust_record();
             self.install_record.write()?;
         }
