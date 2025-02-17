@@ -251,4 +251,5 @@ impl Toolkit {
 #[derive(Debug, Deserialize)]
 pub(crate) struct ToolkitConfig {
     pub(crate) date: String,
+    // TODO: add web-only related code
 }

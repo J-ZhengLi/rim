@@ -37,6 +37,21 @@ impl Default for VSCodeInstaller<'_> {
     }
 }
 
+impl<'a> VSCodeInstaller<'a> {
+    #[cfg(windows)]
+    pub(crate) const fn new(cmd: &'a str, tool_name: &'a str, display_name: &'a str, binary_name: &'a str) -> Self {
+        Self {
+            cmd, tool_name, verbose_name: display_name, binary_name
+        }
+    }
+    #[cfg(not(windows))]
+    pub(crate) const fn new(cmd: &'a str, tool_name: &'a str, display_name: &'a str) -> Self {
+        Self {
+            cmd, tool_name, verbose_name: display_name,
+        }
+    }
+}
+
 impl VSCodeInstaller<'_> {
     pub(crate) fn install(&self, path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
         // Step 1: Move the root of the directory into `tools` directory
