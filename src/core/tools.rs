@@ -1,7 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
+    str::FromStr, sync::LazyLock,
 };
 
 use anyhow::{anyhow, bail, Result};
@@ -260,18 +260,18 @@ pub(crate) enum Plugin {
     Vsix,
 }
 
-// This list has a fallback order, DO NOT change the order.
-#[cfg(not(windows))]
-pub(crate) static VSCODE_FAMILY: &[&str] =
-    &["hwcode", "wecode", "code-exploration", "code-oss", "code"];
-#[cfg(windows)]
-pub(crate) static VSCODE_FAMILY: &[&str] = &[
-    "hwcode.cmd",
-    "wecode.cmd",
-    "code-exploration.cmd",
-    "code-oss.cmd",
-    "code.cmd",
-];
+/// All supported VS Code varients 
+pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
+    #[cfg(windows)]
+    let suffix = ".cmd";
+    #[cfg(not(windows))]
+    let suffix = "";
+    // This list has a fallback order, DO NOT change the order.
+    ["codium", "hwcode", "wecode", "code-exploration", "code-oss", "code"]
+        .iter()
+        .map(|s| format!("{s}{suffix}"))
+        .collect()
+});
 
 impl FromStr for Plugin {
     type Err = anyhow::Error;
@@ -308,7 +308,7 @@ impl Plugin {
 
         match ty {
             Plugin::Vsix => {
-                for program in VSCODE_FAMILY {
+                for program in VSCODE_FAMILY.as_slice() {
                     if utils::cmd_exist(program) {
                         let op = if uninstall { "uninstall" } else { "install" };
                         let arg_opt = format!("--{op}-extension");
