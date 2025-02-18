@@ -4,15 +4,32 @@ use std::{env, io};
 
 use anyhow::Result;
 
-/// Convenient macro to run a [`Command`], check [`cmd`] for help of the syntax.
+/// Convenient macro to run a [`Command`].
+///
+/// # Example
+/// ```ignore
+/// # use rim::utils::run;
+/// run!("echo", "$HOME/.profile");
+///
+/// let program = "cargo";
+/// run!(program, "build", "--release");
+///
+/// // With env vars
+/// run!(["FOO"="foo", "BAR"="bar"] program, "cargo", "build");
+/// ```
 macro_rules! run {
+    ($program:expr) => {{
+        let cmd__ = $crate::utils::cmd!($program);
+        $crate::utils::execute(cmd__).map(|_| ())
+    }};
+    ($program:expr $(, $arg:expr )* $(,)?) => {{
+        let cmd__ = $crate::utils::cmd!($program $(, $arg)*);
+        $crate::utils::execute(cmd__).map(|_| ())
+    }};
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
         let cmd__ = $crate::utils::cmd!([$($key=$val),*] $program $(,$arg)*);
         $crate::utils::execute(cmd__).map(|_| ())
     }};
-    ($program:expr $(, $arg:expr )* $(,)?) => {
-        $crate::utils::run!([] $program $(, $arg)*)
-    };
 }
 pub(crate) use run;
 
@@ -30,18 +47,18 @@ pub(crate) use run;
 /// cmd!(["FOO"="foo", "BAR"="bar"] program, "cargo", "build");
 /// ```
 macro_rules! cmd {
-    ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
-        let mut cmd__ = std::process::Command::new($program);
-        $(cmd__.arg($arg);)*
-        $(cmd__.env($key, $val);)*
-        cmd__
-    }};
     ($program:expr) => {
         std::process::Command::new($program)
     };
     ($program:expr $(, $arg:expr )* $(,)?) => {
         $crate::utils::cmd!([] $program $(, $arg)*)
     };
+    ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
+        let mut cmd__ = std::process::Command::new($program);
+        $(cmd__.arg($arg);)*
+        $(cmd__.env($key, $val);)*
+        cmd__
+    }};
 }
 pub(crate) use cmd;
 

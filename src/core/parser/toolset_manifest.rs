@@ -14,6 +14,7 @@ use url::Url;
 
 use crate::components::{Component, ComponentType};
 use crate::core::custom_instructions;
+use crate::core::tools::ToolKind;
 use crate::{setter, utils};
 
 use super::TomlParser;
@@ -332,7 +333,7 @@ impl ToolsetManifest {
 
         for tool in self.tools.target.values_mut() {
             for tool_info in tool.values_mut() {
-                if let ToolInfo::Path { path, .. } = tool_info {
+                if let Some(path) = tool_info.path_mut() {
                     *path = utils::to_nomalized_abspath(path.as_path(), Some(&parent_dir))?;
                 }
             }
@@ -467,86 +468,129 @@ impl Tools {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(untagged)]
 pub enum ToolInfo {
-    PlainVersion(String),
-    // FIXME (?): This is bad, we basically have to use a different name for `version` to avoid parsing ambiguity.
-    DetailedVersion {
-        ver: String,
-        #[serde(default)]
-        required: bool,
-        #[serde(default)]
-        optional: bool,
-        identifier: Option<String>,
-    },
+    /// Basic crates version, contains only its version, used for `cargo install`.
+    ///
+    /// # Example
+    ///
+    /// ```toml
+    /// basic = "0.1.0"
+    /// ```
+    Basic(String),
+    /// Detailed tool information, contains different kind of [`ToolSource`] and other options.
+    ///
+    /// # Example
+    ///
+    /// ```toml
+    /// expand = { version = "0.2.0", option = true, identifier = "cargo-expand" }
+    /// hello_world = { version = "0.2.0", option = true, path = "path/to/hello.zip" }
+    /// ```
+    Complex(ToolInfoDetails),
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+pub struct ToolInfoDetails {
+    #[serde(default)]
+    required: bool,
+    #[serde(default)]
+    optional: bool,
+    identifier: Option<String>,
+    #[serde(flatten)]
+    pub source: ToolSource,
+    /// Pre-determined kind.
+    /// If not provided, this will be automatically assumed when loading a tool using
+    /// [`Tool::from_path`](crate::core::tools::Tool::from_path).
+    pub kind: Option<ToolKind>,
+}
+
+impl ToolInfoDetails {
+    pub fn new(source: ToolSource) -> Self {
+        Self {
+            source,
+            required: false,
+            optional: false,
+            identifier: None,
+            kind: None,
+        }
+    }
+    setter!(required(self.required, bool));
+    setter!(optional(self.optional, bool));
+    setter!(identifier(self.identifier, value: String) { Some(value) });
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
+#[serde(untagged)]
+pub enum ToolSource {
     Git {
         git: Url,
         branch: Option<String>,
         tag: Option<String>,
         rev: Option<String>,
-        #[serde(default)]
-        required: bool,
-        #[serde(default)]
-        optional: bool,
-        identifier: Option<String>,
-    },
-    Path {
-        path: PathBuf,
-        version: Option<String>,
-        #[serde(default)]
-        required: bool,
-        #[serde(default)]
-        optional: bool,
-        identifier: Option<String>,
     },
     Url {
-        url: Url,
         version: Option<String>,
-        #[serde(default)]
-        required: bool,
-        #[serde(default)]
-        optional: bool,
-        identifier: Option<String>,
+        url: Url,
         filename: Option<String>,
+    },
+    Path {
+        version: Option<String>,
+        path: PathBuf,
+    },
+    Version {
+        #[serde(alias = "ver")]
+        version: String,
     },
 }
 
 impl ToolInfo {
-    pub fn is_required(&self) -> bool {
-        match self {
-            Self::PlainVersion(_) => false,
-            Self::Git { required, .. }
-            | Self::Path { required, .. }
-            | Self::Url { required, .. }
-            | Self::DetailedVersion { required, .. } => *required,
+    pub fn path_mut(&mut self) -> Option<&mut PathBuf> {
+        if let Self::Complex(_details_) = self {
+            if let ToolSource::Path { path, .. } = &mut _details_.source {
+                return Some(path);
+            }
         }
+        None
+    }
+
+    pub fn details(&self) -> Option<&ToolInfoDetails> {
+        if let Self::Complex(details) = self {
+            Some(details)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_required(&self) -> bool {
+        self.details().map(|d| d.required).unwrap_or_default()
     }
 
     pub fn version(&self) -> Option<&str> {
         match self {
-            Self::PlainVersion(ver) => Some(ver),
-            Self::DetailedVersion { ver, .. } => Some(ver),
-            Self::Git { tag, .. } => tag.as_deref(),
-            Self::Path { version, .. } | Self::Url { version, .. } => version.as_deref(),
+            Self::Basic(ver) => Some(ver),
+            Self::Complex(details) => match &details.source {
+                ToolSource::Git { tag, .. } => tag.as_deref(),
+                ToolSource::Version { version } => Some(version),
+                ToolSource::Path { version, .. } | ToolSource::Url { version, .. } => {
+                    version.as_deref()
+                }
+            },
         }
     }
 
     pub fn is_optional(&self) -> bool {
-        match self {
-            Self::PlainVersion(_) => false,
-            Self::Git { optional, .. }
-            | Self::Path { optional, .. }
-            | Self::Url { optional, .. }
-            | Self::DetailedVersion { optional, .. } => *optional,
-        }
+        self.details().map(|d| d.optional).unwrap_or_default()
     }
 
     pub fn is_cargo_tool(&self) -> bool {
-        matches!(
-            self,
-            ToolInfo::PlainVersion(_) | ToolInfo::Git { .. } | ToolInfo::DetailedVersion { .. }
-        )
+        match self {
+            ToolInfo::Basic(_) => true,
+            ToolInfo::Complex(details) => matches!(
+                &details.source,
+                ToolSource::Git { .. } | ToolSource::Version { .. }
+            ),
+        }
     }
 
     /// Retrieve the identifier string of this tool.
@@ -556,13 +600,17 @@ impl ToolInfo {
     /// #                                                         ^^^^^^^^^^
     /// ```
     pub fn identifier(&self) -> Option<&str> {
-        match self {
-            Self::PlainVersion(_) => None,
-            Self::DetailedVersion { identifier, .. }
-            | Self::Git { identifier, .. }
-            | Self::Path { identifier, .. }
-            | Self::Url { identifier, .. } => identifier.as_deref(),
-        }
+        self.details().and_then(|d| d.identifier.as_deref())
+    }
+
+    /// Get the [`ToolKind`] of this tool.
+    ///
+    /// ```toml
+    /// some_installer = { path = "/path/to/package", kind = "installer" }
+    /// #                                                     ^^^^^^^^^
+    /// ```
+    pub fn kind(&self) -> Option<ToolKind> {
+        self.details().and_then(|d| d.kind)
     }
 }
 
@@ -634,37 +682,28 @@ mod tests {
     /// Convenient macro to initialize **Non-Required** `ToolInfo`
     macro_rules! tool_info {
         ($version:literal) => {
-            ToolInfo::PlainVersion($version.into())
+            ToolInfo::Basic($version.into())
         };
         ($url_str:literal, $version:expr) => {
-            ToolInfo::Url {
+            ToolInfo::Complex(ToolInfoDetails::new(ToolSource::Url {
                 version: $version.map(ToString::to_string),
                 url: $url_str.parse().unwrap(),
-                required: false,
-                optional: false,
-                identifier: None,
                 filename: None,
-            }
+            }))
         };
         ($git:literal, $branch:expr, $tag:expr, $rev:expr) => {
-            ToolInfo::Git {
+            ToolInfo::Complex(ToolInfoDetails::new(ToolSource::Git {
                 git: $git.parse().unwrap(),
                 branch: $branch.map(ToString::to_string),
                 tag: $tag.map(ToString::to_string),
                 rev: $rev.map(ToString::to_string),
-                required: false,
-                optional: false,
-                identifier: None,
-            }
+            }))
         };
         ($path:expr, $version:expr) => {
-            ToolInfo::Path {
-                version: $version.map(ToString::to_string),
+            ToolInfo::Complex(ToolInfoDetails::new(ToolSource::Path {
                 path: $path,
-                required: false,
-                optional: false,
-                identifier: None,
-            }
+                version: $version.map(ToString::to_string),
+            }))
         };
     }
 
@@ -1050,27 +1089,24 @@ t3 = { ver = "0.3.0", optional = true } # use cargo install
 
         let expected = ToolsetManifest::from_str(input).unwrap();
         let tools = expected.tools.target.get("x86_64-pc-windows-msvc").unwrap();
-        assert_eq!(
-            tools.get("t1"),
-            Some(&ToolInfo::PlainVersion("0.1.0".into()))
-        );
+        assert_eq!(tools.get("t1"), Some(&ToolInfo::Basic("0.1.0".into())));
         assert_eq!(
             tools.get("t2"),
-            Some(&ToolInfo::DetailedVersion {
-                ver: "0.2.0".into(),
-                required: true,
-                optional: false,
-                identifier: None,
-            })
+            Some(&ToolInfo::Complex(
+                ToolInfoDetails::new(ToolSource::Version {
+                    version: "0.2.0".into(),
+                })
+                .required(true)
+            ))
         );
         assert_eq!(
             tools.get("t3"),
-            Some(&ToolInfo::DetailedVersion {
-                ver: "0.3.0".into(),
-                required: false,
-                optional: true,
-                identifier: None,
-            })
+            Some(&ToolInfo::Complex(
+                ToolInfoDetails::new(ToolSource::Version {
+                    version: "0.3.0".into(),
+                })
+                .optional(true)
+            ))
         );
     }
 
@@ -1242,9 +1278,11 @@ t2 = { path = "/some/path", identifier = "surprise_program_2" }
         let (_, t1_info) = tools.next().unwrap();
         let (_, t2_info) = tools.next().unwrap();
         assert_eq!(t1_info.identifier(), Some("surprise_program_1"));
-        assert!(
-            matches!(t2_info, ToolInfo::Path { identifier: Some(name), .. } if name == "surprise_program_2")
-        );
+        assert!(matches!(
+            t2_info,
+            ToolInfo::Complex(ToolInfoDetails { identifier: Some(name), .. })
+                if name == "surprise_program_2"
+        ));
     }
 
     #[test]
@@ -1267,5 +1305,68 @@ t4 = { url = "https://example.com/t4.zip" }
         assert_eq!(iter.next(), Some("surprise_program_2"));
         assert_eq!(iter.next(), Some("t3"));
         assert_eq!(iter.next(), Some("t4"));
+    }
+
+    #[test]
+    fn complex_tools_deser_and_ser() {
+        let input = r#"[rust]
+version = "1.0.0"
+components = []
+optional-components = []
+
+[rust.rustup]
+
+[tools.descriptions]
+
+[tools.group]
+
+[tools.target.x86_64-pc-windows-msvc]
+plain_version = "0.1.0"
+
+[tools.target.x86_64-pc-windows-msvc.detailed_version]
+required = false
+optional = true
+identifier = "hello"
+version = "0.2.0"
+
+[tools.target.x86_64-pc-windows-msvc.url_tool]
+required = true
+optional = false
+url = "http://example.com/"
+filename = "hello.zip"
+
+[tools.target.x86_64-pc-windows-msvc.path_tool]
+required = false
+optional = false
+version = "0.3.0"
+path = "path/to/bin"
+
+[tools.target.x86_64-pc-windows-msvc.git_tool]
+required = false
+optional = false
+git = "https://example.git/"
+branch = "dev"
+"#;
+        let obj = ToolsetManifest::from_str(input).unwrap();
+        let expected_ser = obj.to_toml().unwrap();
+        assert_eq!(input, expected_ser);
+    }
+
+    #[test]
+    fn with_tool_kind() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.x86_64-pc-windows-msvc]
+vscode-installer = { version = "1.97.1", url = "https://example.com", kind = "installer" }
+"#;
+
+        let expected = ToolsetManifest::from_str(input).unwrap();
+        let (target, tool) = expected.tools.target.first_key_value().unwrap();
+        let (name, info) = tool.first().unwrap();
+        assert_eq!(target, "x86_64-pc-windows-msvc");
+        assert_eq!(name, "vscode-installer");
+        assert_eq!(info.kind(), Some(ToolKind::Installer));
     }
 }
