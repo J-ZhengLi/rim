@@ -1,7 +1,8 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    str::FromStr, sync::LazyLock,
+    str::FromStr,
+    sync::LazyLock,
 };
 
 use anyhow::{anyhow, bail, Result};
@@ -260,17 +261,24 @@ pub(crate) enum Plugin {
     Vsix,
 }
 
-/// All supported VS Code varients 
+/// All supported VS Code varients
 pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
     #[cfg(windows)]
     let suffix = ".cmd";
     #[cfg(not(windows))]
     let suffix = "";
     // This list has a fallback order, DO NOT change the order.
-    ["codium", "hwcode", "wecode", "code-exploration", "code-oss", "code"]
-        .iter()
-        .map(|s| format!("{s}{suffix}"))
-        .collect()
+    [
+        "codium",
+        "hwcode",
+        "wecode",
+        "code-exploration",
+        "code-oss",
+        "code",
+    ]
+    .iter()
+    .map(|s| format!("{s}{suffix}"))
+    .collect()
 });
 
 impl FromStr for Plugin {

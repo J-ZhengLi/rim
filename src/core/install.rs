@@ -14,7 +14,7 @@ use super::{
 use crate::{
     core::os::add_to_path,
     setter,
-    toolset_manifest::{ToolMap, ToolchainComponent},
+    toolset_manifest::{ToolMap, ToolSource, ToolchainComponent},
     utils::{self, Extractable, Progress},
 };
 use anyhow::{anyhow, bail, Context, Result};
@@ -269,56 +269,64 @@ impl<'a> InstallConfiguration<'a> {
     // TODO: Write version info after installing each tool,
     // which is later used for updating.
     fn install_tool(&mut self, name: &str, tool: &ToolInfo) -> Result<()> {
-        let tool_ver = tool.version();
         let record = match tool {
-            ToolInfo::PlainVersion(version) | ToolInfo::DetailedVersion { ver: version, .. } => {
+            ToolInfo::Basic(version) => {
                 Tool::cargo_tool(name, Some(vec![name, "--version", version]))
-                    .install(tool_ver, self)?
+                    .install(Some(version), self)?
             }
-            ToolInfo::Git {
-                git,
-                branch,
-                tag,
-                rev,
-                ..
-            } => {
-                let mut args = vec!["--git", git.as_str()];
-                if let Some(s) = &branch {
-                    args.extend(["--branch", s]);
+            ToolInfo::Complex(details) => match &details.source {
+                ToolSource::Version { version } => {
+                    Tool::cargo_tool(name, Some(vec![name, "--version", version]))
+                        .install(Some(version), self)?
                 }
-                if let Some(s) = &tag {
-                    args.extend(["--tag", s]);
-                }
-                if let Some(s) = &rev {
-                    args.extend(["--rev", s]);
-                }
+                ToolSource::Git {
+                    git,
+                    branch,
+                    tag,
+                    rev,
+                } => {
+                    let mut args = vec!["--git", git.as_str()];
+                    if let Some(s) = &branch {
+                        args.extend(["--branch", s]);
+                    }
+                    if let Some(s) = &tag {
+                        args.extend(["--tag", s]);
+                    }
+                    if let Some(s) = &rev {
+                        args.extend(["--rev", s]);
+                    }
 
-                Tool::cargo_tool(name, Some(args)).install(tool_ver, self)?
-            }
-            ToolInfo::Path { path, .. } => self.try_install_from_path(name, tool_ver, path)?,
-            // TODO: Have a dedicated download folder, do not use temp dir to store downloaded artifacts,
-            // so then we can have the `resume download` feature.
-            ToolInfo::Url { url, filename, .. } => {
-                let temp_dir = self.create_temp_dir("download")?;
-                let downloaded_file_name = if let Some(name) = filename {
-                    name
-                } else {
-                    url.path_segments()
-                        .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
-                        .last()
-                        // Sadly, a path segment could be empty string, so we need to filter that out
-                        .filter(|seg| !seg.is_empty())
-                        .ok_or_else(|| {
-                            anyhow!("'{url}' doesn't appear to be a downloadable file")
-                        })?
-                };
-                let dest = temp_dir.path().join(downloaded_file_name);
-                utils::DownloadOpt::new(name)
-                    .with_proxy(self.manifest.proxy.clone())
-                    .blocking_download(url, &dest)?;
+                    Tool::cargo_tool(name, Some(args)).install(tag.as_deref(), self)?
+                }
+                ToolSource::Path { path, version } => {
+                    self.try_install_from_path(name, version.as_deref(), path)?
+                }
+                ToolSource::Url {
+                    url,
+                    filename,
+                    version,
+                } => {
+                    let temp_dir = self.create_temp_dir("download")?;
+                    let downloaded_file_name = if let Some(name) = filename {
+                        name
+                    } else {
+                        url.path_segments()
+                            .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
+                            .last()
+                            // Sadly, a path segment could be empty string, so we need to filter that out
+                            .filter(|seg| !seg.is_empty())
+                            .ok_or_else(|| {
+                                anyhow!("'{url}' doesn't appear to be a downloadable file")
+                            })?
+                    };
+                    let dest = temp_dir.path().join(downloaded_file_name);
+                    utils::DownloadOpt::new(name)
+                        .with_proxy(self.manifest.proxy.clone())
+                        .blocking_download(url, &dest)?;
 
-                self.try_install_from_path(name, tool_ver, &dest)?
-            }
+                    self.try_install_from_path(name, version.as_deref(), &dest)?
+                }
+            },
         };
 
         self.install_record.add_tool_record(name, record);

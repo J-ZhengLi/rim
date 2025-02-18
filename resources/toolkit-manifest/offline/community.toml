@@ -24,6 +24,7 @@ x86_64-unknown-linux-gnu = "tools/rustup-init"
 
 [tools.descriptions]
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
+codearts = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 llvm-tools = "包含 LLVM 工具的集合"
 mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
@@ -63,6 +64,11 @@ optional = true
 path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
 version = "0.9.91"
 
+[tools.target.x86_64-pc-windows-gnu.codearts]
+installer = true
+path = "tools/codearts-rust-x64-3.2.0-766898c.exe"
+version = "3.2.0-766898c"
+
 [tools.target.x86_64-pc-windows-gnu.mingw64]
 path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"
 required = true
@@ -85,6 +91,11 @@ version = "1.97.2.25045"
 optional = true
 path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
 version = "0.9.91"
+
+[tools.target.x86_64-pc-windows-msvc.codearts]
+installer = true
+path = "tools/codearts-rust-x64-3.2.0-766898c.exe"
+version = "3.2.0-766898c"
 
 [tools.target.x86_64-pc-windows-msvc."rust-analyzer (VS Code 插件)"]
 path = "tools/rust-analyzer-win32-x64.vsix"
