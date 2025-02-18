@@ -8,7 +8,7 @@ use super::{
         TomlParser,
     },
     rustup::ToolchainInstaller,
-    tools::Tool,
+    tools::{Tool, ToolKind},
     CARGO_HOME, RUSTUP_DIST_SERVER, RUSTUP_HOME, RUSTUP_UPDATE_ROOT,
 };
 use crate::{
@@ -299,7 +299,7 @@ impl<'a> InstallConfiguration<'a> {
                     Tool::cargo_tool(name, Some(args)).install(tag.as_deref(), self)?
                 }
                 ToolSource::Path { path, version } => {
-                    self.try_install_from_path(name, version.as_deref(), path)?
+                    self.try_install_from_path(name, version.as_deref(), path, details.kind)?
                 }
                 ToolSource::Url {
                     url,
@@ -324,7 +324,7 @@ impl<'a> InstallConfiguration<'a> {
                         .with_proxy(self.manifest.proxy.clone())
                         .blocking_download(url, &dest)?;
 
-                    self.try_install_from_path(name, version.as_deref(), &dest)?
+                    self.try_install_from_path(name, version.as_deref(), &dest, details.kind)?
                 }
             },
         };
@@ -339,6 +339,7 @@ impl<'a> InstallConfiguration<'a> {
         name: &str,
         version: Option<&str>,
         path: &Path,
+        kind: Option<ToolKind>,
     ) -> Result<ToolRecord> {
         if !path.exists() {
             bail!(
@@ -349,8 +350,12 @@ impl<'a> InstallConfiguration<'a> {
 
         let temp_dir = self.create_temp_dir(name)?;
         let tool_installer_path = self.extract_or_copy_to(path, temp_dir.path())?;
-        let tool_installer = Tool::from_path(name, &tool_installer_path)
-            .with_context(|| format!("no install method for tool '{name}'"))?;
+        let tool_installer = if let Some(kind) = kind {
+            Tool::new(name.into(), kind).with_path(tool_installer_path.as_path())
+        } else {
+            Tool::from_path(name, &tool_installer_path)
+                .with_context(|| format!("no install method for tool '{name}'"))?
+        };
         tool_installer.install(version, self)
     }
 

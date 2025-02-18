@@ -13,7 +13,6 @@ use crate::{core::os::add_to_path, utils};
 use anyhow::Result;
 
 #[derive(Debug)]
-#[allow(unused_variables)]
 pub(crate) struct VSCodeInstaller<'a> {
     /// The command to invoke VSCode, defaulting to `code`.
     pub(crate) cmd: &'a str,
@@ -25,6 +24,7 @@ pub(crate) struct VSCodeInstaller<'a> {
     /// 
     /// Note: On Unix, shortcuts works by executing certain command, so this
     /// field is basically useless on those systems.
+    #[allow(dead_code)]
     pub(crate) binary_name: &'a str,
 }
 
