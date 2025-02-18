@@ -8,7 +8,7 @@ version = "stable v1.84.1"
 components = ["clippy", "rustfmt", "rust-src"]
 group = "Rust 基础工具集"
 offline-dist-server = "toolchain"
-optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
+optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
 version = "1.84.1"
 
 [rust.profile]
@@ -18,144 +18,105 @@ verbose-name = "Rust 官方工具"
 
 [rust.rustup]
 aarch64-unknown-linux-gnu = "tools/rustup-init"
-aarch64-unknown-linux-musl = "tools/rustup-init"
 x86_64-pc-windows-gnu = "tools/rustup-init.exe"
 x86_64-pc-windows-msvc = "tools/rustup-init.exe"
 x86_64-unknown-linux-gnu = "tools/rustup-init"
-x86_64-unknown-linux-musl = "tools/rustup-init"
 
 [tools.descriptions]
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
+codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 llvm-tools = "包含 LLVM 工具的集合"
 mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
+rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
+"rust-analyzer (VS Code 插件)" = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 编辑器 (包括其衍生编辑器, 例如 VSCodium 等) 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个; 仅当开发链接到编译器的工具时才需要它, 例如对 Clippy 进行修改"
 typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
 vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
-"vscode-rust-analyzer (插件)" = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 编辑器提供代码补全、跳转到定义 等功能，提升 Rust 开发体验。"
+vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
 
 [tools.group]
 "Rust 优选工具集" = ["typos", "cargo-nextest"]
 "Rust 基础工具集" = ["mingw64"]
-"Rust 软件开发工具链" = ["vscode", "vscode-rust-analyzer (插件)"]
+"Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "rust-analyzer (VS Code 插件)"]
 
 [tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
 optional = true
-path = "tools/cargo-nextest-0.9.87-aarch64-unknown-linux-gnu.tar.gz"
-version = "0.9.87"
+path = "tools/cargo-nextest-0.9.91-aarch64-unknown-linux-gnu.tar.gz"
+version = "0.9.91"
+
+[tools.target.aarch64-unknown-linux-gnu."rust-analyzer (VS Code 插件)"]
+optional = true
+path = "tools/rust-analyzer-linux-arm64.vsix"
+version = "0.3.2299"
 
 [tools.target.aarch64-unknown-linux-gnu.typos]
 identifier = "typos-cli"
 optional = true
-ver = "1.28.4"
+ver = "1.29.7"
 
-[tools.target.aarch64-unknown-linux-gnu.vscode]
-filename = "vscode.tar.gz"
+[tools.target.aarch64-unknown-linux-gnu.vscodium]
 optional = true
-path = "tools/vscode.tar.gz"
-version = "1.97.1"
-
-[tools.target.aarch64-unknown-linux-gnu."vscode-rust-analyzer (插件)"]
-path = "tools/rust-analyzer-linux-arm64.vsix"
-version = "0.3.2299"
-
-[tools.target.aarch64-unknown-linux-musl.cargo-nextest]
-optional = true
-ver = "0.9.87"
-
-[tools.target.aarch64-unknown-linux-musl.typos]
-identifier = "typos-cli"
-optional = true
-ver = "1.28.4"
-
-[tools.target.aarch64-unknown-linux-musl.vscode]
-filename = "vscode.tar.gz"
-optional = true
-path = "tools/vscode.tar.gz"
-version = "1.97.1"
-
-[tools.target.aarch64-unknown-linux-musl."vscode-rust-analyzer (插件)"]
-path = "tools/rust-analyzer-linux-arm64.vsix"
-version = "0.3.2299"
+path = "tools/VSCodium-linux-arm64-1.97.2.25045.tar.gz"
+version = "1.97.2.25045"
 
 [tools.target.x86_64-pc-windows-gnu.cargo-nextest]
 optional = true
-path = "tools/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip"
-version = "0.9.87"
+path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
+version = "0.9.91"
 
 [tools.target.x86_64-pc-windows-gnu.mingw64]
 path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"
 required = true
 version = "14.2.0-rt_v12-rev0"
 
-[tools.target.x86_64-pc-windows-gnu.typos]
-optional = true
-path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
-version = "1.28.4"
-
-[tools.target.x86_64-pc-windows-gnu.vscode]
-filename = "vscode.zip"
-path = "tools/vscode.zip"
-version = "1.97.1"
-
-[tools.target.x86_64-pc-windows-gnu."vscode-rust-analyzer (插件)"]
+[tools.target.x86_64-pc-windows-gnu."rust-analyzer (VS Code 插件)"]
 path = "tools/rust-analyzer-win32-x64.vsix"
 version = "0.3.2299"
+
+[tools.target.x86_64-pc-windows-gnu.typos]
+optional = true
+path = "tools/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
+version = "1.29.7"
+
+[tools.target.x86_64-pc-windows-gnu.vscodium]
+path = "tools/VSCodium-win32-x64-1.97.2.25045.zip"
+version = "1.97.2.25045"
 
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
 optional = true
-path = "tools/cargo-nextest-0.9.87-x86_64-pc-windows-msvc.zip"
-version = "0.9.87"
+path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
+version = "0.9.91"
 
-[tools.target.x86_64-pc-windows-msvc.typos]
-optional = true
-path = "tools/typos-v1.28.4-x86_64-pc-windows-msvc.zip"
-version = "1.28.4"
-
-[tools.target.x86_64-pc-windows-msvc.vscode]
-filename = "vscode.zip"
-path = "tools/vscode.zip"
-version = "1.97.1"
-
-[tools.target.x86_64-pc-windows-msvc."vscode-rust-analyzer (插件)"]
+[tools.target.x86_64-pc-windows-msvc."rust-analyzer (VS Code 插件)"]
 path = "tools/rust-analyzer-win32-x64.vsix"
 version = "0.3.2299"
 
+[tools.target.x86_64-pc-windows-msvc.typos]
+optional = true
+path = "tools/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
+version = "1.29.7"
+
+[tools.target.x86_64-pc-windows-msvc.vscodium]
+path = "tools/VSCodium-win32-x64-1.97.2.25045.zip"
+version = "1.97.2.25045"
+
 [tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
 optional = true
-path = "tools/cargo-nextest-0.9.87-x86_64-unknown-linux-gnu.tar.gz"
-version = "0.9.87"
+path = "tools/cargo-nextest-0.9.91-x86_64-unknown-linux-gnu.tar.gz"
+version = "0.9.91"
+
+[tools.target.x86_64-unknown-linux-gnu."rust-analyzer (VS Code 插件)"]
+optional = true
+path = "tools/rust-analyzer-linux-x64.vsix"
+version = "0.3.2299"
 
 [tools.target.x86_64-unknown-linux-gnu.typos]
 optional = true
-path = "tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
-version = "1.28.4"
+path = "tools/typos-v1.29.7-x86_64-unknown-linux-musl.tar.gz"
+version = "1.29.7"
 
-[tools.target.x86_64-unknown-linux-gnu.vscode]
-filename = "vscode.tar.gz"
+[tools.target.x86_64-unknown-linux-gnu.vscodium]
 optional = true
-path = "tools/vscode.tar.gz"
-version = "1.97.1"
-
-[tools.target.x86_64-unknown-linux-gnu."vscode-rust-analyzer (插件)"]
-path = "tools/rust-analyzer-linux-x64.vsix"
-version = "0.3.2299"
-
-[tools.target.x86_64-unknown-linux-musl.cargo-nextest]
-optional = true
-ver = "0.9.87"
-
-[tools.target.x86_64-unknown-linux-musl.typos]
-optional = true
-path = "tools/typos-v1.28.4-x86_64-unknown-linux-musl.tar.gz"
-version = "1.28.4"
-
-[tools.target.x86_64-unknown-linux-musl.vscode]
-filename = "vscode.tar.gz"
-optional = true
-path = "tools/vscode.tar.gz"
-version = "1.97.1"
-
-[tools.target.x86_64-unknown-linux-musl."vscode-rust-analyzer (插件)"]
-path = "tools/rust-analyzer-linux-x64.vsix"
-version = "0.3.2299"
+path = "tools/VSCodium-linux-x64-1.97.2.25045.tar.gz"
+version = "1.97.2.25045"

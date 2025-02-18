@@ -18,11 +18,9 @@ verbose-name = "Basic"
 
 [rust.rustup]
 aarch64-unknown-linux-gnu = "tools/rustup-init"
-aarch64-unknown-linux-musl = "tools/rustup-init"
 x86_64-pc-windows-gnu = "tools/rustup-init.exe"
 x86_64-pc-windows-msvc = "tools/rustup-init.exe"
 x86_64-unknown-linux-gnu = "tools/rustup-init"
-x86_64-unknown-linux-musl = "tools/rustup-init"
 
 [tools.descriptions]
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"

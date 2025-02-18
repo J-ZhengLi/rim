@@ -17,24 +17,15 @@ pub(crate) struct VSCodeInstaller<'a> {
     /// The command to invoke VSCode, defaulting to `code`.
     pub(crate) cmd: &'a str,
     pub(crate) tool_name: &'a str,
-    /// The full verbose name of this VSCode variant, used when creating desktop shortcut.
-    pub(crate) verbose_name: &'a str,
+    /// The name of the desktop shortcut.
+    pub(crate) shortcut_name: &'a str,
     /// The name of the main binary, which is located under the extracted folder,
-    /// this is used to create desktop shortcut.
-    #[cfg(windows)]
+    /// this is where the shortcut pointed to on Windows.
+    /// 
+    /// Note: On Unix, shortcuts works by executing certain command, so this
+    /// field is basically useless on those systems.
+    #[allow(dead_code)]
     pub(crate) binary_name: &'a str,
-}
-
-impl Default for VSCodeInstaller<'_> {
-    fn default() -> Self {
-        Self {
-            cmd: "code",
-            tool_name: "vscode",
-            verbose_name: "Visual Studio Code",
-            #[cfg(windows)]
-            binary_name: "Code"
-        }
-    }
 }
 
 impl VSCodeInstaller<'_> {
@@ -53,7 +44,7 @@ impl VSCodeInstaller<'_> {
         {
             // TODO: (?) do we need to create a start menu shortcut as well?
             let shortcut_path = if let Some(dir) = dirs::desktop_dir() {
-                dir.join(format!("{}.lnk", self.verbose_name))
+                dir.join(format!("{}.lnk", self.shortcut_name))
             } else {
                 warn!(
                     "unable to determine which directory to put shortcut for '{}', skipping...",
@@ -94,7 +85,7 @@ MimeType=application/x-{cmd}-workspace;
 Keywords=vscode;
 ",
                 env!("CARGO_PKG_NAME"),
-                self.verbose_name,
+                self.shortcut_name,
                 cmd = self.cmd,
             );
 
@@ -157,14 +148,21 @@ Keywords=vscode;
     }
 }
 
+const VSCODE: VSCodeInstaller = VSCodeInstaller {
+    cmd: "code",
+    tool_name: "vscode",
+    shortcut_name: "Visual Studio Code",
+    binary_name: "Code"
+};
+
 pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
-    VSCodeInstaller::default().install(path, config)
+    VSCODE.install(path, config)
 }
 
 pub(super) fn uninstall(config: &UninstallConfiguration) -> Result<()> {
-    VSCodeInstaller::default().uninstall(config)
+    VSCODE.uninstall(config)
 }
 
 pub(super) fn already_installed() -> bool {
-    VSCodeInstaller::default().already_installed()
+    VSCODE.already_installed()
 }
