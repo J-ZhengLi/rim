@@ -12,7 +12,33 @@ use super::{
     directories::RimDir, parser::fingerprint::ToolRecord, uninstall::UninstallConfiguration,
     GlobalOpts, PathExt, CARGO_HOME,
 };
-use crate::{core::custom_instructions, setter, utils, InstallConfiguration};
+use crate::{
+    core::custom_instructions,
+    setter,
+    utils::{self, run},
+    InstallConfiguration,
+};
+
+/// All supported VS Code varients
+pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
+    #[cfg(windows)]
+    let suffix = ".cmd";
+    #[cfg(not(windows))]
+    let suffix = "";
+    // This list has a fallback order, DO NOT change the order.
+    [
+        "codearts-rust",
+        "codium",
+        "hwcode",
+        "wecode",
+        "code-exploration",
+        "code-oss",
+        "code",
+    ]
+    .iter()
+    .map(|s| format!("{s}{suffix}"))
+    .collect()
+});
 
 #[derive(Debug)]
 pub(crate) struct Tool<'a> {
@@ -35,6 +61,8 @@ pub enum ToolKind {
     /// ├─── ...
     /// ```
     DirWithBin,
+    /// Installer type, which need to be executed to install a certain tool.
+    Installer,
     /// Pre-built executable files.
     /// i.e.:
     /// ```text
@@ -170,6 +198,18 @@ impl<'a> Tool<'a> {
                 let plugin_backup = utils::copy_file_to(path, config.tools_dir())?;
                 vec![plugin_backup]
             }
+            ToolKind::Installer => {
+                let path = self.path.single()?;
+                // Just run the installer and wait for finish.
+                #[cfg(windows)]
+                run!("powershell", "-Command", "Start-Process", "-Wait", path)?;
+                #[cfg(not(windows))]
+                run!(path)?;
+                // Make a backup for this installer, in some case,
+                // it can be used for uninstallation
+                let backup = utils::copy_file_to(path, config.tools_dir())?;
+                vec![backup]
+            }
             // Just throw it under `tools` dir
             ToolKind::Unknown => {
                 vec![move_to_tools(config, self.name(), self.path.single()?)?]
@@ -198,6 +238,11 @@ impl<'a> Tool<'a> {
             ToolKind::Custom => custom_instructions::uninstall(self.name(), config)?,
             ToolKind::DirWithBin => uninstall_dir_with_bin_(self.path.single()?)?,
             ToolKind::Plugin => Plugin::uninstall(self.path.single()?)?,
+            ToolKind::Installer => {
+                // TODO: some installer have uninstall functionality but some may not,
+                // make a list of those and only execute it if it can be used for uninstallation
+                utils::remove(self.path.single()?)?;
+            }
             ToolKind::Unknown => utils::remove(self.path.single()?)?,
         }
         Ok(())
@@ -260,26 +305,6 @@ fn uninstall_dir_with_bin_(tool_path: &Path) -> Result<()> {
 pub(crate) enum Plugin {
     Vsix,
 }
-
-/// All supported VS Code varients
-pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
-    #[cfg(windows)]
-    let suffix = ".cmd";
-    #[cfg(not(windows))]
-    let suffix = "";
-    // This list has a fallback order, DO NOT change the order.
-    [
-        "codium",
-        "hwcode",
-        "wecode",
-        "code-exploration",
-        "code-oss",
-        "code",
-    ]
-    .iter()
-    .map(|s| format!("{s}{suffix}"))
-    .collect()
-});
 
 impl FromStr for Plugin {
     type Err = anyhow::Error;

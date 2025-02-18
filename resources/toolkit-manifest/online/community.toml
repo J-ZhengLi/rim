@@ -17,7 +17,7 @@ verbose-name = "Rust 官方工具"
 
 [tools.descriptions]
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
-codearts = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
+codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 llvm-tools = "包含 LLVM 工具的集合"
 mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
@@ -31,7 +31,7 @@ vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制�
 [tools.group]
 "Rust 优选工具集" = ["typos", "cargo-nextest"]
 "Rust 基础工具集" = ["mingw64"]
-"Rust 软件开发工具链" = ["vscode", "vscodium", "rust-analyzer (VS Code 插件)"]
+"Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "rust-analyzer (VS Code 插件)"]
 
 [tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
 optional = true
@@ -39,6 +39,7 @@ url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-n
 version = "0.9.91"
 
 [tools.target.aarch64-unknown-linux-gnu."rust-analyzer (VS Code 插件)"]
+optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-arm64.vsix"
 version = "0.3.2299"
 
@@ -56,11 +57,6 @@ version = "1.97.2.25045"
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
 version = "0.9.91"
-
-[tools.target.x86_64-pc-windows-gnu.codearts]
-installer = true
-url = "https://cnnorth4-cloudide-marketplace.obs.cn-north-4.myhuaweicloud.com/codearts/rust/latest/codearts-rust-x64-3.2.0-766898c.exe"
-version = "3.2.0-766898c"
 
 [tools.target.x86_64-pc-windows-gnu.mingw64]
 required = true
@@ -85,11 +81,6 @@ optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
 version = "0.9.91"
 
-[tools.target.x86_64-pc-windows-msvc.codearts]
-installer = true
-url = "https://cnnorth4-cloudide-marketplace.obs.cn-north-4.myhuaweicloud.com/codearts/rust/latest/codearts-rust-x64-3.2.0-766898c.exe"
-version = "3.2.0-766898c"
-
 [tools.target.x86_64-pc-windows-msvc."rust-analyzer (VS Code 插件)"]
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-win32-x64.vsix"
 version = "0.3.2299"
@@ -109,6 +100,7 @@ url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-n
 version = "0.9.91"
 
 [tools.target.x86_64-unknown-linux-gnu."rust-analyzer (VS Code 插件)"]
+optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-x64.vsix"
 version = "0.3.2299"
 

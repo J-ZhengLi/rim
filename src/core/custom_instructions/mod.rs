@@ -1,4 +1,5 @@
-use std::{cell::OnceCell, collections::HashMap};
+use std::env::consts::EXE_SUFFIX;
+use std::{collections::HashMap, sync::LazyLock};
 
 use crate::utils;
 
@@ -46,6 +47,18 @@ pub(crate) fn is_supported(name: &str) -> bool {
     SUPPORTED_TOOLS.contains(&name.replace('-', "_").as_str())
 }
 
+/// This is a map with toolname and a list of programs to check for existence.
+/// Since the list to check is highly rely on tool's name, let's calling it `semi-supported` for now.
+static SEMI_SUPPORTED_TOOLS: LazyLock<HashMap<&str, Vec<String>>> = LazyLock::new(|| {
+    HashMap::from([
+        (
+            "mingw64",
+            vec![format!("gcc{EXE_SUFFIX}"), format!("ld{EXE_SUFFIX}")],
+        ),
+        ("codearts-rust", vec!["codearts-rust".into()]),
+    ])
+});
+
 /// Checking if a certain tool is installed by:
 ///
 /// 1. If it has it's on module, it should be detemined there, see list: [`SUPPORTED_TOOLS`].
@@ -57,14 +70,9 @@ pub(crate) fn is_installed(name: &str) -> bool {
         return true;
     }
 
-    // This is a map with toolname and a list of programs to check.
-    // Since the list to check is highly rely on tool's name, let's calling it `semi-supported` for now.
-    let semi_supported_tools = OnceCell::new();
-    let programs = semi_supported_tools
-        .get_or_init(|| HashMap::from([("mingw64", &["gcc", "ld"])]))
-        .get(name);
+    let programs = SEMI_SUPPORTED_TOOLS.get(name);
     if let Some(list) = programs {
-        list.iter().all(|p| utils::cmd_exist(utils::exe!(p)))
+        list.iter().all(utils::cmd_exist)
     } else {
         // Still have no idea, assuming not installed
         false

@@ -14,6 +14,7 @@ use url::Url;
 
 use crate::components::{Component, ComponentType};
 use crate::core::custom_instructions;
+use crate::core::tools::ToolKind;
 use crate::{setter, utils};
 
 use super::TomlParser;
@@ -467,7 +468,7 @@ impl Tools {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(untagged)]
 pub enum ToolInfo {
     /// Basic crates version, contains only its version, used for `cargo install`.
@@ -489,7 +490,7 @@ pub enum ToolInfo {
     Complex(ToolInfoDetails),
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 pub struct ToolInfoDetails {
     #[serde(default)]
     required: bool,
@@ -498,6 +499,10 @@ pub struct ToolInfoDetails {
     identifier: Option<String>,
     #[serde(flatten)]
     pub source: ToolSource,
+    /// Pre-determined kind.
+    /// If not provided, this will be automatically assumed when loading a tool using
+    /// [`Tool::from_path`](crate::core::tools::Tool::from_path).
+    pub kind: Option<ToolKind>,
 }
 
 impl ToolInfoDetails {
@@ -507,6 +512,7 @@ impl ToolInfoDetails {
             required: false,
             optional: false,
             identifier: None,
+            kind: None,
         }
     }
     setter!(required(self.required, bool));
@@ -595,6 +601,16 @@ impl ToolInfo {
     /// ```
     pub fn identifier(&self) -> Option<&str> {
         self.details().and_then(|d| d.identifier.as_deref())
+    }
+
+    /// Get the [`ToolKind`] of this tool.
+    ///
+    /// ```toml
+    /// some_installer = { path = "/path/to/package", kind = "installer" }
+    /// #                                                     ^^^^^^^^^
+    /// ```
+    pub fn kind(&self) -> Option<ToolKind> {
+        self.details().and_then(|d| d.kind)
     }
 }
 
@@ -1334,5 +1350,23 @@ branch = "dev"
         let obj = ToolsetManifest::from_str(input).unwrap();
         let expected_ser = obj.to_toml().unwrap();
         assert_eq!(input, expected_ser);
+    }
+
+    #[test]
+    fn with_tool_kind() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.x86_64-pc-windows-msvc]
+vscode-installer = { version = "1.97.1", url = "https://example.com", kind = "installer" }
+"#;
+
+        let expected = ToolsetManifest::from_str(input).unwrap();
+        let (target, tool) = expected.tools.target.first_key_value().unwrap();
+        let (name, info) = tool.first().unwrap();
+        assert_eq!(target, "x86_64-pc-windows-msvc");
+        assert_eq!(name, "vscode-installer");
+        assert_eq!(info.kind(), Some(ToolKind::Installer));
     }
 }
