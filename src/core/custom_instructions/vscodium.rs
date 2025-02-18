@@ -8,12 +8,12 @@ use anyhow::Result;
 use crate::{InstallConfiguration, UninstallConfiguration};
 use super::vscode::VSCodeInstaller;
 
-const VSCODE: VSCodeInstaller = VSCodeInstaller::new(
-    "codium",
-    "vscodium",
-    "VSCodium",
-    "VSCodium",
-);
+const VSCODE: VSCodeInstaller = VSCodeInstaller {
+    cmd: "codium",
+    tool_name: "vscodium",
+    shortcut_name: "VSCodium",
+    binary_name: "VSCodium"
+};
 
 pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
     VSCODE.install(path, config)
