@@ -65,7 +65,7 @@ class ManagerConf {
         let versionStr = isVerDifferent ? `(${installedVersion} -> ${item.version})` : ` (${item.version})`;
 
         return {
-          label: `${item.name}${versionStr}`,
+          label: `${item.displayName}${versionStr}`,
           checked: isVerDifferent || isRequiredButNotInstalled,
           required: item.required,
           disabled: false,
@@ -74,7 +74,7 @@ class ManagerConf {
           value: item,
           labelComponent: shallowRef(LabelComponent),
           labelComponentProps: {
-            label: item.name,
+            label: item.displayName,
             oldVer: installedVersion,
             newVer: item.version,
           },

@@ -40,7 +40,7 @@ function handleUninstall() {
         :key="item.id"
         m="b-1em l-1em"
       >
-        <Label :label="item.name" :old-ver="item.version"></Label>
+        <Label :label="item.displayName" :old-ver="item.version"></Label>
       </div>
     </scroll-box>
     <div m="l-2em t-0.5em" h="2em">
