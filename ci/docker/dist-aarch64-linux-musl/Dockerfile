@@ -32,7 +32,6 @@ ENV PATH=$PATH:/root/.cargo/bin
 
 RUN rustup target add aarch64-unknown-linux-musl
 ENV HOST_TRIPLE aarch64-unknown-linux-musl
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER aarch64-linux-musl-gcc
 
 # 安装 Node.js 18.x
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
