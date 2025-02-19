@@ -15,18 +15,13 @@ RUN apt-get update && \
     libwebkit2gtk-4.0-dev \
     libappindicator3-dev \
     librsvg2-dev \
-    perl \
-    gcc-aarch64-linux-gnu
+    perl
 
 # 安装 Rust（确保是适用于 ARM 的目标）
 COPY ci/scripts/install-rust.sh /scripts/
 RUN chmod +x /scripts/install-rust.sh && \
     /scripts/install-rust.sh
 ENV PATH=$PATH:/root/.cargo/bin
-
-RUN rustup target add aarch64-unknown-linux-gnu
-ENV HOST_TRIPLE aarch64-unknown-linux-gnu
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER aarch64-linux-gnu-gcc
 
 # 安装 Node.js 18.x
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
@@ -41,4 +36,4 @@ RUN chmod +x /scripts/install-tauri-cli.sh && \
 
 # 执行项目构建
 CMD cargo dev vendor && \
-    cargo dev dist --cli
+    cargo dev dist
