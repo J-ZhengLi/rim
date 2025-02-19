@@ -33,9 +33,9 @@ function handleNextClick() {
       <p my="4px">{{ path }}</p>
       <p mb="8px">组件：</p>
       <div ml="12px">
-        <p my="4px" v-for="component in components" :key="component.name">
+        <p my="4px" v-for="component in components" :key="component.displayName">
           {{
-            `${component.name} ${component.installed ? '(installed, re-installing)' : component.required ? '(required)' : ''} `
+            `${component.displayName} ${component.installed ? '(installed, re-installing)' : component.required ? '(required)' : ''} `
           }}
         </p>
       </div>

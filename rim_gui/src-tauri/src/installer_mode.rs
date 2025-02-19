@@ -91,7 +91,9 @@ fn check_install_path(path: String) -> Option<String> {
 /// Get full list of supported components
 #[tauri::command]
 fn get_component_list() -> Result<Vec<Component>> {
-    Ok(cached_manifest().current_target_components(true)?)
+    let components = cached_manifest().current_target_components(true)?;
+    println!("components: {components:#?}");
+    Ok(components)
 }
 
 #[tauri::command]

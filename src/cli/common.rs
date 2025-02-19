@@ -431,7 +431,7 @@ impl<'c, I: IntoIterator<Item = &'c Component>> ComponentListBuilder<'c, I> {
                 } else {
                     String::new()
                 };
-                format!("{}{deco}{desc}", &c.name)
+                format!("{}{deco}{desc}", &c.display_name)
             })
             .collect()
     }

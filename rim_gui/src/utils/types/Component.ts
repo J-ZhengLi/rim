@@ -1,6 +1,7 @@
 export interface Component {
   id: number;
   name: string;
+  displayName: string;
   version?: string;
   required: boolean;
   optional: boolean;
