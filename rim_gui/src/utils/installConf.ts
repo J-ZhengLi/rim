@@ -112,13 +112,13 @@ class InstallConf {
           return -1;
         }
         // 名称排序
-        return a.name.localeCompare(b.name);
+        return a.displayName.localeCompare(b.displayName);
       });
 
       const newComponents: CheckItem<Component>[] = componentList.map(
         (item) => {
           return {
-            label: `${item.name}${item.installed ? ' (installed)' : item.required ? ' (required)' : ''}`,
+            label: `${item.displayName}${item.installed ? ' (installed)' : item.required ? ' (required)' : ''}`,
             checked: !item.installed && (item.required || !item.optional),
             required: item.required,
             disabled: item.installed ? false : item.required,

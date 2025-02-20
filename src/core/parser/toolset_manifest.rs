@@ -250,6 +250,10 @@ impl ToolsetManifest {
                 } else {
                     tool_info.version()
                 };
+                println!(
+                    "tool: {tool_name}, display name: {:?}",
+                    tool_info.display_name()
+                );
                 components.push(
                     Component::new(
                         tool_name,
@@ -260,7 +264,8 @@ impl ToolsetManifest {
                     .required(tool_info.is_required())
                     .optional(tool_info.is_optional())
                     .installed(installed)
-                    .with_version(version),
+                    .with_version(version)
+                    .with_display_name(tool_info.display_name().unwrap_or(tool_name)),
                 );
             }
         }
@@ -491,6 +496,7 @@ pub enum ToolInfo {
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "kebab-case")]
 pub struct ToolInfoDetails {
     #[serde(default)]
     required: bool,
@@ -503,6 +509,8 @@ pub struct ToolInfoDetails {
     /// If not provided, this will be automatically assumed when loading a tool using
     /// [`Tool::from_path`](crate::core::tools::Tool::from_path).
     pub kind: Option<ToolKind>,
+    /// A name that only used for display purpose.
+    pub display_name: Option<String>,
 }
 
 impl ToolInfoDetails {
@@ -513,6 +521,7 @@ impl ToolInfoDetails {
             optional: false,
             identifier: None,
             kind: None,
+            display_name: None,
         }
     }
     setter!(required(self.required, bool));
@@ -611,6 +620,11 @@ impl ToolInfo {
     /// ```
     pub fn kind(&self) -> Option<ToolKind> {
         self.details().and_then(|d| d.kind)
+    }
+
+    /// Get the display name of this tool if it has one.
+    pub fn display_name(&self) -> Option<&str> {
+        self.details().and_then(|d| d.display_name.as_deref())
     }
 }
 
@@ -1368,5 +1382,23 @@ vscode-installer = { version = "1.97.1", url = "https://example.com", kind = "in
         assert_eq!(target, "x86_64-pc-windows-msvc");
         assert_eq!(name, "vscode-installer");
         assert_eq!(info.kind(), Some(ToolKind::Installer));
+    }
+
+    #[test]
+    fn with_display_name() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.x86_64-pc-windows-msvc]
+tool_a = { version = "1.97.1", display-name = "Tool A" }
+"#;
+
+        let expected = ToolsetManifest::from_str(input).unwrap();
+        let (target, tool) = expected.tools.target.first_key_value().unwrap();
+        let (name, info) = tool.first().unwrap();
+        assert_eq!(target, "x86_64-pc-windows-msvc");
+        assert_eq!(name, "tool_a");
+        assert_eq!(info.display_name(), Some("Tool A"));
     }
 }
