@@ -14,7 +14,7 @@ const labels = computed(() => {
     let isFromToolchain = item.kind === ComponentType.ToolchainComponent || item.kind === ComponentType.ToolchainProfile;
     let installedVersion = isFromToolchain ? installed?.version : installedComponent?.version;
     return {
-      label: item.name,
+      label: item.displayName,
       originVer: installedVersion,
       targetVer: item.version,
     };

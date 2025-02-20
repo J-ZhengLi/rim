@@ -165,7 +165,7 @@ onUpdated(() => {
       </scroll-box>
       <scroll-box basis="200px" grow="4" ml="12px">
         <b>组件详细信息</b>
-        <p font="b">{{ curCheckComponent?.value.name }}</p>
+        <p font="b">{{ curCheckComponent?.value.displayName }}</p>
         <p>{{ curCheckComponent?.value.desc }}</p>
       </scroll-box>
     </div>

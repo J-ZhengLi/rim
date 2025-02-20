@@ -39,9 +39,9 @@ macro_rules! declare_instrcutions {
 }
 
 #[cfg(windows)]
-declare_instrcutions!(buildtools, vscode, vscodium);
+declare_instrcutions!(buildtools, vscode, vscodium, codearts_rust);
 #[cfg(not(windows))]
-declare_instrcutions!(vscode, vscodium);
+declare_instrcutions!(vscode, vscodium, codearts_rust);
 
 pub(crate) fn is_supported(name: &str) -> bool {
     SUPPORTED_TOOLS.contains(&name.replace('-', "_").as_str())

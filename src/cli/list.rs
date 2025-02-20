@@ -83,9 +83,9 @@ pub(crate) fn list_components(
                         .as_ref()
                         .map(|ver| format!(" {ver}"))
                         .unwrap_or_default();
-                    format!("{}{version}", comp.name)
+                    format!("{}{version}", comp.display_name)
                 } else {
-                    comp.name.clone()
+                    comp.display_name.clone()
                 })
             })
             .collect::<Vec<_>>();
@@ -111,7 +111,11 @@ pub(crate) fn list_components(
             } else {
                 String::new()
             };
-            writeln!(&mut stdout, "{}{version}{installed_suffix}", comp.name)?;
+            writeln!(
+                &mut stdout,
+                "{}{version}{installed_suffix}",
+                comp.display_name
+            )?;
         }
     }
     Ok(())

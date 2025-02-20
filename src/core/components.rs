@@ -33,6 +33,8 @@ pub struct Component {
     pub id: u32,
     pub group_name: Option<String>,
     pub name: String,
+    /// A name that used for display purpose, defaulting to `name`.
+    pub display_name: String,
     pub version: Option<String>,
     pub desc: String,
     pub required: bool,
@@ -50,6 +52,7 @@ impl Component {
             id: COMPONENTS_COUNTER.load(Ordering::Relaxed),
             group_name: None,
             name: name.into(),
+            display_name: name.into(),
             version: None,
             desc: desc.into(),
             required: false,
@@ -70,6 +73,7 @@ impl Component {
     setter!(with_group(self.group_name, group: Option<&str>) { group.map(ToOwned::to_owned) });
     setter!(with_tool_installer(self.tool_installer, installer: &ToolInfo) { Some(installer.clone()) });
     setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });
+    setter!(with_display_name(self.display_name, name: impl ToString) { name.to_string() });
 }
 
 /// Get a combined list of tools and toolchain components in Vec<[Component]> format,
