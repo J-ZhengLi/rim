@@ -2,31 +2,27 @@
 
 set -e
 
-# linux
 image=""
+
+# Parse arguments
 while [[ $# -gt 0 ]]
 do
   case "$1" in
-    --dev)
-      dev=1
+    --image)
+      image="$2"
+      shift 2
       ;;
     *)
-      if [ -n "$image" ]
-      then
-        echo "excepted single argument for the image value"
-        exit 1
-      fi
-      image="$1"
+      echo "Unknown argument: $1"
+      exit 1
       ;;
   esac
-  shift
 done
 
 docker --version
 pwd
 ls -al
 
-source_dir="$(pwd)"
 docker_dir="ci/docker"
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
@@ -41,5 +37,5 @@ fi
 echo "Running docker with EDITION=$EDITION"
 docker run --workdir /checkout/obj \
   -e "EDITION=$EDITION" \
-  -v "$source_dir:/checkout/obj" \
+  -v "$PWD:/checkout/obj" \
   --init --rm rim-ci
