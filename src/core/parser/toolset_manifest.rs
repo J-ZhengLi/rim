@@ -250,10 +250,6 @@ impl ToolsetManifest {
                 } else {
                     tool_info.version()
                 };
-                println!(
-                    "tool: {tool_name}, display name: {:?}",
-                    tool_info.display_name()
-                );
                 components.push(
                     Component::new(
                         tool_name,
