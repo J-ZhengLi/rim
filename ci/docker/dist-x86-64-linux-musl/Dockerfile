@@ -1,7 +1,9 @@
-# 使用 Ubuntu 20.04 作为基础镜像
-FROM ubuntu:20.04
+# 使用 Ubuntu 20.04 版本作为基础镜像
+FROM messense/rust-musl-cross:x86_64-musl
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+RUN ld --version
 
 # 更新系统并安装必要的软件包
 RUN apt-get update && \
@@ -14,18 +16,7 @@ RUN apt-get update && \
     libgtk-3-dev \
     libwebkit2gtk-4.0-dev \
     libappindicator3-dev \
-    librsvg2-dev \
-    perl \
-    musl-tools
-
-# 安装 Rust
-COPY ci/scripts/install-rust.sh /scripts/
-RUN chmod +x /scripts/install-rust.sh && \
-    /scripts/install-rust.sh
-ENV PATH=$PATH:/root/.cargo/bin
-
-RUN rustup target add x86_64-unknown-linux-musl
-ENV HOST_TRIPLE x86_64-unknown-linux-musl
+    librsvg2-dev
 
 # 安装 Node.js 18.x
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
@@ -33,11 +24,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
 RUN npm set strict-ssl false && npm install -g pnpm
 
 # 安装 Tauri CLI
-# RUN cargo install tauri-cli@1.6.4
 COPY ci/scripts/install-tauri-cli.sh /scripts/
 RUN chmod +x /scripts/install-tauri-cli.sh && \
     /scripts/install-tauri-cli.sh
 
 # 执行项目构建
-CMD cargo dev vendor && \
-    cargo dev dist --cli
+CMD cargo dev vendor --for x86_64-unknown-linux-gnu && \
+    cargo dev dist --cli --for x86_64-unknown-linux-gnu --target x86_64-unknown-linux-musl && \
+    cargo dev dist --gui --for x86_64-unknown-linux-gnu --target x86_64-unknown-linux-gnu

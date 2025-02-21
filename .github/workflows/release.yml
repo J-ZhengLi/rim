@@ -3,7 +3,7 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
+      tag:
         description: tag name
   push:
     tags:
@@ -15,44 +15,60 @@ jobs:
     runs-on: "${{ matrix.os }}"
     env:
       EDITION: community
-      CI_JOB_NAME: "${{ matrix.name }}"
     
     strategy:
       fail-fast: true
       matrix:
         include:
-          - name: dist-aarch64-linux-gnu
-            os: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-
-          - name: dist-x86-64-linux-gnu
-            os: ubuntu-24.04
-            target: x86_64-unknown-linux-gnu
-
           - name: dist-aarch64-linux-musl
-            os: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-musl
+            os: ubuntu-22.04-arm
+            build-target: aarch64-unknown-linux-musl
+            dist-targets: aarch64-unknown-linux-gnu
 
           - name: dist-x86-64-linux-musl
-            os: ubuntu-24.04
-            target: x86_64-unknown-linux-musl
+            os: ubuntu-22.04
+            build-target: x86_64-unknown-linux-musl
+            dist-targets: x86_64-unknown-linux-gnu
 
           - name: dist-windows-msvc
             os: windows-latest
-            target: x86_64-pc-windows-msvc
+            build-target: x86_64-pc-windows-msvc
+            dist-targets: x86_64-pc-windows-msvc,x86_64-pc-windows-gnu
 
     steps:
       - name: checkout the source code
         uses: actions/checkout@v4
 
-      - name: run build job
-        env:
-          HOST_TRIPLE: ${{ matrix.target }}
-        run: bash ci/release.sh
+      - name: setup node (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install Rust stable (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: install tauri deps (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          npm install -g pnpm
+          bash ci/scripts/install-tauri-cli.sh
+
+      - name: run build job (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cargo dev vendor --for ${{ matrix.dist-targets }}
+          cargo dev dist --target ${{ matrix.build-target }} --for ${{ matrix.dist-targets }}
+
+      - name: run build job (Linux)
+        if: matrix.os != 'windows-latest'
+        run: bash ci/scripts/linux-dist.sh --image ${{ matrix.name }}
 
       - name: upload release
         uses: ncipollo/release-action@v1
         with:
+          tag: ${{ github.event.inputs.tag }}
           allowUpdates: true
           generateReleaseNotes: true
           artifacts: "./dist/*"
