@@ -99,7 +99,7 @@ cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo te
 vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
 vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
 codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
-vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 编辑器 (包括其衍生编辑器, 例如 VSCodium 等) 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
+vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 
 [toolkit.community.value.tools.group]
 "Rust 基础工具集" = ["mingw64"]
@@ -108,27 +108,24 @@ vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现�
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
 mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z" }
-vscodium = { display-name = "VSCodium 代码编辑器", version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-win32-x64-1.97.2.25045.zip" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (VS Code 插件)", version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-win32-x64.vsix" }
+codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
-vscodium = { display-name = "VSCodium 代码编辑器", version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-win32-x64-1.97.2.25045.zip" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (VS Code 插件)", version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-win32-x64.vsix" }
+codearts-rust = { optional = true, display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
-# Make vscode optional on Linux, because not everyone has desktop environment, we might add such check later but entil then, this is the safetest option
-vscodium = { display-name = "VSCodium 代码编辑器", optional = true, version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-x64-1.97.2.25045.tar.gz" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (VS Code 插件)", optional = true, version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-x64.vsix" }
+vscodium = { display-name = "VSCodium", optional = true, version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-x64-1.97.2.25045.tar.gz" }
+vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", optional = true, version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-x64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-unknown-linux-gnu.tar.gz" }
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-unknown-linux-musl.tar.gz" }
 
 [toolkit.community.value.tools.target.aarch64-unknown-linux-gnu]
-vscodium = { display-name = "VSCodium 代码编辑器", optional = true, version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-arm64-1.97.2.25045.tar.gz" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (VS Code 插件)", optional = true, version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-arm64.vsix" }
+vscodium = { display-name = "VSCodium", optional = true, version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-arm64-1.97.2.25045.tar.gz" }
+vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", optional = true, version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-arm64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-aarch64-unknown-linux-gnu.tar.gz" }
 typos = { optional = true, ver = "1.29.7", identifier = "typos-cli" }
 # ========================= Manifest For Community Toolkit END =========================

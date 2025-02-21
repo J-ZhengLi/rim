@@ -25,7 +25,7 @@ rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 
 rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个; 仅当开发链接到编译器的工具时才需要它, 例如对 Clippy 进行修改"
 typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
 vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
-vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 编辑器 (包括其衍生编辑器, 例如 VSCodium 等) 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
+vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
 
 [tools.group]
@@ -44,13 +44,13 @@ optional = true
 ver = "1.29.7"
 
 [tools.target.aarch64-unknown-linux-gnu.vscode-rust-analyzer]
-display-name = "rust-analyzer (VS Code 插件)"
+display-name = "rust-analyzer (插件)"
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-arm64.vsix"
 version = "0.3.2299"
 
 [tools.target.aarch64-unknown-linux-gnu.vscodium]
-display-name = "VSCodium 代码编辑器"
+display-name = "VSCodium"
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-arm64-1.97.2.25045.tar.gz"
 version = "1.97.2.25045"
@@ -59,6 +59,11 @@ version = "1.97.2.25045"
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
 version = "0.9.91"
+
+[tools.target.x86_64-pc-windows-gnu.codearts-rust]
+display-name = "CodeArts IDE"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip"
+version = "3.2.0"
 
 [tools.target.x86_64-pc-windows-gnu.mingw64]
 display-name = "MinGW-w64"
@@ -71,35 +76,21 @@ optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
 version = "1.29.7"
 
-[tools.target.x86_64-pc-windows-gnu.vscode-rust-analyzer]
-display-name = "rust-analyzer (VS Code 插件)"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-win32-x64.vsix"
-version = "0.3.2299"
-
-[tools.target.x86_64-pc-windows-gnu.vscodium]
-display-name = "VSCodium 代码编辑器"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-win32-x64-1.97.2.25045.zip"
-version = "1.97.2.25045"
-
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
 version = "0.9.91"
 
+[tools.target.x86_64-pc-windows-msvc.codearts-rust]
+display-name = "CodeArts IDE"
+optional = true
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip"
+version = "3.2.0"
+
 [tools.target.x86_64-pc-windows-msvc.typos]
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
 version = "1.29.7"
-
-[tools.target.x86_64-pc-windows-msvc.vscode-rust-analyzer]
-display-name = "rust-analyzer (VS Code 插件)"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-win32-x64.vsix"
-version = "0.3.2299"
-
-[tools.target.x86_64-pc-windows-msvc.vscodium]
-display-name = "VSCodium 代码编辑器"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-win32-x64-1.97.2.25045.zip"
-version = "1.97.2.25045"
 
 [tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
 optional = true
@@ -112,13 +103,13 @@ url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/t
 version = "1.29.7"
 
 [tools.target.x86_64-unknown-linux-gnu.vscode-rust-analyzer]
-display-name = "rust-analyzer (VS Code 插件)"
+display-name = "rust-analyzer (插件)"
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-x64.vsix"
 version = "0.3.2299"
 
 [tools.target.x86_64-unknown-linux-gnu.vscodium]
-display-name = "VSCodium 代码编辑器"
+display-name = "VSCodium"
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-x64-1.97.2.25045.tar.gz"
 version = "1.97.2.25045"
