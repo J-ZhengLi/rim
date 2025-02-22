@@ -7,7 +7,7 @@ mod mocked;
 mod toolkits_parser;
 mod vendor;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use dist::DIST_HELP;
 use mocked::{installation, manager, server};
 use std::env;
@@ -58,7 +58,8 @@ enum DevCmd {
     Dist {
         mode: ReleaseMode,
         binary_only: bool,
-        targets: Vec<String>,
+        build_target: String,
+        dist_targets: Vec<String>,
         name: Option<String>,
     },
     RunManager {
@@ -71,7 +72,7 @@ enum DevCmd {
     Vendor {
         mode: VendorMode,
         name: Option<String>,
-        target: Option<String>,
+        targets: Vec<String>,
         all_targets: bool,
     },
 }
@@ -82,9 +83,10 @@ impl DevCmd {
             Self::Dist {
                 mode,
                 binary_only,
-                targets,
+                build_target,
+                dist_targets,
                 name,
-            } => dist::dist(mode, binary_only, targets, name)?,
+            } => dist::dist(mode, binary_only, name, build_target, dist_targets)?,
             Self::RunManager { no_gui, args } => {
                 // a mocked server is needed to run most of function in manager
                 server::generate_rim_server_files()?;
@@ -100,9 +102,9 @@ impl DevCmd {
             Self::Vendor {
                 mode,
                 name,
-                target,
+                targets,
                 all_targets,
-            } => vendor::vendor(mode, name, target, all_targets)?,
+            } => vendor::vendor(mode, name, targets, all_targets)?,
             Self::Mock { root } => server::generate_rustup_server_files(root)?,
         }
         Ok(())
@@ -130,7 +132,8 @@ fn main() -> Result<ExitCode> {
         "d" | "dist" => {
             let mut binary_only = false;
             let mut mode = ReleaseMode::Both;
-            let mut targets = vec![];
+            let mut build_target = env!("TARGET").to_string();
+            let mut dist_targets = vec![];
             let mut name = None;
 
             while let Some(arg) = args.next().as_deref() {
@@ -140,11 +143,10 @@ fn main() -> Result<ExitCode> {
                         return Ok(ExitCode::SUCCESS);
                     }
                     "-n" | "--name" => name = args.next(),
-                    "-t" | "--target" => targets.extend(
-                        args.next()
-                            .map(|t| t.split(',').map(ToOwned::to_owned).collect::<Vec<_>>())
-                            .ok_or_else(|| anyhow!("expected a value for `target`"))?,
-                    ),
+                    "-t" | "--target" => {
+                        build_target = args.next().context("expecting a target triple string")?
+                    }
+                    "--for" => dist_targets.extend(split_values_by_comma(args.next())?),
                     "--cli" => mode = ReleaseMode::Cli,
                     "--gui" => mode = ReleaseMode::Gui,
                     "-b" | "--binary-only" => binary_only = true,
@@ -154,14 +156,15 @@ fn main() -> Result<ExitCode> {
             DevCmd::Dist {
                 mode,
                 binary_only,
-                targets,
                 name,
+                build_target,
+                dist_targets,
             }
         }
         "vendor" => {
             let mut name = None;
             let mut mode = VendorMode::Regular;
-            let mut target = None;
+            let mut targets = vec![];
             let mut all_targets = false;
             while let Some(arg) = args.next().as_deref() {
                 match arg {
@@ -173,17 +176,20 @@ fn main() -> Result<ExitCode> {
                     "-n" | "--name" => name = args.next(),
                     "--download-only" => mode = VendorMode::DownloadOnly,
                     "--split-only" => mode = VendorMode::SplitOnly,
-                    "-t" | "--target" => target = args.next(),
+                    "--for" => targets.extend(split_values_by_comma(args.next())?),
                     s => {
                         writeln!(&mut stdout, "invalid argument '{s}'")?;
                         return Ok(ExitCode::FAILURE);
                     }
                 }
             }
+            if targets.is_empty() {
+                targets.push(env!("TARGET").to_string());
+            }
             DevCmd::Vendor {
                 mode,
                 name,
-                target,
+                targets,
                 all_targets,
             }
         }
@@ -222,4 +228,10 @@ fn main() -> Result<ExitCode> {
     cmd.execute()?;
 
     Ok(ExitCode::SUCCESS)
+}
+
+fn split_values_by_comma(maybe_args: Option<String>) -> Result<Vec<String>> {
+    maybe_args
+        .map(|t| t.split(',').map(ToOwned::to_owned).collect::<Vec<_>>())
+        .ok_or_else(|| anyhow!("expecting comma separated target triple string"))
 }

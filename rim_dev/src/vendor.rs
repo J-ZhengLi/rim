@@ -17,9 +17,9 @@ Usage: cargo dev vendor [OPTIONS]
 
 Options:
     -n, --name      Specify another name of toolkit to download packages for
-    -t, --target    Specify another target when downloading packages, defaulting to current running target
     -a, --all-targets
                     Download packages for all supporting targets
+        --for       Specify the target(s) to downloading packages for, defaulting to current running target
         --download-only
                     Do not update toolkit-manifests, just download packages
         --split-only
@@ -49,7 +49,7 @@ pub(super) enum VendorMode {
 struct VendorArgs {
     mode: VendorMode,
     name: Option<String>,
-    target: Option<String>,
+    targets: Vec<String>,
     /// Whether packages of all supported targets should be downloaded.
     all_targets: bool,
 }
@@ -57,7 +57,7 @@ struct VendorArgs {
 impl VendorArgs {
     fn should_download_for_target(&self, target: &str) -> bool {
         !matches!(self.mode, VendorMode::SplitOnly)
-            && (self.all_targets || self.target.as_deref().unwrap_or(env!("TARGET")) == target)
+            && (self.all_targets || self.targets.iter().any(|s| s == target))
     }
 
     fn should_download(&self, toolkit_name: &str, target: &str) -> bool {
@@ -76,13 +76,13 @@ impl VendorArgs {
 pub(super) fn vendor(
     mode: VendorMode,
     name: Option<String>,
-    target: Option<String>,
+    targets: Vec<String>,
     all_targets: bool,
 ) -> Result<()> {
     let args = VendorArgs {
         mode,
         name,
-        target,
+        targets,
         all_targets,
     };
     let mut toolkits = Toolkits::load()?;
