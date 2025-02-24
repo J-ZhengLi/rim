@@ -69,16 +69,16 @@ mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust
 
 # ========================= Manifest For Community Toolkit START =========================
 [toolkit.community.config]
-date = "2025-01-30"
+date = "2025-02-20"
 # These tools does not allow re-distribution
 web-only = [ "buildtools", "vscode" ]
 
 [toolkit.community.value]
 name = "Rust 中国社区一站式开发套件"
-version = "stable v1.84.1"
+version = "stable v1.85.0"
 
 [toolkit.community.value.rust]
-version = "1.84.1"
+version = "1.85.0"
 group = "Rust 基础工具集"
 components = ["clippy", "rustfmt", "rust-src"]
 optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
@@ -107,7 +107,7 @@ vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现�
 "Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
-mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z" }
+mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev1", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev1/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev1.7z" }
 codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }

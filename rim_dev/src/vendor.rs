@@ -19,6 +19,7 @@ Options:
     -n, --name      Specify another name of toolkit to download packages for
     -a, --all-targets
                     Download packages for all supporting targets
+    -c, --clear     Clear the previously downloaded packages
         --for       Specify the target(s) to downloading packages for, defaulting to current running target
         --download-only
                     Do not update toolkit-manifests, just download packages
@@ -52,12 +53,17 @@ struct VendorArgs {
     targets: Vec<String>,
     /// Whether packages of all supported targets should be downloaded.
     all_targets: bool,
+    clear: bool,
 }
 
 impl VendorArgs {
     fn should_download_for_target(&self, target: &str) -> bool {
         !matches!(self.mode, VendorMode::SplitOnly)
             && (self.all_targets || self.targets.iter().any(|s| s == target))
+    }
+
+    fn should_clear_previous_downloads(&self, toolkit_name: &str) -> bool {
+        self.clear && self.name.as_deref().unwrap_or(env!("EDITION")) == toolkit_name
     }
 
     fn should_download(&self, toolkit_name: &str, target: &str) -> bool {
@@ -78,12 +84,14 @@ pub(super) fn vendor(
     name: Option<String>,
     targets: Vec<String>,
     all_targets: bool,
+    clear: bool,
 ) -> Result<()> {
     let args = VendorArgs {
         mode,
         name,
         targets,
         all_targets,
+        clear,
     };
     let mut toolkits = Toolkits::load()?;
     gen_manifest_and_download_packages(&args, &mut toolkits)
@@ -105,6 +113,13 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
 
     for (name, toolkit) in &mut toolkits.toolkit {
         let toolkit_root = toolkits.config.abs_package_dir().join(toolkit.full_name());
+        if args.should_clear_previous_downloads(name) && toolkit_root.is_dir() {
+            println!(
+                "removing previously downloaded packages under: {:?}",
+                toolkit_root.display()
+            );
+            fs::remove_dir_all(&toolkit_root)?;
+        }
 
         // spliting online manifest is easy, because every manifest section was
         // already considered as online manifest, we just need to write its string
