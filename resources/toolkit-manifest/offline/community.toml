@@ -2,14 +2,14 @@
 # This file was automatically generated.
 # 此文件是自动生成的.
 name = "Rust 中国社区一站式开发套件"
-version = "stable v1.84.1"
+version = "stable v1.85.0"
 
 [rust]
 components = ["clippy", "rustfmt", "rust-src"]
 group = "Rust 基础工具集"
 offline-dist-server = "toolchain"
 optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
-version = "1.84.1"
+version = "1.85.0"
 
 [rust.profile]
 description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
@@ -74,9 +74,9 @@ version = "3.2.0"
 
 [tools.target.x86_64-pc-windows-gnu.mingw64]
 display-name = "MinGW-w64"
-path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"
+path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev1.7z"
 required = true
-version = "14.2.0-rt_v12-rev0"
+version = "14.2.0-rt_v12-rev1"
 
 [tools.target.x86_64-pc-windows-gnu.typos]
 optional = true

@@ -74,6 +74,7 @@ enum DevCmd {
         name: Option<String>,
         targets: Vec<String>,
         all_targets: bool,
+        clear: bool,
     },
 }
 
@@ -104,7 +105,8 @@ impl DevCmd {
                 name,
                 targets,
                 all_targets,
-            } => vendor::vendor(mode, name, targets, all_targets)?,
+                clear,
+            } => vendor::vendor(mode, name, targets, all_targets, clear)?,
             Self::Mock { root } => server::generate_rustup_server_files(root)?,
         }
         Ok(())
@@ -166,6 +168,7 @@ fn main() -> Result<ExitCode> {
             let mut mode = VendorMode::Regular;
             let mut targets = vec![];
             let mut all_targets = false;
+            let mut clear = false;
             while let Some(arg) = args.next().as_deref() {
                 match arg {
                     "-h" | "--help" => {
@@ -173,6 +176,7 @@ fn main() -> Result<ExitCode> {
                         return Ok(ExitCode::SUCCESS);
                     }
                     "-a" | "--all-targets" => all_targets = true,
+                    "-c" | "--clear" => clear = true,
                     "-n" | "--name" => name = args.next(),
                     "--download-only" => mode = VendorMode::DownloadOnly,
                     "--split-only" => mode = VendorMode::SplitOnly,
@@ -191,6 +195,7 @@ fn main() -> Result<ExitCode> {
                 name,
                 targets,
                 all_targets,
+                clear,
             }
         }
         "run-manager" => match args.next().as_deref() {
