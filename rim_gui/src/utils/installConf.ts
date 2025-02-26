@@ -1,5 +1,5 @@
 import { ref, Ref } from 'vue';
-import type { Component } from './types/Component';
+import { toChecked, type Component, type RestrictedComponent } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
 import { AppInfo } from './types/AppInfo';
@@ -10,12 +10,14 @@ class InstallConf {
   checkComponents: Ref<CheckItem<Component>[]>;
   isCustomInstall: boolean;
   version: Ref<string>;
+  restrictedComponents: Ref<RestrictedComponent[]>;
 
   constructor(path: string, components: CheckItem<Component>[]) {
     this.path = ref(path);
     this.checkComponents = ref(components);
     this.isCustomInstall = true;
     this.version = ref('');
+    this.restrictedComponents = ref([]);
   }
 
   /** The name and version of this application joined as a string. */
@@ -40,6 +42,10 @@ class InstallConf {
   setComponents(newComponents: CheckItem<Component>[]) {
     const length = this.checkComponents.value.length;
     this.checkComponents.value.splice(0, length, ...newComponents);
+  }
+
+  setRestrictedComponents(comps: RestrictedComponent[]) {
+    this.restrictedComponents.value = comps;
   }
 
   setCustomInstall(isCustomInstall: boolean) {
@@ -75,6 +81,10 @@ class InstallConf {
       .map((item: CheckItem<Component>) => {
         return item.value as Component;
       });
+  }
+  
+  getRestrictedComponents(): RestrictedComponent[] {
+    return this.restrictedComponents.value;
   }
 
   loadManifest() {
@@ -115,18 +125,7 @@ class InstallConf {
         return a.displayName.localeCompare(b.displayName);
       });
 
-      const newComponents: CheckItem<Component>[] = componentList.map(
-        (item) => {
-          return {
-            label: `${item.displayName}${item.installed ? ' (installed)' : item.required ? ' (required)' : ''}`,
-            checked: !item.installed && (item.required || !item.optional),
-            required: item.required,
-            disabled: item.installed ? false : item.required,
-            value: item,
-          } as CheckItem<Component>;
-        }
-      );
-
+      const newComponents = toChecked(componentList);
       this.setComponents(newComponents);
     }
   }

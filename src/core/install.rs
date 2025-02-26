@@ -305,26 +305,44 @@ impl<'a> InstallConfiguration<'a> {
                     url,
                     filename,
                     version,
+                } => self.download_and_try_install(
+                    name,
+                    url,
+                    version.as_deref(),
+                    details.kind,
+                    filename.as_deref(),
+                )?,
+                ToolSource::Restricted {
+                    source,
+                    version,
+                    default,
+                    ..
                 } => {
-                    let temp_dir = self.create_temp_dir("download")?;
-                    let downloaded_file_name = if let Some(name) = filename {
-                        name
+                    // the source should be filled before installation, if not, then it means
+                    // the program hasn't ask for user input yet, which we should through an error.
+                    let real_source = source
+                        .as_deref()
+                        .or(default.as_deref())
+                        .with_context(|| t!("missing_restricted_source", name = name))?;
+                    let maybe_path = PathBuf::from(real_source);
+                    if maybe_path.exists() {
+                        self.try_install_from_path(
+                            name,
+                            version.as_deref(),
+                            &maybe_path,
+                            details.kind,
+                        )?
                     } else {
-                        url.path_segments()
-                            .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
-                            .last()
-                            // Sadly, a path segment could be empty string, so we need to filter that out
-                            .filter(|seg| !seg.is_empty())
-                            .ok_or_else(|| {
-                                anyhow!("'{url}' doesn't appear to be a downloadable file")
-                            })?
-                    };
-                    let dest = temp_dir.path().join(downloaded_file_name);
-                    utils::DownloadOpt::new(name)
-                        .with_proxy(self.manifest.proxy.clone())
-                        .blocking_download(url, &dest)?;
-
-                    self.try_install_from_path(name, version.as_deref(), &dest, details.kind)?
+                        self.download_and_try_install(
+                            name,
+                            &real_source.parse().with_context(|| {
+                                format!("'{real_source}' is not an existing path nor a valid URL")
+                            })?,
+                            version.as_deref(),
+                            details.kind,
+                            None,
+                        )?
+                    }
                 }
             },
         };
@@ -332,6 +350,33 @@ impl<'a> InstallConfiguration<'a> {
         self.install_record.add_tool_record(name, record);
 
         Ok(())
+    }
+
+    fn download_and_try_install(
+        &self,
+        name: &str,
+        url: &Url,
+        version: Option<&str>,
+        kind: Option<ToolKind>,
+        filename: Option<&str>,
+    ) -> Result<ToolRecord> {
+        let temp_dir = self.create_temp_dir("download")?;
+        let downloaded_file_name = if let Some(name) = filename {
+            name
+        } else {
+            url.path_segments()
+                .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
+                .last()
+                // Sadly, a path segment could be empty string, so we need to filter that out
+                .filter(|seg| !seg.is_empty())
+                .ok_or_else(|| anyhow!("'{url}' doesn't appear to be a downloadable file"))?
+        };
+        let dest = temp_dir.path().join(downloaded_file_name);
+        utils::DownloadOpt::new(name)
+            .with_proxy(self.manifest.proxy.clone())
+            .blocking_download(url, &dest)?;
+
+        self.try_install_from_path(name, version, &dest, kind)
     }
 
     fn try_install_from_path(

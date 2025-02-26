@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
 import ScrollBox from '@/components/ScrollBox.vue';
-import { installConf } from '@/utils/index';
+import { installConf, invokeCommand } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
   CheckItem,
   Component,
+  RestrictedComponent,
 } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
 import CheckBoxGroup from '@/components/CheckBoxGroup.vue';
@@ -95,6 +96,18 @@ function handleSelectAll() {
   });
 }
 
+function handleNextClick() {
+  invokeCommand('get_restricted_components', { components: installConf.getCheckedComponents() }).then((res) => {
+    const restricted = res as RestrictedComponent[];
+    if (restricted.length > 0) {
+      installConf.setRestrictedComponents(restricted);
+      routerPush('/installer/confirm-package-sources');
+    } else {
+      routerPush('/installer/confirm');
+    }
+  })
+}
+
 onMounted(() => {
   groupComponents.value = installConf.getGroups();
 });
@@ -107,37 +120,18 @@ onMounted(() => {
       <scroll-box overflow-auto p="4px" grow="1">
         <div p="t-8px l-8px">组件</div>
         <div ml="1.5rem">
-          <base-check-box
-            flex="~ items-center"
-            v-model="checkedAllBundle"
-            title="全选"
-          >
+          <base-check-box flex="~ items-center" v-model="checkedAllBundle" title="全选">
             <template #icon>
-              <span
-                flex="~ items-center justify-center"
-                w="full"
-                h="full"
-                @click="handleSelectAll"
-              >
+              <span flex="~ items-center justify-center" w="full" h="full" @click="handleSelectAll">
                 <i class="i-mdi:check" v-show="checkedAll" c="active" />
-                <i
-                  class="i-mdi:minus"
-                  v-show="!checkedAll && !checkedEmpty"
-                  c="active"
-                />
+                <i class="i-mdi:minus" v-show="!checkedAll && !checkedEmpty" c="active" />
               </span>
             </template>
           </base-check-box>
         </div>
 
-        <check-box-group
-          v-for="group of groupComponents"
-          :key="group.label"
-          :group="group"
-          expand
-          @itemClick="handleComponentsClick"
-          @change="handleComponentsChange"
-        />
+        <check-box-group v-for="group of groupComponents" :key="group.label" :group="group" expand
+          @itemClick="handleComponentsClick" @change="handleComponentsChange" />
       </scroll-box>
       <scroll-box basis="200px" grow="4" ml="12px">
         <div>组件详细信息</div>
@@ -147,15 +141,8 @@ onMounted(() => {
     </div>
 
     <div basis="60px" flex="~ justify-end items-center">
-      <base-button theme="primary" mr="12px" @click="routerBack"
-        >上一步</base-button
-      >
-      <base-button
-        theme="primary"
-        mr="12px"
-        @click="routerPush('/installer/confirm')"
-        >下一步</base-button
-      >
+      <base-button theme="primary" mr="12px" @click="routerBack">上一步</base-button>
+      <base-button theme="primary" mr="12px" @click="handleNextClick">下一步</base-button>
     </div>
   </div>
 </template>

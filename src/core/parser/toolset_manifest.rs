@@ -342,6 +342,52 @@ impl ToolsetManifest {
         Ok(())
     }
 
+    /// Some package source might be missing if it has [`ToolSource::Restricted`],
+    /// thus this function is required for the installation to work properly.
+    ///
+    /// Whan calling this function, a list of component name is needed to,
+    /// which is a list of components that user selected for installation
+    /// (we don't need to fill the source if they don't intend to install those).
+    /// Then, if the list of components contains tools that are **missing** a source,
+    /// this will apply a `callback` function trying to fill it in.
+    pub fn fill_missing_package_source<F>(
+        &mut self,
+        components: &mut Vec<Component>,
+        callback: F,
+    ) -> Result<()>
+    where
+        F: Fn(String) -> Result<String>,
+    {
+        for tool in self.tools.target.values_mut() {
+            for (name, tool_info) in tool.iter_mut() {
+                let Some(comp_to_modify) = components.iter_mut().find(|c| &c.name == name) else {
+                    continue;
+                };
+                let display_name = tool_info.display_name().unwrap_or(name).to_string();
+
+                if let Some(source) = tool_info.user_provided_source_mut() {
+                    // source already written, skip
+                    if source.is_some() {
+                        continue;
+                    }
+
+                    let new_val = callback(display_name)?;
+                    *source = Some(new_val.clone());
+
+                    // try modify the ones in components as well
+                    if let Some(s) = comp_to_modify
+                        .tool_installer
+                        .as_mut()
+                        .and_then(|c| c.user_provided_source_mut())
+                    {
+                        *s = Some(new_val)
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn rust_version(&self) -> &str {
         self.rust.version.as_str()
     }
@@ -528,6 +574,20 @@ impl ToolInfoDetails {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
 #[serde(untagged)]
 pub enum ToolSource {
+    /// A tool that does not allowing redistribution are considerred as `restricted`.
+    ///
+    /// Source of this tool remains unknown until the program asks for user input
+    /// before installation, and if user has such package they can enter a path to it
+    /// then we (this software) can make the installation process easier for them.
+    /// Or if a `default` is available, which should be a link to the official website
+    /// to download such package, we can help user download the package online then run
+    /// the installation.
+    Restricted {
+        restricted: bool,
+        default: Option<String>,
+        source: Option<String>,
+        version: Option<String>,
+    },
     Git {
         git: Url,
         branch: Option<String>,
@@ -551,9 +611,18 @@ pub enum ToolSource {
 
 impl ToolInfo {
     pub fn path_mut(&mut self) -> Option<&mut PathBuf> {
-        if let Self::Complex(_details_) = self {
-            if let ToolSource::Path { path, .. } = &mut _details_.source {
+        if let Self::Complex(details) = self {
+            if let ToolSource::Path { path, .. } = &mut details.source {
                 return Some(path);
+            }
+        }
+        None
+    }
+
+    pub fn user_provided_source_mut(&mut self) -> Option<&mut Option<String>> {
+        if let Self::Complex(details) = self {
+            if let ToolSource::Restricted { source, .. } = &mut details.source {
+                return Some(source);
             }
         }
         None
@@ -577,9 +646,9 @@ impl ToolInfo {
             Self::Complex(details) => match &details.source {
                 ToolSource::Git { tag, .. } => tag.as_deref(),
                 ToolSource::Version { version } => Some(version),
-                ToolSource::Path { version, .. } | ToolSource::Url { version, .. } => {
-                    version.as_deref()
-                }
+                ToolSource::Path { version, .. }
+                | ToolSource::Url { version, .. }
+                | ToolSource::Restricted { version, .. } => version.as_deref(),
             },
         }
     }
@@ -621,6 +690,16 @@ impl ToolInfo {
     /// Get the display name of this tool if it has one.
     pub fn display_name(&self) -> Option<&str> {
         self.details().and_then(|d| d.display_name.as_deref())
+    }
+
+    pub fn is_restricted(&self) -> bool {
+        matches!(
+            self.details(),
+            Some(ToolInfoDetails {
+                source: ToolSource::Restricted { .. },
+                ..
+            })
+        )
     }
 }
 
@@ -1396,5 +1475,43 @@ tool_a = { version = "1.97.1", display-name = "Tool A" }
         assert_eq!(target, "x86_64-pc-windows-msvc");
         assert_eq!(name, "tool_a");
         assert_eq!(info.display_name(), Some("Tool A"));
+    }
+
+    #[test]
+    fn user_provided_package_sources() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.x86_64-pc-windows-msvc]
+tool_a = { version = "0.1.0", restricted = true }
+tool_b = { default = "https://example.com/installer.exe", restricted = true }
+"#;
+
+        let expected = ToolsetManifest::from_str(input).unwrap();
+        let (_, tool) = expected.tools.target.first_key_value().unwrap();
+        let mut tools = tool.iter();
+        let (name, info) = tools.next().unwrap();
+        assert_eq!(name, "tool_a");
+        assert_eq!(
+            info.details().unwrap().source,
+            ToolSource::Restricted {
+                restricted: true,
+                default: None,
+                source: None,
+                version: Some("0.1.0".to_string())
+            }
+        );
+        let (name, info) = tools.next().unwrap();
+        assert_eq!(name, "tool_b");
+        assert_eq!(
+            info.details().unwrap().source,
+            ToolSource::Restricted {
+                restricted: true,
+                default: Some("https://example.com/installer.exe".into()),
+                source: None,
+                version: None
+            }
+        );
     }
 }

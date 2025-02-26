@@ -23,6 +23,7 @@ anyhow = "1"
 cfg-if = "1"
 url = { version = "2", features = ["serde"] }
 toml = "0.8.15"
+tokio = { version = "1", features = ["time", "rt-multi-thread", "macros"] }
 tempfile = "3"
 indexmap = { version = "2.5", features = ["serde"] }
 reqwest = { version = "0.12", features = ["stream", "native-tls-vendored", "blocking"] }
@@ -59,7 +60,7 @@ semver = "1.0.23"
 self-replace = "1"
 os_pipe = "1.2.1"
 reqwest.workspace = true
-tokio = { version = "1.43.0", features = ["time", "rt-multi-thread", "macros"] }
+tokio.workspace = true
 zip.workspace = true
 
 [dev-dependencies]

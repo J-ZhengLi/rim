@@ -107,6 +107,7 @@
     "customize": "Customize",
     "show_ui": "Show UI",
     "quit": "Quit",
+    "select_file": "Select file",
     "pre_update_confirmation": "\nThese components below will be updated, you may choose to install them, or manually select another set by entering '2'\n\n%{list}",
     "downloading_rustup_init": "downloading rustup-init...",
     "unable_to_remove": "unable to remove '%{path}' as it might be current used by other programs, please try manually remove it after.",
@@ -120,6 +121,9 @@
     "latest_manager_installed": "already running on the latest release version (%{version}), no need to update",
     "downloading_latest_manager": "downloading the latest manager release (version '%{version}')...",
     "question_components_profile": "Choose a component profile",
+    "provide_package_source": "Provide package source(s)",
+    "package_source_missing_info": "One or more selected components require separated packages, you need to manually provide a path or link to install those.",
+    "question_package_source": "Enter the package source (path or url) for '%{tool}'",
     "install_default": "default",
     "install_everything": "everything",
     "install_custom": "customize",
@@ -144,5 +148,7 @@
     "all": "all",
 
     "self_update_in_progress": "self updating, please wait...",
-    "self_update_finished": "self update success! this program will restart in %{eta}"
+    "self_update_finished": "self update success! this program will restart in %{eta}",
+
+    "missing_restricted_source": "pacakge source of tool '%{name}' is restricted, which should be provided by user or has a default value, but none of those are presented"
 }
