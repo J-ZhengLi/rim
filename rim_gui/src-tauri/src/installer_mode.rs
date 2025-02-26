@@ -2,17 +2,19 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
 use std::sync::OnceLock;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
+use serde::{Deserialize, Serialize};
 use tauri::api::dialog::FileDialogBuilder;
 use tauri::Manager;
+use tokio::sync::Mutex;
 
 use super::{common, INSTALL_DIR};
 use crate::error::Result;
 use rim::components::Component;
-use rim::toolset_manifest::{get_toolset_manifest, ToolsetManifest};
+use rim::toolset_manifest::{get_toolset_manifest, ToolInfo, ToolSource, ToolsetManifest};
 use rim::{try_it, utils};
 
-static TOOLSET_MANIFEST: OnceLock<ToolsetManifest> = OnceLock::new();
+static TOOLSET_MANIFEST: OnceLock<Mutex<ToolsetManifest>> = OnceLock::new();
 
 pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
@@ -28,6 +30,8 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             select_folder,
             check_install_path,
             get_component_list,
+            get_restricted_components,
+            updated_package_sources,
             install_toolchain,
             run_app,
             welcome_label,
@@ -90,8 +94,11 @@ fn check_install_path(path: String) -> Option<String> {
 
 /// Get full list of supported components
 #[tauri::command]
-fn get_component_list() -> Result<Vec<Component>> {
-    let components = cached_manifest().current_target_components(true)?;
+async fn get_component_list() -> Result<Vec<Component>> {
+    let components = cached_manifest()
+        .lock()
+        .await
+        .current_target_components(true)?;
     Ok(components)
 }
 
@@ -107,19 +114,91 @@ async fn load_manifest_and_ret_version() -> Result<String> {
     // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
     let mut manifest = get_toolset_manifest(None, false).await?;
     manifest.adjust_paths()?;
+    let version = manifest.version.clone().unwrap_or_default();
 
-    let m = TOOLSET_MANIFEST.get_or_init(|| manifest);
-    Ok(m.version.clone().unwrap_or_default())
+    if TOOLSET_MANIFEST.set(Mutex::new(manifest)).is_err() {
+        error!(
+            "unable to set initialize manifest to desired one \
+            as it was already initialized somewhere else, \
+            returning the cached version instead"
+        );
+        Ok(cached_manifest()
+            .lock()
+            .await
+            .version
+            .clone()
+            .unwrap_or_default())
+    } else {
+        Ok(version)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct RestrictedComponent {
+    name: String,
+    label: String,
+    source: Option<String>,
+}
+
+impl TryFrom<(&str, &ToolInfo)> for RestrictedComponent {
+    type Error = crate::error::InstallerError;
+    fn try_from(value: (&str, &ToolInfo)) -> Result<Self> {
+        if let Some(ToolSource::Restricted {
+            default, source, ..
+        }) = value.1.details().map(|d| &d.source)
+        {
+            let display_name = value.1.display_name().unwrap_or(value.0);
+            return Ok(Self {
+                name: display_name.to_string(),
+                label: t!("question_package_source", tool = display_name).to_string(),
+                source: source.clone().or(default.clone()),
+            });
+        }
+        Err(anyhow!("tool '{}' does not have a restricted source", value.0).into())
+    }
+}
+
+#[tauri::command]
+fn get_restricted_components(components: Vec<Component>) -> Vec<RestrictedComponent> {
+    components
+        .iter()
+        .filter_map(|c| {
+            if let Some(info) = &c.tool_installer {
+                RestrictedComponent::try_from((c.name.as_str(), info)).ok()
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+#[tauri::command]
+async fn updated_package_sources(
+    raw: Vec<RestrictedComponent>,
+    mut selected: Vec<Component>,
+) -> Result<Vec<Component>> {
+    let mut manifest = cached_manifest().lock().await;
+    manifest.fill_missing_package_source(&mut selected, |name| {
+        raw.iter()
+            .find(|rc| rc.name == name)
+            .and_then(|rc| rc.source.clone())
+            .with_context(|| format!("tool '{name}' still have no package source filled yet"))
+    })?;
+    Ok(selected)
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn install_toolchain(window: tauri::Window, components_list: Vec<Component>, install_dir: String) {
+async fn install_toolchain(
+    window: tauri::Window,
+    components_list: Vec<Component>,
+    install_dir: String,
+) {
     let install_dir = PathBuf::from(install_dir);
     common::install_toolkit_in_new_thread(
         window,
         components_list,
         install_dir,
-        cached_manifest().to_owned(),
+        cached_manifest().lock().await.to_owned(),
         false,
     );
 }
@@ -128,7 +207,7 @@ fn install_toolchain(window: tauri::Window, components_list: Vec<Component>, ins
 ///
 /// # Panic
 /// Will panic if the manifest is not cached.
-fn cached_manifest() -> &'static ToolsetManifest {
+fn cached_manifest() -> &'static Mutex<ToolsetManifest> {
     TOOLSET_MANIFEST
         .get()
         .expect("toolset manifest should be loaded by now")

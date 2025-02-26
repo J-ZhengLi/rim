@@ -24,7 +24,6 @@ static INSTALL_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn main() -> Result<()> {
     utils::use_current_locale();
-    let msg_recv = common::setup_logger();
 
     let mode = Mode::detect(
         Some(Box::new(|installer| {
@@ -42,6 +41,7 @@ fn main() -> Result<()> {
                     return Ok(());
                 }
             }
+            let msg_recv = common::setup_logger();
             if let Err(e) = handle_autostart() {
                 // log the error but do NOT abort the program
                 error!("unable to setup autostart: {e}");
@@ -55,6 +55,7 @@ fn main() -> Result<()> {
                     return Ok(());
                 }
             }
+            let msg_recv = common::setup_logger();
             installer_mode::main(msg_recv)?;
         }
     }

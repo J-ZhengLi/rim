@@ -105,7 +105,11 @@ where
     F: Fn(&str) -> bool,
 {
     let mut stdout = io::stdout();
-    let default_badge = format!("[{}: {default}]", t!("default"));
+    let default_badge = if !default.to_string().is_empty() {
+        format!(" [{}: {default}]", t!("default"))
+    } else {
+        String::new()
+    };
     // if there's a specified prompt or if the extra lines are too long,
     // we will display the default label above the actual input, making it more visible to users.
     let show_default_above_input =
@@ -115,7 +119,7 @@ where
     if show_default_above_input {
         writeln!(&mut stdout, "{question}")?;
     } else {
-        writeln!(&mut stdout, "{question} {default_badge}")?;
+        writeln!(&mut stdout, "{question}{default_badge}")?;
     }
     // print extra info, such as a list of selectable options.
     if let Some(ex) = extra {
