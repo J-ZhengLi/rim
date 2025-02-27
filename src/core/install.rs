@@ -305,26 +305,40 @@ impl<'a> InstallConfiguration<'a> {
                     url,
                     filename,
                     version,
+                } => self.download_and_try_install(
+                    name,
+                    url,
+                    version.as_deref(),
+                    details.kind,
+                    filename.as_deref(),
+                )?,
+                ToolSource::Restricted {
+                    source, version, ..
                 } => {
-                    let temp_dir = self.create_temp_dir("download")?;
-                    let downloaded_file_name = if let Some(name) = filename {
-                        name
+                    // the source should be filled before installation, if not, then it means
+                    // the program hasn't ask for user input yet, which we should through an error.
+                    let real_source = source
+                        .as_deref()
+                        .with_context(|| t!("missing_restricted_source", name = name))?;
+                    let maybe_path = PathBuf::from(real_source);
+                    if maybe_path.exists() {
+                        self.try_install_from_path(
+                            name,
+                            version.as_deref(),
+                            &maybe_path,
+                            details.kind,
+                        )?
                     } else {
-                        url.path_segments()
-                            .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
-                            .last()
-                            // Sadly, a path segment could be empty string, so we need to filter that out
-                            .filter(|seg| !seg.is_empty())
-                            .ok_or_else(|| {
-                                anyhow!("'{url}' doesn't appear to be a downloadable file")
-                            })?
-                    };
-                    let dest = temp_dir.path().join(downloaded_file_name);
-                    utils::DownloadOpt::new(name)
-                        .with_proxy(self.manifest.proxy.clone())
-                        .blocking_download(url, &dest)?;
-
-                    self.try_install_from_path(name, version.as_deref(), &dest, details.kind)?
+                        self.download_and_try_install(
+                            name,
+                            &real_source.parse().with_context(|| {
+                                format!("'{real_source}' is not an existing path nor a valid URL")
+                            })?,
+                            version.as_deref(),
+                            details.kind,
+                            None,
+                        )?
+                    }
                 }
             },
         };
@@ -334,6 +348,33 @@ impl<'a> InstallConfiguration<'a> {
         Ok(())
     }
 
+    fn download_and_try_install(
+        &self,
+        name: &str,
+        url: &Url,
+        version: Option<&str>,
+        kind: Option<ToolKind>,
+        filename: Option<&str>,
+    ) -> Result<ToolRecord> {
+        let temp_dir = self.create_temp_dir("download")?;
+        let downloaded_file_name = if let Some(name) = filename {
+            name
+        } else {
+            url.path_segments()
+                .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
+                .last()
+                // Sadly, a path segment could be empty string, so we need to filter that out
+                .filter(|seg| !seg.is_empty())
+                .ok_or_else(|| anyhow!("'{url}' doesn't appear to be a downloadable file"))?
+        };
+        let dest = temp_dir.path().join(downloaded_file_name);
+        utils::DownloadOpt::new(name)
+            .with_proxy(self.manifest.proxy.clone())
+            .blocking_download(url, &dest)?;
+
+        self.try_install_from_path(name, version, &dest, kind)
+    }
+
     fn try_install_from_path(
         &self,
         name: &str,
@@ -341,15 +382,21 @@ impl<'a> InstallConfiguration<'a> {
         path: &Path,
         kind: Option<ToolKind>,
     ) -> Result<ToolRecord> {
-        if !path.exists() {
+        let (tool_installer_path, _maybe_temp) = if path.is_dir() {
+            (path.to_path_buf(), None)
+        } else if Extractable::is_supported(path) {
+            let temp_dir = self.create_temp_dir(name)?;
+            let tool_installer_path = self.extract_or_copy_to(path, temp_dir.path())?;
+            (tool_installer_path, Some(temp_dir))
+        } else if path.is_file() {
+            (path.to_path_buf(), None)
+        } else {
             bail!(
                 "unable to install '{name}' because the path to it's installer '{}' does not exist.",
                 path.display()
             );
-        }
+        };
 
-        let temp_dir = self.create_temp_dir(name)?;
-        let tool_installer_path = self.extract_or_copy_to(path, temp_dir.path())?;
         let tool_installer = if let Some(kind) = kind {
             Tool::new(name.into(), kind).with_path(tool_installer_path.as_path())
         } else {
