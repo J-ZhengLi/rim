@@ -1,19 +1,38 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { Component, installConf, invokeCommand, invokeLabelList, RestrictedComponent, toChecked } from '@/utils';
+import { CheckItem, Component, installConf, invokeCommand, invokeLabelList, RestrictedComponent } from '@/utils';
+import { open } from '@tauri-apps/api/dialog';
 import { onMounted, Ref, ref } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
 const labels = ref<Record<string, string>>({});
 const fields: Ref<RestrictedComponent[]> = ref([]);
 
-function handleOpen() {
+function handleOpen(index: number) {
+  open({
+    directory: false,
+    multiple: false,
+  }).then(res => {
+    if (typeof res === 'string') {
+      fields.value[index].source = res;
+    }
+  })
 }
 
 function handleNextClick() {
   invokeCommand('updated_package_sources', { raw: fields.value, selected: installConf.getCheckedComponents() }).then((res) => {
-    const components = res as Component[];
-    installConf.setComponents(toChecked(components));
+    const updatedCompsRaw = res as Component[];
+    const updated = installConf.checkComponents.value.map(origComp => {
+      const newComp = updatedCompsRaw.find(updatedItem => origComp.value.name === updatedItem.name);
+      if (newComp) {
+        return {
+          ...origComp,
+          value: newComp,
+        } as CheckItem<Component>;
+      }
+      return origComp;
+    })
+    installConf.setComponents(updated);
   });
   routerPush('/installer/confirm');
 }
@@ -49,7 +68,7 @@ onMounted(() => {
             (event: Event) =>
               field.source = (event.target as HTMLInputElement).value
           " />
-          <base-button theme="primary" ml="12px" @click="handleOpen">{{ labels.select_file }}</base-button>
+          <base-button theme="primary" ml="12px" @click="handleOpen(index)">{{ labels.select_file }}</base-button>
         </div>
       </div>
     </scroll-box>

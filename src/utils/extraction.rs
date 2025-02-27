@@ -26,24 +26,18 @@ pub struct Extractable<'a> {
 }
 
 impl<'a> Extractable<'a> {
+    pub fn is_supported(path: &'a Path) -> bool {
+        let Ok(extensions) = file_extension(path) else {
+            return false;
+        };
+        matches!(extensions, "7z" | "zip" | "gz" | "xz")
+    }
+
     pub fn load(path: &'a Path, custom_kind: Option<&str>) -> Result<Self> {
         let ext = if let Some(custom) = custom_kind {
             custom
         } else {
-            path.extension()
-                .ok_or_else(|| {
-                    anyhow!(
-                        "'{}' is not extractable because it appears to have no file extension",
-                        path.display()
-                    )
-                })?
-                .to_str()
-                .ok_or_else(|| {
-                    anyhow!(
-                "'{}' is not extractable because its extension contains invalid unicode characters",
-                path.display()
-            )
-                })?
+            file_extension(path)?
         };
 
         let kind = match ext {
@@ -155,6 +149,24 @@ impl<'a> Extractable<'a> {
         // then find the last solo dir recursively
         inner_(root, stop)
     }
+}
+
+fn file_extension(path: &Path) -> Result<&str> {
+    path.extension()
+        .ok_or_else(|| {
+            anyhow!(
+                "'{}' is not extractable because it appears to have no file extension",
+                path.display()
+            )
+        })?
+        .to_str()
+        .ok_or_else(|| {
+            anyhow!(
+                "'{}' is not extractable because its extension contains \
+                invalid unicode characters",
+                path.display()
+            )
+        })
 }
 
 fn filename_matches_keyword<S: AsRef<OsStr>>(path: &Path, keyword: S) -> bool {

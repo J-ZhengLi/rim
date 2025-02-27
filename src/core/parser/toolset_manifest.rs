@@ -348,8 +348,8 @@ impl ToolsetManifest {
     /// Whan calling this function, a list of component name is needed to,
     /// which is a list of components that user selected for installation
     /// (we don't need to fill the source if they don't intend to install those).
-    /// Then, if the list of components contains tools that are **missing** a source,
-    /// this will apply a `callback` function trying to fill it in.
+    /// Then, this will apply a `callback` function trying to modify the source
+    /// with a certain string returned from the callback function.
     pub fn fill_missing_package_source<F>(
         &mut self,
         components: &mut Vec<Component>,
@@ -366,11 +366,6 @@ impl ToolsetManifest {
                 let display_name = tool_info.display_name().unwrap_or(name).to_string();
 
                 if let Some(source) = tool_info.user_provided_source_mut() {
-                    // source already written, skip
-                    if source.is_some() {
-                        continue;
-                    }
-
                     let new_val = callback(display_name)?;
                     *source = Some(new_val.clone());
 
@@ -380,7 +375,7 @@ impl ToolsetManifest {
                         .as_mut()
                         .and_then(|c| c.user_provided_source_mut())
                     {
-                        *s = Some(new_val)
+                        *s = Some(new_val);
                     }
                 }
             }
