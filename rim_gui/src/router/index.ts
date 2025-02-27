@@ -21,6 +21,7 @@ import ManagerConfirmView from '@/views/manager/ConfirmView.vue';
 import UninstallView from '@/views/manager/UninstallView.vue';
 import ProgressView from '@/views/manager/ProgressView.vue';
 import CompleteView from '@/views/manager/CompleteView.vue';
+import ConfirmPackageSourcesView from '@/views/installer/ConfirmPackageSourcesView.vue';
 
 const routes = [
   {
@@ -47,22 +48,28 @@ const routes = [
         meta: { title: '组件选项', order: 2, required: false },
       },
       {
+        name: 'ConfirmPackageSources',
+        path: 'confirm-package-sources',
+        component: ConfirmPackageSourcesView,
+        meta: { title: '包来源确认', order: 3, required: false },
+      },
+      {
         name: 'Confirm',
         path: 'confirm',
         component: ConfirmView,
-        meta: { title: '信息确认', order: 3, required: true },
+        meta: { title: '信息确认', order: 4, required: true },
       },
       {
         name: 'Install',
         path: 'install',
         component: InstallView,
-        meta: { title: '进行安装', order: 4, required: true },
+        meta: { title: '进行安装', order: 5, required: true },
       },
       {
         name: 'Finish',
         path: 'finish',
         component: FinishView,
-        meta: { title: '安装完成', order: 5, required: true },
+        meta: { title: '安装完成', order: 6, required: true },
       },
     ],
   },

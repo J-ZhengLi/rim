@@ -3542,7 +3542,7 @@ dependencies = [
 
 [[package]]
 name = "rim"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "cc",
@@ -3579,7 +3579,7 @@ dependencies = [
 
 [[package]]
 name = "rim-gui"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "anyhow",
  "auto-launch",
@@ -3594,6 +3594,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-single-instance",
  "tempfile",
+ "tokio",
  "toml 0.8.19",
  "url",
  "window-shadows",

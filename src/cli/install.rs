@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use crate::cli::common::{self, Confirm};
 use crate::cli::GlobalOpts;
@@ -60,8 +61,11 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     } else {
         default_install_dir()
     };
-    let user_opt =
+    let mut user_opt =
         CustomInstallOpt::collect_from_user(&abs_prefix, component_list, component.as_deref())?;
+
+    // fill potentially missing package sources
+    manifest.fill_missing_package_source(&mut user_opt.components, ask_tool_source)?;
 
     let (registry_name, registry_value) = registry_url
         .as_deref()
@@ -289,6 +293,18 @@ fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Resul
     }
 
     Ok(())
+}
+
+static SHOW_MISSING_PKG_SRC_ONCE: OnceLock<()> = OnceLock::new();
+
+fn ask_tool_source(name: String) -> Result<String> {
+    // print addtional info for the first tool
+    SHOW_MISSING_PKG_SRC_ONCE.get_or_init(|| {
+        let mut stdout = std::io::stdout();
+        _ = writeln!(&mut stdout, "\n{}\n", t!("package_source_missing_info"));
+    });
+
+    common::question_str(t!("question_package_source", tool = name), None, "")
 }
 
 pub(super) fn execute_manager(manager: &ManagerSubcommands) -> Result<bool> {

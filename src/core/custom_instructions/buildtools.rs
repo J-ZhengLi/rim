@@ -1,33 +1,32 @@
 use std::path::{Path, PathBuf};
-use anyhow::Result;
+use anyhow::{bail, Result};
 use cc::windows_registry;
 use crate::core::directories::RimDir;
 use crate::core::install::InstallConfiguration;
 
 pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
-    use std::path::PathBuf;
     use crate::utils;
     use anyhow::anyhow;
 
-    fn any_existing_child_path(root: &Path, childs: &[&str]) -> Option<PathBuf> {
-        childs.iter().find_map(|child| {
-            let child_path = root.join(child);
-            child_path.exists().then_some(child_path)
-        })
-    }
-    
-    // VS Build Tools changed their installer binary name to `CamelCase` at some point.
-    let buildtools_exe = any_existing_child_path(path, &["vs_BuildTools.exe", "vs_buildtools.exe"])
-        .ok_or_else(|| anyhow!("unable to find the build tools installer binary."))?;
-
     let mut args = vec![
         "--wait",
-        "--noWeb",
         "--nocache",
         "--passive",
         "--norestart",
         "--focusedUi",
     ];
+
+    let buildtools_exe = if path.is_dir() {
+        args.push("--noWeb");
+        // VS Build Tools changed their installer binary name to `CamelCase` at some point.
+        any_existing_child_path(path, &["vs_BuildTools.exe", "vs_buildtools.exe"])
+            .ok_or_else(|| anyhow!("unable to find the build tools installer binary."))?
+    } else if path.is_file() {
+        path.to_path_buf()
+    } else {
+        bail!("path to install buildtools does not exist '{}'", path.display());
+    };
+
     for component in required_components() {
         args.push("--add");
         args.push(component.component_id());
@@ -162,4 +161,11 @@ integer_enum_with_fallback! {
         UnsupportedOS: "Operating System not supported" => (8010),
         ConnectivityFailure: "Connectivity failure" => (-1073720687)
     }
+}
+
+fn any_existing_child_path(root: &Path, childs: &[&str]) -> Option<PathBuf> {
+    childs.iter().find_map(|child| {
+        let child_path = root.join(child);
+        child_path.exists().then_some(child_path)
+    })
 }
