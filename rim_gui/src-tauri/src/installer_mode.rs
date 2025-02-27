@@ -4,7 +4,6 @@ use std::sync::OnceLock;
 
 use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
-use tauri::api::dialog::FileDialogBuilder;
 use tauri::Manager;
 use tokio::sync::Mutex;
 
@@ -27,7 +26,6 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
         .invoke_handler(tauri::generate_handler![
             close_window,
             default_install_dir,
-            select_folder,
             check_install_path,
             get_component_list,
             get_restricted_components,
@@ -63,18 +61,6 @@ fn default_install_dir() -> String {
         .unwrap_or_else(rim::default_install_dir)
         .to_string_lossy()
         .to_string()
-}
-
-#[tauri::command]
-fn select_folder(window: tauri::Window) {
-    FileDialogBuilder::new().pick_folder(move |path| {
-        // 处理用户选择的路径
-        let folder = path
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_default();
-        // 通过窗口发送事件给前端
-        window.emit("folder-selected", folder).unwrap();
-    });
 }
 
 /// Check if the given path could be used for installation, and return the reason if not.

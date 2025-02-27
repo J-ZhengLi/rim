@@ -56,11 +56,6 @@ optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-arm64-1.97.2.25045.tar.gz"
 version = "1.97.2.25045"
 
-[tools.target.x86_64-pc-windows-gnu.buildtools]
-default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
-display-name = "MSVC 生成工具"
-restricted = true
-
 [tools.target.x86_64-pc-windows-gnu.cargo-nextest]
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
@@ -82,11 +77,6 @@ optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
 version = "1.29.7"
 
-[tools.target.x86_64-pc-windows-msvc.buildtools]
-default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
-display-name = "MSVC 生成工具"
-restricted = true
-
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
@@ -102,11 +92,6 @@ version = "3.2.0"
 optional = true
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
 version = "1.29.7"
-
-[tools.target.x86_64-unknown-linux-gnu.buildtools]
-default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
-display-name = "MSVC 生成工具"
-restricted = true
 
 [tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
 optional = true
