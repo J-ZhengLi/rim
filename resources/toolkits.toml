@@ -114,8 +114,8 @@ cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirro
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
-buildtools = { display-name = "Visual Studio 生成工具", restricted = true, default = "https://aka.ms/vs/17/release/vs_BuildTools.exe" }
-codearts-rust = { optional = true, display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
+buildtools = { required = true, display-name = "Visual Studio 生成工具", restricted = true, default = "https://aka.ms/vs/17/release/vs_BuildTools.exe" }
+codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }
 

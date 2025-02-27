@@ -87,6 +87,7 @@ version = "1.29.7"
 [tools.target.x86_64-pc-windows-msvc.buildtools]
 default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
 display-name = "Visual Studio 生成工具"
+required = true
 restricted = true
 
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
@@ -96,7 +97,6 @@ version = "0.9.91"
 
 [tools.target.x86_64-pc-windows-msvc.codearts-rust]
 display-name = "CodeArts IDE"
-optional = true
 path = "tools/codearts-rust.zip"
 version = "3.2.0"
 
