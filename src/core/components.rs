@@ -123,12 +123,3 @@ pub fn component_list_to_tool_map(list: Vec<&Component>) -> ToolMap {
         })
         .collect()
 }
-
-/// Filter and return a vec of compoents that has restricted (non-redistributable) package source.
-pub fn components_with_restricted_source<'a, I>(list: I) -> Vec<&'a Component>
-where
-    I: Iterator<Item = &'a Component>,
-{
-    list.filter(|c| matches!(&c.tool_installer, Some(info) if info.is_restricted()))
-        .collect()
-}

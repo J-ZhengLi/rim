@@ -84,6 +84,11 @@ optional = true
 path = "tools/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
 version = "1.29.7"
 
+[tools.target.x86_64-pc-windows-msvc.buildtools]
+default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
+display-name = "Visual Studio 生成工具"
+restricted = true
+
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
 optional = true
 path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
