@@ -22,6 +22,7 @@ export interface RestrictedComponent {
   name: string,
   label: string,
   source?: string,
+  default?: string,
 }
 
 export enum ComponentType {

@@ -46,7 +46,7 @@ To build the GUI version, you'll need `NodeJs` and `pnpm` installed.
 You also need to install the `tauri-cli` (v1) binary, which you can install by:
 
 - run `cargo install tauri-cli --version '^1'`
-- download the built binary from their [github release](https://github.com/tauri-apps/tauri/releases/tag/tauri-cli-v1.6.3), then extract and put it into your `<CARGO_HOME>/.cargo/bin` folder
+- download the built binary from their [github release](https://github.com/tauri-apps/tauri/releases/tag/tauri-cli-v1.6.3), then extract and put it into your `<CARGO_HOME>/bin` folder
 
 > Note: `tauri-cli v2` does not work, it is incompatible with `tauri v1` project structure, which this program uses.
 

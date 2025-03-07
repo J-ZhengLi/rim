@@ -15,7 +15,7 @@ pub(crate) trait RimDir {
     fn install_dir(&self) -> &Path;
 
     fn cargo_home(&self) -> &Path {
-        get_path_and_create!(CARGO_HOME_DIR, self.install_dir().join(".cargo"))
+        get_path_and_create!(CARGO_HOME_DIR, self.install_dir().join("cargo"))
     }
 
     fn cargo_bin(&self) -> &Path {
@@ -23,7 +23,7 @@ pub(crate) trait RimDir {
     }
 
     fn rustup_home(&self) -> &Path {
-        get_path_and_create!(RUSTUP_HOME_DIR, self.install_dir().join(".rustup"))
+        get_path_and_create!(RUSTUP_HOME_DIR, self.install_dir().join("rustup"))
     }
 
     fn temp_dir(&self) -> &Path {

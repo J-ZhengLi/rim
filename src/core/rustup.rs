@@ -49,12 +49,13 @@ impl ToolchainInstaller {
         // TODO: check local manifest.
         let version = manifest.rust.version.clone();
         let mut args = vec!["toolchain", "install", &version, "--no-self-update"];
+        let conmps_arg = components.join(",");
         if let Some(profile) = &manifest.rust.profile {
             args.extend(["--profile", &profile.name]);
         }
         if !components.is_empty() {
             args.push("--component");
-            args.extend(components);
+            args.push(&conmps_arg);
         }
         let mut cmd = if let Some(local_server) = manifest.offline_dist_server()? {
             utils::cmd!([RUSTUP_DIST_SERVER=local_server.as_str()] rustup)

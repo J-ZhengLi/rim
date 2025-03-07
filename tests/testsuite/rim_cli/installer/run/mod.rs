@@ -64,8 +64,8 @@ fn insecure_installation() {
 }
 
 fn check_installation(root: &Path, expect_rust_success: bool) {
-    let cargo_home = root.join(".cargo");
-    let rustup_home = root.join(".rustup");
+    let cargo_home = root.join("cargo");
+    let rustup_home = root.join("rustup");
 
     assert!(cargo_home.is_dir());
     assert!(cargo_home.join("bin").is_dir());
