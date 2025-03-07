@@ -23,7 +23,7 @@ x86_64-pc-windows-msvc = "tools/rustup-init.exe"
 x86_64-unknown-linux-gnu = "tools/rustup-init"
 
 [tools.descriptions]
-buildtools = "Visual Studio 生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
+buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
 codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 llvm-tools = "包含 LLVM 工具的集合"
@@ -86,7 +86,7 @@ version = "1.29.7"
 
 [tools.target.x86_64-pc-windows-msvc.buildtools]
 default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
-display-name = "Visual Studio 生成工具"
+display-name = "Visual Studio Build Tools"
 required = true
 restricted = true
 

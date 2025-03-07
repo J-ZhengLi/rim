@@ -124,6 +124,7 @@ struct RestrictedComponent {
     name: String,
     label: String,
     source: Option<String>,
+    default: Option<String>,
 }
 
 impl TryFrom<(&str, &ToolInfo)> for RestrictedComponent {
@@ -137,7 +138,8 @@ impl TryFrom<(&str, &ToolInfo)> for RestrictedComponent {
             return Ok(Self {
                 name: display_name.to_string(),
                 label: t!("question_package_source", tool = display_name).to_string(),
-                source: source.clone().or(default.clone()),
+                source: source.clone(),
+                default: default.clone(),
             });
         }
         Err(anyhow!("tool '{}' does not have a restricted source", value.0).into())
