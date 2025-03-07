@@ -49,6 +49,7 @@ pub(crate) const DEFAULT_CARGO_REGISTRY: (&str, &str) = (
     "xuanwu-sparse",
     "sparse+https://xuanwu.base.atomgit.com/index/",
 );
+const DEFAULT_FOLDER_NAME: &str = "rust";
 
 /// Contains definition of installation steps, including pre-install configs.
 pub trait EnvConfig {
@@ -64,7 +65,7 @@ pub struct InstallConfiguration<'a> {
     pub cargo_registry: Option<(String, String)>,
     /// Path to install everything.
     ///
-    /// Note that this folder will includes `.cargo` and `.rustup` folders as well.
+    /// Note that this folder will includes `cargo` and `rustup` folders as well.
     /// And the default location will under `$HOME` directory (`%USERPROFILE%` on windows).
     /// So, even if the user didn't specify any install path, a pair of env vars will still
     /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the defult location
@@ -501,7 +502,7 @@ impl InstallConfiguration<'_> {
 /// Get the default installation directory,
 /// which is a directory under [`home_dir`](utils::home_dir).
 pub fn default_install_dir() -> PathBuf {
-    utils::home_dir().join(&*t!("vendor_en"))
+    utils::home_dir().join(DEFAULT_FOLDER_NAME)
 }
 
 /// Split components list to `toolchain_components` and `toolset_components`,
