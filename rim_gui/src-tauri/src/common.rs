@@ -19,7 +19,8 @@ use rim::{
     AppInfo, InstallConfiguration, UninstallConfiguration,
 };
 use serde::Serialize;
-use tauri::{App, Window};
+use tauri::api::cli::{Matches, SubcommandMatches};
+use tauri::{App, AppHandle, Manager, Window};
 
 #[allow(clippy::type_complexity)]
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
@@ -283,19 +284,9 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
         log::error!("unable to apply window effects: {e}");
     }
 
-    spawn_gui_update_thread(window, log_receiver);
+    spawn_gui_update_thread(window.clone(), log_receiver);
+    get_cli().execute(manager.handle())?;
     Ok(())
-}
-
-#[derive(Debug, Default)]
-struct CliOpt {
-    /// Launching the app without showing the main window.
-    silent: bool,
-    rustup_dist_server: Option<String>,
-}
-
-fn get_cli() -> &'static CliOpt {
-    CLI_OPT.get_or_init(CliOpt::default)
 }
 
 macro_rules! cli_value {
@@ -308,13 +299,104 @@ macro_rules! cli_value {
     }};
 }
 
-impl From<tauri::api::cli::Matches> for CliOpt {
-    fn from(value: tauri::api::cli::Matches) -> Self {
+#[derive(Debug, Default, Clone)]
+pub(crate) struct CliOpt {
+    /// Launching the app without showing the main window.
+    silent: bool,
+    rustup_dist_server: Option<String>,
+    subcommand: Option<CliSubcommand>,
+}
+
+impl CliOpt {
+    pub(crate) fn execute(&self, app: AppHandle) -> Result<()> {
+        let Some(subcmd) = &self.subcommand else {
+            return Ok(());
+        };
+
+        match subcmd {
+            CliSubcommand::Uninstall => {
+                if !AppInfo::is_manager() {
+                    return Ok(());
+                }
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_millis(1500));
+                    _ = app.emit_all(
+                        "change-view",
+                        CliPayload {
+                            path: "/manager/uninstall".into(),
+                            command: CliSubcommand::Uninstall,
+                        },
+                    );
+                });
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct CliPayload {
+    path: String,
+    command: CliSubcommand,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
+enum CliSubcommand {
+    Uninstall,
+}
+
+impl TryFrom<Box<SubcommandMatches>> for CliSubcommand {
+    type Error = anyhow::Error;
+    fn try_from(value: Box<SubcommandMatches>) -> anyhow::Result<Self> {
+        let res = match value.name.as_str() {
+            "uninstall" => CliSubcommand::Uninstall,
+            s => anyhow::bail!("unknown subcommand '{s}'"),
+        };
+        Ok(res)
+    }
+}
+
+fn get_cli() -> &'static CliOpt {
+    CLI_OPT.get_or_init(CliOpt::default)
+}
+
+impl From<Matches> for CliOpt {
+    fn from(value: Matches) -> Self {
         Self {
             silent: cli_value!(value["silent"].as_bool).unwrap_or_default(),
             rustup_dist_server: cli_value!(value["rustup-dist-server"].as_str)
                 .map(ToOwned::to_owned),
+            subcommand: value
+                .subcommand
+                .and_then(|m| CliSubcommand::try_from(m).ok()),
         }
+    }
+}
+
+impl TryFrom<&[String]> for CliOpt {
+    type Error = anyhow::Error;
+    fn try_from(value: &[String]) -> anyhow::Result<Self> {
+        let mut silent = false;
+        let mut rustup_dist_server = None;
+        let mut subcommand = None;
+
+        let mut iter = value.iter();
+        while let Some(v) = iter.next() {
+            match v.as_str() {
+                "-s" | "--silent" => silent = true,
+                "--rust-dist-server" => rustup_dist_server = iter.next().map(ToString::to_string),
+                "uninstall" => subcommand = Some(CliSubcommand::Uninstall),
+                s => anyhow::bail!("unknown argument '{s}'"),
+            }
+        }
+
+        Ok(Self {
+            silent,
+            rustup_dist_server,
+            subcommand,
+        })
     }
 }
 

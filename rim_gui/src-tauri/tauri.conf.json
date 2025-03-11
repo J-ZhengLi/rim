@@ -18,7 +18,17 @@
           "name": "rustup-dist-server",
           "takesValue": true
         }
-      ]
+      ],
+      "subcommands": {
+        "uninstall": {
+          "description": "Uninstall individual components or everything.",
+          "args": [
+            {
+              "name": "keep-self"
+            }
+          ]
+        }
+      }
     },
     "allowlist": {
       "all": false,
