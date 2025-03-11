@@ -145,5 +145,6 @@
     "self_update_in_progress": "正在自更新，请耐心等待...",
     "self_update_finished": "自更新成功！该程序将在 %{eta} 秒后重新启动",
 
-    "missing_restricted_source": "工具 '%{name}' 的安装包来源受限制，必须由用户明确提供或应具有默认值，但目前既未提供来源，也未设置默认值。"
+    "missing_restricted_source": "工具 '%{name}' 的安装包来源受限制，必须由用户明确提供或应具有默认值，但目前既未提供来源，也未设置默认值。",
+    "remove_path_retry": "移除路径 '%{path}' 失败, 正在重试..."
 }

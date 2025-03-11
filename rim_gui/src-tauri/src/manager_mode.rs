@@ -4,7 +4,10 @@ use std::{
     time::Duration,
 };
 
-use crate::consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT};
+use crate::{
+    common::CliOpt,
+    consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT},
+};
 use crate::{
     common::{self, FrontendFunctionPayload, SingleInstancePayload},
     error::Result,
@@ -39,6 +42,10 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
 pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
+            show_manager_window_if_possible(app);
+            if let Ok(cli) = CliOpt::try_from(argv.as_slice()) {
+                _ = cli.execute(app.clone());
+            }
             _ = app.emit_all("single-instance", SingleInstancePayload { argv, cmd });
         }))
         .system_tray(system_tray())
