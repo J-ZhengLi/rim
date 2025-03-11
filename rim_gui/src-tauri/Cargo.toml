@@ -1,8 +1,7 @@
 [package]
 name = "rim-gui"
-version = "0.5.2"
+version = "0.5.3"
 description = "An interactive Rust installation manager"
-authors = ["you"]
 edition = "2021"
 
 [build-dependencies]
