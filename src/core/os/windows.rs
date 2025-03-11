@@ -113,8 +113,6 @@ pub(crate) mod rustup {
         let mut uninstall_cmd = OsString::from("\"");
         uninstall_cmd.push(program_bin);
         uninstall_cmd.push("\"");
-
-        #[cfg(not(feature = "gui"))]
         uninstall_cmd.push(" uninstall");
 
         let reg_value = RegValue {

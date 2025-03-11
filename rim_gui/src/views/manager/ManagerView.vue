@@ -6,6 +6,7 @@ import Pagination from '@/components/Pagination.vue';
 import { usePagination } from '@/utils/pagination';
 import { event } from '@tauri-apps/api';
 import { useCustomRouter } from '@/router';
+import { CliPayload } from '@/utils/types/payloads';
 
 const installedKit = computed(() => managerConf.getInstalled());
 const kits = computed(() => managerConf.getKits());
@@ -37,6 +38,14 @@ onMounted(() => {
     managerConf.setCurrent(kit);
     managerConf.setOperation('update');
     routerPush('/manager/change');
+  });
+
+  event.listen('change-view', (event) => {
+    let payload = event.payload as CliPayload;
+    if (payload.command === 'Uninstall') {
+      managerConf.setOperation('uninstall');
+    }
+    routerPush(payload.path);
   });
 
   invokeLabelList(['source_hint']).then((results) => {
