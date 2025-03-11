@@ -275,19 +275,21 @@ pub fn move_to(src: &Path, dest: &Path, force: bool) -> Result<()> {
         remove(dest)?;
     }
 
-    const RETRY_TIMES: u8 = 20;
+    const RETRY_TIMES: u8 = 10;
     for _ in 0..RETRY_TIMES {
         match fs::rename(src, dest) {
             Ok(()) => return Ok(()),
             Err(err) if err.kind() == std::io::ErrorKind::PermissionDenied => {
-                std::thread::sleep(Duration::from_secs(1));
+                warn!("{}", t!("remove_path_retry", path = src.display()));
+                std::thread::sleep(Duration::from_secs(3));
                 continue;
             }
             Err(err) => return Err(err.into()),
         }
     }
-    // If removing doesn't work, because some stupid problem caused by anti-virus software,
-    // try copy and delete.
+    // If removing still doesn't work, likely because of some weird problem
+    // caused by anti-virus software, try copy and delete instead.
+    // And report error if the original path cannot be deleted.
     copy_as(src, dest)?;
     if remove(src).is_err() {
         warn!("{}", t!("remove_path_fail_warn", path = src.display()));
