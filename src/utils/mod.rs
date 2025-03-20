@@ -13,6 +13,7 @@ mod progress_bar;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
+    sync::{LazyLock, Mutex},
     time::Duration,
 };
 
@@ -25,6 +26,8 @@ pub use progress_bar::{CliProgress, Progress, Style as CliProgressStyle};
 
 use anyhow::Result;
 use url::Url;
+
+pub static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
 
 /// Insert a `.exe` postfix to given input.
 ///
@@ -201,6 +204,15 @@ pub fn use_current_locale() {
 
 pub fn set_locale(loc: &str) {
     rust_i18n::set_locale(loc);
+
+    // update the current locale
+    *CURRENT_LOCALE.lock().unwrap() = loc.to_string();
+}
+
+/// Get the configured locale string from `configuration.toml`
+pub fn build_cfg_locale(key: &str) -> &str {
+    let cur_locale = &*CURRENT_LOCALE.lock().unwrap();
+    rim_common::cfg_locale!(cur_locale, key)
 }
 
 /// Waits until `duration` has elapsed.

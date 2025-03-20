@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { invokeLabelList, KitItem, managerConf } from '@/utils';
+import { invokeCommand, KitItem, managerConf } from '@/utils';
 import KitCard from './components/KitCard.vue';
 import { computed, onMounted, ref } from 'vue';
 import Pagination from '@/components/Pagination.vue';
@@ -48,8 +48,10 @@ onMounted(() => {
     routerPush(payload.path);
   });
 
-  invokeLabelList(['source_hint']).then((results) => {
-    labels.value = results;
+  invokeCommand('get_build_cfg_locale_str', { key: 'content_source' }).then((res) => {
+    if (typeof res === 'string') {
+      labels.value.content_source = res
+    }
   });
 });
 </script>

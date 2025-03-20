@@ -55,8 +55,14 @@ pub(crate) fn default_rustup_update_root() -> &'static Url {
     &build_config().rustup_update_root
 }
 
-pub(crate) fn default_rim_dist_server() -> &'static Url {
-    &build_config().rim_dist_server
+pub(crate) fn rim_dist_server() -> Url {
+    if let Ok(env_server) = env::var("RIM_DIST_SERVER") {
+        if let Ok(url) = env_server.parse::<Url>() {
+            return url;
+        }
+    }
+
+    build_config().rim_dist_server.clone()
 }
 
 pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {
@@ -140,7 +146,7 @@ impl Mode {
     fn manager(manager_callback: Option<Box<dyn FnOnce(&cli::Manager)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: t!("manager_title", product = t!("product")).into(),
+            name: utils::build_cfg_locale("manager_title").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: true,
         });
@@ -158,7 +164,7 @@ impl Mode {
     fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: t!("installer_title", product = t!("product")).into(),
+            name: utils::build_cfg_locale("installer_title").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: false,
         });

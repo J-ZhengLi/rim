@@ -25,7 +25,7 @@ impl Language {
     pub fn locale_str(&self) -> &str {
         match self {
             Self::CN => "zh-CN",
-            Self::EN => "en",
+            Self::EN => "en-US",
         }
     }
 }

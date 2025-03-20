@@ -279,10 +279,10 @@ pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePay
 }
 
 fn parse_download_url(source_path: &str) -> Result<Url> {
-    let base_obs_server = super::default_rim_dist_server();
+    let base_obs_server = super::rim_dist_server();
 
     debug!("parsing download url for '{source_path}' from server '{base_obs_server}'");
-    utils::url_join(base_obs_server, source_path)
+    utils::url_join(&base_obs_server, source_path)
 }
 
 #[cfg(test)]

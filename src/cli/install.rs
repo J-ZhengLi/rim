@@ -151,7 +151,7 @@ impl CustomInstallOpt {
         writeln!(
             &mut stdout,
             "{CLEAR_SCREEN_SPELL}\n\n{}",
-            t!("welcome", product = t!("product"))
+            t!("welcome", product = utils::build_cfg_locale("product"))
         )?;
         writeln!(&mut stdout, "\n\n{}", t!("what_this_is"))?;
         writeln!(&mut stdout, "{}\n", t!("custom_install_help"))?;

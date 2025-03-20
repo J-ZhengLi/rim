@@ -33,10 +33,7 @@ onBeforeMount(() => installConf.loadManifest());
 
 onMounted(() => {
   const labelKeys = [
-    'welcome',
-    'vendor',
     'install',
-    'source_hint',
     'license_agreement',
     'close',
     'agree',
@@ -50,11 +47,24 @@ onMounted(() => {
       welcomeLabel.value = lb;
     }
   });
+
   invokeCommand('get_home_page_url').then((res) => {
     if (typeof res === 'string') {
       homePageUrl.value = res;
     }
-  })
+  });
+
+  invokeCommand('get_build_cfg_locale_str', { key: 'vendor' }).then((res) => {
+    if (typeof res === 'string') {
+      labels.value.vendor = res
+    }
+  });
+
+  invokeCommand('get_build_cfg_locale_str', { key: 'content_source' }).then((res) => {
+    if (typeof res === 'string') {
+      labels.value.content_source = res
+    }
+  });
 });
 </script>
 
@@ -89,7 +99,7 @@ onMounted(() => {
       </base-check-box> -->
     </div>
     <div basis="30px" m="10px" text="center [clamp(11px,1vw,16px)]">
-      {{ labels.source_hint }}
+      {{ labels.content_source }}
     </div>
     <base-dialog v-model="isDialogVisible" title="{{ labels.license_agreement }}" width="80%">
       <scroll-box flex="1" overflow="auto">

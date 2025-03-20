@@ -1,6 +1,8 @@
 use serde::Deserialize;
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 use url::Url;
+
+type LocaleMap = HashMap<String, String>;
 
 static BUILD_CFG_SINGLETON: OnceLock<BuildConfig> = OnceLock::new();
 
@@ -12,6 +14,7 @@ pub struct BuildConfig {
     pub rustup_update_root: Url,
     pub rim_dist_server: Url,
     pub cargo: CargoConfig,
+    pub locale: HashMap<String, LocaleMap>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
