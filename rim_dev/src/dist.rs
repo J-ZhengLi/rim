@@ -1,4 +1,5 @@
 use env::consts::EXE_SUFFIX;
+use rim_common::build_config;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
@@ -86,7 +87,7 @@ impl<'a> DistWorker<'a> {
     fn release_name(&self) -> String {
         format!(
             "{}-{}-{}",
-            t!("vendor_en"),
+            &build_config().identifier,
             self.toolkit
                 .version()
                 .unwrap_or(self.toolkit.rust_version()),

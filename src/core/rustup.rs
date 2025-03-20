@@ -115,6 +115,8 @@ impl ToolchainInstaller {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
         let tc_ver = manifest.rust_version();
 
+        // FIXME: rust-analyzer kept showing error on this below line
+        // saying: 'overflow expending macro...', find the cause
         utils::run!(&rustup, "toolchain", "add", tc_ver, "--no-self-update")
     }
 

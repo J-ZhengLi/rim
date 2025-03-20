@@ -3542,7 +3542,7 @@ dependencies = [
 
 [[package]]
 name = "rim"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "anyhow",
  "cc",
@@ -3560,6 +3560,7 @@ dependencies = [
  "os_pipe",
  "reqwest",
  "rim-test-support",
+ "rim_common",
  "rust-i18n",
  "self-replace",
  "semver",
@@ -3579,7 +3580,7 @@ dependencies = [
 
 [[package]]
 name = "rim-gui"
-version = "0.5.2"
+version = "0.5.3"
 dependencies = [
  "anyhow",
  "auto-launch",
@@ -3587,6 +3588,7 @@ dependencies = [
  "indexmap 2.5.0",
  "log",
  "rim",
+ "rim_common",
  "rust-i18n",
  "serde",
  "serde_json",
@@ -3615,6 +3617,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rim_common"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml 0.8.19",
+ "url",
+]
+
+[[package]]
 name = "rim_dev"
 version = "0.1.0"
 dependencies = [
@@ -3622,6 +3633,7 @@ dependencies = [
  "cfg-if",
  "indexmap 2.5.0",
  "reqwest",
+ "rim_common",
  "rust-i18n",
  "serde",
  "sha2",

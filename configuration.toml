@@ -1,0 +1,14 @@
+# Build Configurations
+
+identifier = "xuanwu-rust"
+
+# For GUI
+home_page_url = 'https://xuanwu.beta.atomgit.com/'
+
+rustup_dist_server = 'https://xuanwu.base.atomgit.com'
+rustup_update_root = 'https://xuanwu.base.atomgit.com/rustup'
+rim_dist_server = 'https://rust-mirror.obs.cn-north-4.myhuaweicloud.com'
+
+[cargo]
+registry_name = 'xuanwu-sparse'
+registry_url = 'sparse+https://xuanwu.base.atomgit.com/index/'

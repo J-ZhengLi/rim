@@ -1,6 +1,5 @@
 {
     "vendor": "Rust China Community",
-    "vendor_en": "xuanwu-rust",
     "product": "Rust China Community Development Kit",
     "installer_title": "%{product} Installer",
     "manager_title": "%{product} Manager",
