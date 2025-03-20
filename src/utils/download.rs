@@ -5,6 +5,7 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context, Result};
 use indicatif::ProgressBar;
 use reqwest::{header, Client};
+use rim_common::build_config;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use url::Url;
@@ -52,7 +53,11 @@ impl DownloadOpt<ProgressBar> {
 
     /// Build and return a client for download
     fn client(&self) -> Result<Client> {
-        let user_agent = format!("{}/{}", t!("vendor_en"), env!("CARGO_PKG_VERSION"));
+        let user_agent = format!(
+            "{}/{}",
+            &build_config().identifier,
+            env!("CARGO_PKG_VERSION")
+        );
         let proxy = if let Some(p) = &self.proxy {
             p.try_into()?
         } else {

@@ -3,6 +3,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::OnceLock;
 
 use anyhow::{anyhow, Context};
+use rim_common::build_config;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tokio::sync::Mutex;
@@ -38,6 +39,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             common::set_locale,
             common::app_info,
             common::get_label,
+            get_home_page_url,
         ])
         .setup(|app| {
             common::setup_main_window(app, msg_recv)?;
@@ -206,4 +208,9 @@ fn run_app(install_dir: String) -> Result<()> {
     let dir: PathBuf = install_dir.into();
     try_it(Some(&dir))?;
     Ok(())
+}
+
+#[tauri::command]
+fn get_home_page_url() -> String {
+    build_config().home_page_url.as_str().into()
 }

@@ -5,6 +5,7 @@ use crate::core::uninstall::UninstallConfiguration;
 use super::{common, ManagerSubcommands};
 
 use anyhow::Result;
+use rim_common::build_config;
 
 /// Execute `uninstall` command.
 pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<bool> {
@@ -17,11 +18,8 @@ pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<bool> {
 
     // Ask confirmation
     let prompt = if !keep_self {
-        t!(
-            "uninstall_all_confirmation",
-            vendor = t!("vendor_en"),
-            list = installed
-        )
+        let id = &build_config().identifier;
+        t!("uninstall_all_confirmation", vendor = id, list = installed)
     } else {
         t!("uninstall_confirmation", list = installed)
     };

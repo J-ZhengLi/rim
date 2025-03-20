@@ -15,7 +15,7 @@ name = "rim-cli"
 path = "src/bin/rim_cli.rs"
 
 [workspace]
-members = ["rim_gui/src-tauri", "rim_dev"]
+members = ["rim_gui/src-tauri", "rim_dev", "rim_common"]
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -51,6 +51,7 @@ xz2.workspace = true
 flate2 = "1"
 env_proxy = "0.4.1"
 indexmap.workspace = true
+rim_common = { path = "rim_common" }
 rust-i18n.workspace = true
 sys-locale = "0.3.1"
 log.workspace = true

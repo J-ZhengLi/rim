@@ -117,10 +117,7 @@ impl TryFrom<&ToolsetManifest> for Toolkit {
 // TODO: track how many times this function was called, are all server requests necessary?
 // if not, cached them locally.
 pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>> {
-    let dist_server_env_ovr = std::env::var("RIM_DIST_SERVER");
-    let dist_server = dist_server_env_ovr
-        .as_deref()
-        .unwrap_or(super::RIM_DIST_SERVER);
+    let dist_server = super::default_rim_dist_server();
 
     // download dist manifest from server
     let dist_m_filename = DistManifest::FILENAME;

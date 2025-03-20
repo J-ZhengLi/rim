@@ -60,7 +60,7 @@ It is recommanded to use `cargo dev dist` command for:
 
 The built artifacts will be stored inside of `./dist/`.
 
-> `dev dist` works by building the release binary then rename it with the `vendor_en` field in [`locales/en.json`](./locales/en.json). Then collect the local packages under `resources/packages` folder, which can be gathered from Web using *`cargo dev vendor`, then use the packages to create an offline installer. 
+> `dev dist` works by building and renaming the release binary. Then collect the local packages under `resources/packages` folder, which can be gathered from Web using *`cargo dev vendor`, then use the packages to create an offline installer. 
 
 *(check [`rim-dev's readme`](./rim_dev/README.md) for more details).
 
