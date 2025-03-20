@@ -3634,7 +3634,6 @@ dependencies = [
  "indexmap 2.5.0",
  "reqwest",
  "rim_common",
- "rust-i18n",
  "serde",
  "sha2",
  "tar",

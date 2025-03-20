@@ -1,10 +1,4 @@
 {
-    "vendor": "Rust 中国社区",
-    "product": "Rust 中国社区一站式开发套件",
-    "installer_title": "%{product}安装工具",
-    "manager_title": "%{product}管理工具",
-    "source_hint": "内容来源：Rust 中国社区，Rust 原生社区，第三方开源社区",
-
     "install": "安装",
     "update": "更新",
     "uninstall": "卸载",

@@ -230,6 +230,11 @@ pub(crate) fn close_window(win: Window) {
         .unwrap_or_else(|e| log::error!("failed when closing window '{label}': {e}"))
 }
 
+#[tauri::command]
+pub(crate) fn get_build_cfg_locale_str(key: &str) -> &str {
+    utils::build_cfg_locale(key)
+}
+
 /// Simple representation of a Rust's function signature, typically got sent
 /// to the frontend, therefore the frontend knows which and how to invoke a
 /// certain Rust function.

@@ -40,6 +40,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             common::app_info,
             common::get_label,
             get_home_page_url,
+            common::get_build_cfg_locale_str,
         ])
         .setup(|app| {
             common::setup_main_window(app, msg_recv)?;
@@ -92,7 +93,8 @@ async fn get_component_list() -> Result<Vec<Component>> {
 
 #[tauri::command]
 fn welcome_label() -> String {
-    t!("welcome", product = t!("product")).into()
+    let product = utils::build_cfg_locale("product");
+    t!("welcome", product = product).into()
 }
 
 // Make sure this function is called first after launch.

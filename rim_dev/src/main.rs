@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate rust_i18n;
-
 mod common;
 mod dist;
 mod mocked;
@@ -16,8 +13,6 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use toolkits_parser::ReleaseMode;
 use vendor::{VendorMode, VENDOR_HELP};
-
-i18n!("../locales", fallback = "en");
 
 const HELP: &str = r#"
 Usage: cargo dev [OPTIONS] [COMMAND]
