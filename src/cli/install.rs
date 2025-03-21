@@ -202,9 +202,10 @@ fn default_component_choices<'a>(
     let selected_comps_set: HashSet<&String> =
         HashSet::from_iter(user_selected_comps.unwrap_or_default());
     let should_install = |component: &Component| -> bool {
-        let require_but_not_installed = component.required && !component.installed;
+        let not_optional_and_not_installed =
+            !component.installed && (component.required || !component.optional);
         let user_selected = selected_comps_set.contains(&component.name);
-        user_selected || require_but_not_installed
+        user_selected || not_optional_and_not_installed
     };
     all_components
         .iter()
