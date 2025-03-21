@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
 
+static LOGGER_SET: OnceLock<bool> = OnceLock::new();
+
 #[derive(Debug)]
 pub struct Logger {
     output_sender: Option<Sender<String>>,
@@ -104,7 +106,11 @@ impl Logger {
             })
             .chain(fern::log_file(log_file_path()?)?);
 
-        dispatch.chain(output).chain(file_config).apply()?;
+        if dispatch.chain(output).chain(file_config).apply().is_ok() {
+            LOGGER_SET.set(true).unwrap_or_else(|_| {
+                unreachable!("logger setup will fail before reaching this point")
+            });
+        }
         Ok(())
     }
 }
@@ -131,4 +137,9 @@ pub fn log_file_path() -> Result<&'static Path> {
 
     Ok(LOG_FILE_PATH
         .get_or_init(|| log_dir.join(format!("{bin_name}-{}.log", Local::now().date_naive()))))
+}
+
+/// Return `true` if the logger was already initialized.
+pub fn logger_is_set() -> bool {
+    LOGGER_SET.get().copied().unwrap_or_default()
 }

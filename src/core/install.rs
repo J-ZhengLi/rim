@@ -18,6 +18,7 @@ use crate::{
     utils::{self, Extractable, Progress},
 };
 use anyhow::{anyhow, bail, Context, Result};
+use rim_common::build_config;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -25,30 +26,6 @@ use std::{
 use tempfile::TempDir;
 use url::Url;
 
-macro_rules! declare_unfallible_url {
-    ($($name:ident($global:ident) -> $val:literal);+) => {
-        $(
-            static $global: std::sync::OnceLock<url::Url> = std::sync::OnceLock::new();
-            pub(crate) fn $name() -> &'static url::Url {
-                $global.get_or_init(|| {
-                    url::Url::parse($val).expect(
-                        &format!("Internal Error: static variable '{}' cannot be parse to URL", $val)
-                    )
-                })
-            }
-        )*
-    };
-}
-
-declare_unfallible_url!(
-    default_rustup_dist_server(DEFAULT_RUSTUP_DIST_SERVER) -> "https://xuanwu.base.atomgit.com";
-    default_rustup_update_root(DEFAULT_RUSTUP_UPDATE_ROOT) -> "https://xuanwu.base.atomgit.com/rustup"
-);
-
-pub(crate) const DEFAULT_CARGO_REGISTRY: (&str, &str) = (
-    "xuanwu-sparse",
-    "sparse+https://xuanwu.base.atomgit.com/index/",
-);
 const DEFAULT_FOLDER_NAME: &str = "rust";
 
 /// Contains definition of installation steps, including pre-install configs.
@@ -89,13 +66,14 @@ impl RimDir for InstallConfiguration<'_> {
 
 impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
+        let (reg_name, reg_url) = super::default_cargo_registry();
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
             // Note: `InstallationRecord::load_from_dir` creates `install_dir` if it does not exist
             install_record: InstallationRecord::load_from_dir(install_dir)?,
-            cargo_registry: None,
-            rustup_dist_server: default_rustup_dist_server().clone(),
-            rustup_update_root: default_rustup_update_root().clone(),
+            cargo_registry: Some((reg_name.into(), reg_url.into())),
+            rustup_dist_server: super::default_rustup_dist_server().clone(),
+            rustup_update_root: super::default_rustup_update_root().clone(),
             cargo_is_installed: false,
             progress_indicator: None,
             manifest,
@@ -116,7 +94,8 @@ impl<'a> InstallConfiguration<'a> {
         // Create a copy of this binary
         let self_exe = std::env::current_exe()?;
         // promote this installer to manager
-        let manager_name = format!("{}-manager", t!("vendor_en"));
+        let id = &build_config().identifier;
+        let manager_name = format!("{id}-manager");
 
         // Add this manager to the `PATH` environment
         let manager_exe = install_dir.join(utils::exe!(manager_name));
@@ -536,21 +515,6 @@ fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, Too
 mod tests {
     use super::*;
     use crate::toolset_manifest::get_toolset_manifest;
-
-    #[test]
-    fn declare_unfallible_url_macro() {
-        let default_dist_server = default_rustup_dist_server();
-        let default_update_root = default_rustup_update_root();
-
-        assert_eq!(
-            default_dist_server.as_str(),
-            "https://xuanwu.base.atomgit.com/"
-        );
-        assert_eq!(
-            default_update_root.as_str(),
-            "https://xuanwu.base.atomgit.com/rustup"
-        );
-    }
 
     #[tokio::test]
     async fn init_install_config() {

@@ -21,7 +21,9 @@ use anyhow::Result;
 // re-exports
 pub use locales::Language;
 pub(crate) use path_ext::PathExt;
+use rim_common::build_config;
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::{cli, utils};
 use std::{env, sync::OnceLock};
@@ -41,11 +43,33 @@ declare_env_vars!(
     RUSTUP_UPDATE_ROOT
 );
 
-pub(crate) const RIM_DIST_SERVER: &str = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com";
-
 /// Globally cached values
 static GLOBAL_OPTS: OnceLock<GlobalOpts> = OnceLock::new();
 static APP_INFO: OnceLock<AppInfo> = OnceLock::new();
+
+pub(crate) fn default_rustup_dist_server() -> &'static Url {
+    &build_config().rustup_dist_server
+}
+
+pub(crate) fn default_rustup_update_root() -> &'static Url {
+    &build_config().rustup_update_root
+}
+
+pub(crate) fn rim_dist_server() -> Url {
+    if let Ok(env_server) = env::var("RIM_DIST_SERVER") {
+        if let Ok(url) = env_server.parse::<Url>() {
+            return url;
+        }
+    }
+
+    build_config().rim_dist_server.clone()
+}
+
+pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {
+    let cfg = build_config();
+
+    (&cfg.cargo.registry_name, &cfg.cargo.registry_url)
+}
 
 /// Representing the options that user pass to the program, such as
 /// `--yes`, `--no-modify-path`, etc.
@@ -112,7 +136,7 @@ impl GlobalOpts {
 /// - In [`Installer`](Mode::Installer) (a.k.a `setup` mode), this program
 ///     does initial setup and install rust toolkit for the user.
 /// - In [`Manager`](Mode::Manager) mode, this program can be used for
-///     updating, uninstalling the toolkits etc.
+///     updating, uninstalling toolkit etc.
 pub enum Mode {
     Manager(Result<cli::Manager>),
     Installer(Result<cli::Installer>),
@@ -122,7 +146,7 @@ impl Mode {
     fn manager(manager_callback: Option<Box<dyn FnOnce(&cli::Manager)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: t!("manager_title", product = t!("product")).into(),
+            name: utils::build_cfg_locale("manager_title").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: true,
         });
@@ -140,7 +164,7 @@ impl Mode {
     fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: t!("installer_title", product = t!("product")).into(),
+            name: utils::build_cfg_locale("installer_title").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: false,
         });

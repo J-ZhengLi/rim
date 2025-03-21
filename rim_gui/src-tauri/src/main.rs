@@ -37,7 +37,7 @@ fn main() -> Result<()> {
         Mode::Manager(maybe_args) => {
             if let Ok(args) = maybe_args {
                 if args.no_gui {
-                    args.execute()?;
+                    args.execute();
                     return Ok(());
                 }
             }
@@ -51,7 +51,7 @@ fn main() -> Result<()> {
         Mode::Installer(maybe_args) => {
             if let Ok(args) = maybe_args {
                 if args.no_gui {
-                    args.execute()?;
+                    args.execute();
                     return Ok(());
                 }
             }

@@ -22,7 +22,27 @@ use crate::{
     core::{GlobalOpts, Language},
     utils,
 };
-pub use common::pause;
+
+/// Try to pause terminal after executing a block or after error occurs.
+///
+/// Pause on Windows only, if running on other platform, this will only
+/// executing the code within the block and return the result directly.
+macro_rules! execute_with_pause {
+    ($($body:tt)+) => {
+        let _inner_ = || {
+            $($body)*
+        };
+        if let Err(_err_) = _inner_() {
+            if $crate::utils::logger_is_set() {
+                log::error!("{_err_}");
+            } else {
+                eprintln!("{_err_}");
+            }
+        }
+        #[cfg(windows)]
+        $crate::cli::common::pause().expect("unable to pause terminal");
+    };
+}
 
 /// Install rustup, rust toolchain, and various tools.
 // NOTE: If you changed anything in this struct, or any other child types that related to
@@ -175,35 +195,38 @@ impl Installer {
         self.manifest.as_ref().map(|m| m.to_url()).transpose()
     }
 
-    pub fn execute(&self) -> Result<()> {
-        setup(
-            self.verbose,
-            self.quiet,
-            self.yes_to_all,
-            self.no_modify_env,
-            self.no_modify_path,
-            self.lang.as_deref(),
-        )?;
-
-        install::execute_installer(self)
+    pub fn execute(&self) {
+        execute_with_pause! {
+            setup(
+                self.verbose,
+                self.quiet,
+                self.yes_to_all,
+                self.no_modify_env,
+                self.no_modify_path,
+                self.lang.as_deref(),
+            )?;
+            install::execute_installer(self)
+        }
     }
 }
 
 impl Manager {
-    pub fn execute(&self) -> Result<()> {
-        setup(
-            self.verbose,
-            self.quiet,
-            self.yes_to_all,
-            self.no_modify_env,
-            self.no_modify_path,
-            self.lang.as_deref(),
-        )?;
+    pub fn execute(&self) {
+        execute_with_pause! {
+            setup(
+                self.verbose,
+                self.quiet,
+                self.yes_to_all,
+                self.no_modify_env,
+                self.no_modify_path,
+                self.lang.as_deref(),
+            )?;
 
-        let Some(subcmd) = &self.command else {
-            return ManagerSubcommands::from_interaction()?.execute();
-        };
-        subcmd.execute()
+            let Some(subcmd) = &self.command else {
+                return ManagerSubcommands::from_interaction()?.execute();
+            };
+            subcmd.execute()
+        }
     }
 }
 

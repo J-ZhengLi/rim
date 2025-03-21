@@ -1,0 +1,29 @@
+# Build Configurations, if you modify anything here, make sure to modify
+# the parser (rim_common/src/build_config.rs) as well.
+
+identifier = "xuanwu-rust"
+
+# For GUI
+home_page_url = 'https://xuanwu.beta.atomgit.com/'
+
+rustup_dist_server = 'https://xuanwu.base.atomgit.com'
+rustup_update_root = 'https://xuanwu.base.atomgit.com/rustup'
+rim_dist_server = 'https://rust-mirror.obs.cn-north-4.myhuaweicloud.com'
+
+[cargo]
+registry_name = 'xuanwu-sparse'
+registry_url = 'sparse+https://xuanwu.base.atomgit.com/index/'
+
+[locale.en-US]
+vendor = "Rust China Community"
+product = "Rust China Community Development Kit"
+installer_title = "Rust China Community Development Kit Installer"
+manager_title = "Rust China Community Development Kit Manager"
+content_source = "Content source: Rust China Community, Rust Native Community, Third-party open source community"
+
+[locale.zh-CN]
+vendor = "Rust 中国社区"
+product = "Rust 中国社区一站式开发套件"
+installer_title = "Rust 中国社区一站式开发套件安装工具"
+manager_title = "Rust 中国社区一站式开发套件管理工具"
+content_source = "内容来源：Rust 中国社区，Rust 原生社区，第三方开源社区"

@@ -122,11 +122,9 @@ pub(crate) mod rustup {
 
         key.set_raw_value("UninstallString", &reg_value)
             .context("Failed to set `UninstallString`")?;
-        key.set_value(
-            "DisplayName",
-            &format!("{} Rust Installation Manager", t!("vendor")),
-        )
-        .context("Failed to set `DisplayName`")?;
+        let product = super::utils::build_cfg_locale("product");
+        key.set_value("DisplayName", &product)
+            .context("Failed to set `DisplayName`")?;
 
         Ok(())
     }

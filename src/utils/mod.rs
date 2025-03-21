@@ -13,18 +13,21 @@ mod progress_bar;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
+    sync::{LazyLock, Mutex},
     time::Duration,
 };
 
 pub use download::DownloadOpt;
 pub use extraction::Extractable;
 pub use file_system::*;
-pub use log::{log_file_path, Logger};
+pub use log::{log_file_path, logger_is_set, Logger};
 pub use process::*;
 pub use progress_bar::{CliProgress, Progress, Style as CliProgressStyle};
 
 use anyhow::Result;
 use url::Url;
+
+pub static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
 
 /// Insert a `.exe` postfix to given input.
 ///
@@ -134,11 +137,11 @@ pub fn force_parse_url(url: &str) -> Url {
 ///
 /// [`Url::join`] will replace the last part of a root if the root does not have trailing slash,
 /// and this function is to make sure of that, so the `root` will always join with `s`.
-pub fn url_join(root: &Url, s: &str) -> Result<Url> {
+pub fn url_join<S: AsRef<str>>(root: &Url, s: S) -> Result<Url> {
     let result = if root.as_str().ends_with('/') {
-        root.join(s)?
+        root.join(s.as_ref())?
     } else {
-        Url::parse(&format!("{}/{s}", root.as_str()))?
+        Url::parse(&format!("{}/{}", root.as_str(), s.as_ref()))?
     };
 
     Ok(result)
@@ -201,6 +204,15 @@ pub fn use_current_locale() {
 
 pub fn set_locale(loc: &str) {
     rust_i18n::set_locale(loc);
+
+    // update the current locale
+    *CURRENT_LOCALE.lock().unwrap() = loc.to_string();
+}
+
+/// Get the configured locale string from `configuration.toml`
+pub fn build_cfg_locale(key: &str) -> &str {
+    let cur_locale = &*CURRENT_LOCALE.lock().unwrap();
+    rim_common::cfg_locale!(cur_locale, key)
 }
 
 /// Waits until `duration` has elapsed.
