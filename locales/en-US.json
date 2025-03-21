@@ -1,11 +1,4 @@
 {
-    "vendor": "Rust China Community",
-    "vendor_en": "xuanwu-rust",
-    "product": "Rust China Community Development Kit",
-    "installer_title": "%{product} Installer",
-    "manager_title": "%{product} Manager",
-    "source_hint": "Content source: Rust China Community, Rust Native Community, Third-party open source community",
-
     "install": "install",
     "update": "Update",
     "uninstall": "Uninstall",

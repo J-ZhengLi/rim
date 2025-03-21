@@ -115,6 +115,8 @@ impl ToolchainInstaller {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
         let tc_ver = manifest.rust_version();
 
+        // FIXME: rust-analyzer kept showing error on this below line
+        // saying: 'overflow expending macro...', find the cause
         utils::run!(&rustup, "toolchain", "add", tc_ver, "--no-self-update")
     }
 
@@ -190,7 +192,7 @@ fn download_rustup_init(
 ) -> Result<()> {
     info!("{}", t!("downloading_rustup_init"));
 
-    let download_url = url_join(server, &format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
+    let download_url = url_join(server, format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
         .context("Failed to init rustup download url.")?;
     utils::DownloadOpt::new(RUSTUP_INIT)
         .insecure(insecure)

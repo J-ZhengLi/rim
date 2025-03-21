@@ -4,6 +4,7 @@ use std::sync::{Arc, OnceLock};
 use std::{env, sync::atomic::AtomicBool};
 
 use anyhow::{Context, Result};
+use rim_common::build_config;
 use semver::Version;
 use tokio::sync::Notify;
 use url::Url;
@@ -71,7 +72,8 @@ impl UpdateOpt {
         #[cfg(feature = "gui")]
         let cli = "";
 
-        let src_name = utils::exe!(format!("{}-manager{cli}", t!("vendor_en")));
+        let id = &build_config().identifier;
+        let src_name = utils::exe!(format!("{id}-manager{cli}"));
         let latest_version = &latest_manager_release(self.insecure).await?.version;
         let download_url = parse_download_url(&format!(
             "manager/archive/{latest_version}/{}/{src_name}",
@@ -88,7 +90,7 @@ impl UpdateOpt {
             .prefix("manager-download_")
             .tempdir_in(self.temp_dir())?;
         // dest file don't need the `-cli` suffix to confuse users
-        let dest_name = utils::exe!(format!("{}-manager", t!("vendor_en")));
+        let dest_name = utils::exe!(format!("{}-manager", &build_config().identifier));
         let newer_manager = temp_root.path().join(dest_name);
         utils::DownloadOpt::new("latest manager")
             .download(&download_url, &newer_manager)
@@ -277,10 +279,7 @@ pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePay
 }
 
 fn parse_download_url(source_path: &str) -> Result<Url> {
-    let base_obs_server: Url = env::var("RIM_DIST_SERVER")
-        .as_deref()
-        .unwrap_or(super::RIM_DIST_SERVER)
-        .parse()?;
+    let base_obs_server = super::rim_dist_server();
 
     debug!("parsing download url for '{source_path}' from server '{base_obs_server}'");
     utils::url_join(&base_obs_server, source_path)

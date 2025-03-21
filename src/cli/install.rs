@@ -8,11 +8,10 @@ use std::sync::OnceLock;
 use crate::cli::common::{self, Confirm};
 use crate::cli::GlobalOpts;
 use crate::components::Component;
-use crate::core::install::{
-    default_rustup_dist_server, default_rustup_update_root, InstallConfiguration,
-    DEFAULT_CARGO_REGISTRY,
+use crate::core::install::InstallConfiguration;
+use crate::core::{
+    default_cargo_registry, default_rustup_dist_server, default_rustup_update_root, try_it,
 };
-use crate::core::try_it;
 use crate::toolset_manifest::get_toolset_manifest;
 use crate::utils::blocking;
 use crate::{default_install_dir, utils};
@@ -70,7 +69,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     let (registry_name, registry_value) = registry_url
         .as_deref()
         .map(|u| (registry_name.as_str(), u))
-        .unwrap_or(DEFAULT_CARGO_REGISTRY);
+        .unwrap_or(default_cargo_registry());
     let install_dir = user_opt.prefix;
 
     InstallConfiguration::new(&install_dir, &manifest)?
@@ -152,7 +151,7 @@ impl CustomInstallOpt {
         writeln!(
             &mut stdout,
             "{CLEAR_SCREEN_SPELL}\n\n{}",
-            t!("welcome", product = t!("product"))
+            t!("welcome", product = utils::build_cfg_locale("product"))
         )?;
         writeln!(&mut stdout, "\n\n{}", t!("what_this_is"))?;
         writeln!(&mut stdout, "{}\n", t!("custom_install_help"))?;
@@ -203,9 +202,10 @@ fn default_component_choices<'a>(
     let selected_comps_set: HashSet<&String> =
         HashSet::from_iter(user_selected_comps.unwrap_or_default());
     let should_install = |component: &Component| -> bool {
-        let require_but_not_installed = component.required && !component.installed;
+        let not_optional_and_not_installed =
+            !component.installed && (component.required || !component.optional);
         let user_selected = selected_comps_set.contains(&component.name);
-        user_selected || require_but_not_installed
+        user_selected || not_optional_and_not_installed
     };
     all_components
         .iter()

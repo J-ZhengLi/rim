@@ -69,6 +69,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             skip_version,
             notification::close,
             notification::notification_content,
+            common::get_build_cfg_locale_str,
         ])
         .setup(|app| {
             common::setup_main_window(app, msg_recv)?;

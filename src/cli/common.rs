@@ -331,11 +331,6 @@ pub fn pause() -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(windows))]
-pub fn pause() -> Result<()> {
-    Ok(())
-}
-
 fn readline() -> Result<String> {
     let mut input_buf = String::new();
     io::stdin()
