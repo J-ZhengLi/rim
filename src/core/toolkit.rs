@@ -7,7 +7,6 @@ use anyhow::Result;
 use semver::Version;
 use serde::Serialize;
 use tokio::sync::{Mutex, OnceCell};
-use url::Url;
 
 use super::parser::dist_manifest::DistPackage;
 
@@ -122,7 +121,7 @@ pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>>
     // download dist manifest from server
     let dist_m_filename = DistManifest::FILENAME;
     info!("{} {dist_m_filename}", t!("fetching"));
-    let dist_m_url = Url::parse(&format!("{dist_server}/dist/{dist_m_filename}"))?;
+    let dist_m_url = utils::url_join(&dist_server, format!("dist/{dist_m_filename}"))?;
     let dist_m_file = utils::make_temp_file("dist-manifest-", None)?;
     utils::DownloadOpt::new("distribution manifest")
         .insecure(insecure)

@@ -3,7 +3,7 @@ use std::env;
 const TARGET_OVERRIDE_ENV: &str = "HOST_TRIPLE";
 const EDITION_OVERRIDE_ENV: &str = "EDITION";
 /// Default toolkit edition, such as `basic`, `community`, more to come.
-const DEFAULT_EDITION: &str = "community";
+const DEFAULT_EDITION: &str = "basic";
 const FILES_TO_TRIGGER_REBUILD: &[&str] = &["locales/en.json", "locales/zh-CN.json"];
 
 fn main() {

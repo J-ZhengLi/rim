@@ -20,7 +20,7 @@ use std::{
 pub use download::DownloadOpt;
 pub use extraction::Extractable;
 pub use file_system::*;
-pub use log::{log_file_path, Logger};
+pub use log::{log_file_path, logger_is_set, Logger};
 pub use process::*;
 pub use progress_bar::{CliProgress, Progress, Style as CliProgressStyle};
 
@@ -137,11 +137,11 @@ pub fn force_parse_url(url: &str) -> Url {
 ///
 /// [`Url::join`] will replace the last part of a root if the root does not have trailing slash,
 /// and this function is to make sure of that, so the `root` will always join with `s`.
-pub fn url_join(root: &Url, s: &str) -> Result<Url> {
+pub fn url_join<S: AsRef<str>>(root: &Url, s: S) -> Result<Url> {
     let result = if root.as_str().ends_with('/') {
-        root.join(s)?
+        root.join(s.as_ref())?
     } else {
-        Url::parse(&format!("{}/{s}", root.as_str()))?
+        Url::parse(&format!("{}/{}", root.as_str(), s.as_ref()))?
     };
 
     Ok(result)

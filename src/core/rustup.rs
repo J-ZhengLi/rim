@@ -192,7 +192,7 @@ fn download_rustup_init(
 ) -> Result<()> {
     info!("{}", t!("downloading_rustup_init"));
 
-    let download_url = url_join(server, &format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
+    let download_url = url_join(server, format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
         .context("Failed to init rustup download url.")?;
     utils::DownloadOpt::new(RUSTUP_INIT)
         .insecure(insecure)
