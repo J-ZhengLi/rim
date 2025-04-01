@@ -19,16 +19,14 @@ use anyhow::Result;
 /// ```
 macro_rules! run {
     ($program:expr) => {{
-        let cmd__ = $crate::utils::cmd!($program);
-        $crate::utils::execute(cmd__).map(|_| ())
+        $crate::utils::execute(std::process::Command::new($program))
     }};
     ($program:expr $(, $arg:expr )* $(,)?) => {{
-        let cmd__ = $crate::utils::cmd!($program $(, $arg)*);
-        $crate::utils::execute(cmd__).map(|_| ())
+        $crate::utils::run!([] $program $(,$arg)*)
     }};
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
         let cmd__ = $crate::utils::cmd!([$($key=$val),*] $program $(,$arg)*);
-        $crate::utils::execute(cmd__).map(|_| ())
+        $crate::utils::execute(cmd__)
     }};
 }
 pub(crate) use run;
