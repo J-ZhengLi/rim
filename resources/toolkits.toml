@@ -45,15 +45,13 @@ name = "XuanWu Rust Development Kit"
 version = "stable v1.81.0"
 
 [toolkit.basic.value.rust]
+display-name = "Basic"
+description = "Basic set of tools to use Rust properly"
+profile = "minimal"
 version = "1.81.0"
 group = "Rust"
 components = ["clippy", "rustfmt", "rust-src"]
 optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
-
-[toolkit.basic.value.rust.profile]
-name = "minimal"
-verbose-name = "Basic"
-description = "Basic set of tools to use Rust properly"
 
 [toolkit.basic.value.tools.descriptions]
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
@@ -79,15 +77,13 @@ name = "Rust 中国社区一站式开发套件"
 version = "stable v1.85.0"
 
 [toolkit.community.value.rust]
+display-name = "Rust 官方工具"
+description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
+profile = "minimal"
 version = "1.85.0"
 group = "Rust 基础工具集"
 components = ["clippy", "rustfmt", "rust-src"]
 optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
-
-[toolkit.community.value.rust.profile]
-name = "minimal"
-verbose-name = "Rust 官方工具"
-description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
 
 [toolkit.community.value.tools.descriptions]
 llvm-tools = "包含 LLVM 工具的集合"

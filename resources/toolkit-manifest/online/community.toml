@@ -6,14 +6,12 @@ version = "stable v1.85.0"
 
 [rust]
 components = ["clippy", "rustfmt", "rust-src"]
+description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
+display-name = "Rust 官方工具"
 group = "Rust 基础工具集"
 optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
+profile = "minimal"
 version = "1.85.0"
-
-[rust.profile]
-description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
-name = "minimal"
-verbose-name = "Rust 官方工具"
 
 [tools.descriptions]
 buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"

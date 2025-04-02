@@ -6,15 +6,13 @@ version = "stable v1.81.0"
 
 [rust]
 components = ["clippy", "rustfmt", "rust-src"]
+description = "Basic set of tools to use Rust properly"
+display-name = "Basic"
 group = "Rust"
 offline-dist-server = "toolchain"
 optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
+profile = "minimal"
 version = "1.81.0"
-
-[rust.profile]
-description = "Basic set of tools to use Rust properly"
-name = "minimal"
-verbose-name = "Basic"
 
 [rust.rustup]
 aarch64-unknown-linux-gnu = "tools/rustup-init"

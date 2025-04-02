@@ -13,8 +13,9 @@ use crate::{
 
 static COMPONENTS_COUNTER: AtomicU32 = AtomicU32::new(0);
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ComponentType {
+    #[default]
     Tool,
     ToolchainComponent,
     ToolchainProfile,
@@ -27,7 +28,7 @@ impl ComponentType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Component {
     pub id: u32,
@@ -36,7 +37,7 @@ pub struct Component {
     /// A name that used for display purpose, defaulting to `name`.
     pub display_name: String,
     pub version: Option<String>,
-    pub desc: String,
+    pub desc: Option<String>,
     pub required: bool,
     pub optional: bool,
     pub tool_installer: Option<ToolInfo>,
@@ -47,19 +48,12 @@ pub struct Component {
 
 impl Component {
     #[must_use]
-    pub fn new(name: &str, desc: &str) -> Self {
+    pub fn new(name: &str) -> Self {
         let comp = Component {
             id: COMPONENTS_COUNTER.load(Ordering::Relaxed),
-            group_name: None,
             name: name.into(),
             display_name: name.into(),
-            version: None,
-            desc: desc.into(),
-            required: false,
-            optional: false,
-            tool_installer: None,
-            kind: ComponentType::Tool,
-            installed: false,
+            ..Default::default()
         };
         COMPONENTS_COUNTER.fetch_add(1, Ordering::SeqCst);
 
@@ -74,6 +68,7 @@ impl Component {
     setter!(with_tool_installer(self.tool_installer, installer: &ToolInfo) { Some(installer.clone()) });
     setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });
     setter!(with_display_name(self.display_name, name: impl ToString) { name.to_string() });
+    setter!(with_description(self.desc, desc: Option<&str>) { desc.map(ToOwned::to_owned) });
 }
 
 /// Get a combined list of tools and toolchain components in Vec<[Component]> format,

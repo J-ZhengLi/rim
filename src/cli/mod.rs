@@ -122,7 +122,7 @@ pub(crate) enum PathOrUrl {
 impl FromStr for PathOrUrl {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self> {
-        if let Ok(abs_path) = utils::to_nomalized_abspath(s, None) {
+        if let Ok(abs_path) = utils::to_normalized_absolute_path(s, None) {
             if !abs_path.exists() {
                 bail!("the specified path '{s}' does not exist");
             }

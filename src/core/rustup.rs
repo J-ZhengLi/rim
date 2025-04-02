@@ -47,15 +47,15 @@ impl ToolchainInstaller {
         components: Vec<&str>,
     ) -> Result<()> {
         // TODO: check local manifest.
-        let version = manifest.rust.version.clone();
-        let mut args = vec!["toolchain", "install", &version, "--no-self-update"];
-        let conmps_arg = components.join(",");
+        let version = &manifest.rust.channel;
+        let mut args = vec!["toolchain", "install", version, "--no-self-update"];
+        let comps_arg = components.join(",");
         if let Some(profile) = &manifest.rust.profile {
-            args.extend(["--profile", &profile.name]);
+            args.extend(["--profile", profile]);
         }
         if !components.is_empty() {
             args.push("--component");
-            args.push(&conmps_arg);
+            args.push(&comps_arg);
         }
         let mut cmd = if let Some(local_server) = manifest.offline_dist_server()? {
             utils::cmd!([RUSTUP_DIST_SERVER=local_server.as_str()] rustup)
@@ -97,7 +97,7 @@ impl ToolchainInstaller {
         self.install_toolchain_via_rustup(&rustup, manifest, all_components)?;
 
         // Remove the `rustup` uninstall entry on windows, because we don't want users to
-        // accidently uninstall `rustup` thus removing the tools installed by this program.
+        // accidentally uninstall `rustup` thus removing the tools installed by this program.
         #[cfg(windows)]
         super::os::windows::do_remove_from_programs(
             r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Rustup",
@@ -113,7 +113,7 @@ impl ToolchainInstaller {
         manifest: &ToolsetManifest,
     ) -> Result<()> {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
-        let tc_ver = manifest.rust_version();
+        let tc_ver = &manifest.rust.channel;
 
         // FIXME: rust-analyzer kept showing error on this below line
         // saying: 'overflow expending macro...', find the cause

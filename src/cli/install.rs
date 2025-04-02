@@ -56,7 +56,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
 
     let component_list = manifest.current_target_components(true)?;
     let abs_prefix = if let Some(path) = prefix {
-        utils::to_nomalized_abspath(path, None)?
+        utils::to_normalized_absolute_path(path, None)?
     } else {
         default_install_dir()
     };
@@ -125,7 +125,7 @@ impl CustomInstallOpt {
     /// then return user specified installation options.
     ///
     /// It takes default values, such as `prefix`, `components`, etc.
-    /// and a full list of available compoents allowing user to choose from.
+    /// and a full list of available components allowing user to choose from.
     fn collect_from_user(
         prefix: &Path,
         all_components: Vec<Component>,
@@ -298,7 +298,7 @@ fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Resul
 static SHOW_MISSING_PKG_SRC_ONCE: OnceLock<()> = OnceLock::new();
 
 fn ask_tool_source(name: String) -> Result<String> {
-    // print addtional info for the first tool
+    // print additional info for the first tool
     SHOW_MISSING_PKG_SRC_ONCE.get_or_init(|| {
         let mut stdout = std::io::stdout();
         _ = writeln!(&mut stdout, "\n{}\n", t!("package_source_missing_info"));

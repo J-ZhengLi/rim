@@ -8,6 +8,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
+use serde::ser::SerializeSeq;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use url::Url;
@@ -109,7 +110,7 @@ pub struct ToolsetManifest {
 
     pub(crate) rust: RustToolchain,
     #[serde(default)]
-    pub(crate) tools: Tools,
+    tools: Tools,
     /// Proxy settings that used for download.
     pub proxy: Option<Proxy>,
     /// Path to the manifest file.
@@ -129,7 +130,7 @@ impl TomlParser for ToolsetManifest {
 }
 
 impl ToolsetManifest {
-    /// Load toolset manfest from installed root.
+    /// Load toolset manifest from installed root.
     ///
     /// # Note
     /// Only use this during **manager** mode.
@@ -138,29 +139,22 @@ impl ToolsetManifest {
         Self::load(root.join(Self::FILENAME))
     }
 
-    // Get a list of all optional componets.
+    /// Get a list of all optional components.
     pub fn optional_toolchain_components(&self) -> &[String] {
         self.rust.optional_components.as_slice()
     }
 
-    pub fn get_tool_description(&self, toolname: &str) -> Option<&str> {
-        self.tools.descriptions.get(toolname).map(|s| s.as_str())
+    /// Get the description of a specific tool.
+    pub fn get_tool_description(&self, tool: &str) -> Option<&str> {
+        self.tools.descriptions.get(tool).map(|s| s.as_str())
     }
 
     /// Get the group name of a certain tool, if exist.
-    pub fn group_name(&self, toolname: &str) -> Option<&str> {
+    pub fn group_name(&self, tool: &str) -> Option<&str> {
         self.tools
             .group
             .iter()
-            .find_map(|(group, tools)| tools.contains(toolname).then_some(group.as_str()))
-    }
-
-    pub fn toolchain_group_name(&self) -> &str {
-        self.rust.name.as_deref().unwrap_or("Rust Toolchain")
-    }
-
-    pub fn toolchain_profile(&self) -> Option<&ToolchainProfile> {
-        self.rust.profile.as_ref()
+            .find_map(|(group, tools)| tools.contains(tool).then_some(group.as_str()))
     }
 
     /// Get the path to bundled `rustup-init` binary if there has one.
@@ -204,31 +198,26 @@ impl ToolsetManifest {
     /// If `fresh_install` is `true`, this function will look through user's environment to see if
     /// a specific tool is already installed or not.
     pub fn current_target_components(&self, fresh_install: bool) -> Result<Vec<Component>> {
-        let tc_channel = self.rust_version();
+        let tc_channel = &self.rust.channel;
 
-        let profile = self.toolchain_profile().cloned().unwrap_or_default();
-        let profile_name = profile.verbose_name.as_deref().unwrap_or(&profile.name);
+        let profile_name = self.rust.name();
         // Add a component that represents rust toolchain
-        let mut components = vec![Component::new(
-            profile_name,
-            profile.description.as_deref().unwrap_or_default(),
-        )
-        .with_group(Some(self.toolchain_group_name()))
-        .set_kind(ComponentType::ToolchainProfile)
-        .required(true)
-        .with_version(Some(tc_channel))];
+        let mut components = vec![Component::new(profile_name)
+            .with_description(self.rust.description.as_deref())
+            .with_group(self.rust.group.as_deref())
+            .set_kind(ComponentType::ToolchainProfile)
+            .required(true)
+            .with_version(Some(tc_channel))];
 
         for component in self.optional_toolchain_components() {
             components.push(
-                Component::new(
-                    component,
-                    self.get_tool_description(component).unwrap_or_default(),
-                )
-                .with_group(Some(self.toolchain_group_name()))
-                .optional(true)
-                .set_kind(ComponentType::ToolchainComponent)
-                // toolchain component's version are unified
-                .with_version(Some(tc_channel)),
+                Component::new(component)
+                    .with_description(self.get_tool_description(component))
+                    .with_group(self.rust.group.as_deref())
+                    .optional(true)
+                    .set_kind(ComponentType::ToolchainComponent)
+                    // toolchain component's version are unified
+                    .with_version(Some(tc_channel)),
             );
         }
 
@@ -251,17 +240,15 @@ impl ToolsetManifest {
                     tool_info.version()
                 };
                 components.push(
-                    Component::new(
-                        tool_name,
-                        self.get_tool_description(tool_name).unwrap_or_default(),
-                    )
-                    .with_group(self.group_name(tool_name))
-                    .with_tool_installer(tool_info)
-                    .required(tool_info.is_required())
-                    .optional(tool_info.is_optional())
-                    .installed(installed)
-                    .with_version(version)
-                    .with_display_name(tool_info.display_name().unwrap_or(tool_name)),
+                    Component::new(tool_name)
+                        .with_description(self.get_tool_description(tool_name))
+                        .with_group(self.group_name(tool_name))
+                        .with_tool_installer(tool_info)
+                        .required(tool_info.is_required())
+                        .optional(tool_info.is_optional())
+                        .installed(installed)
+                        .with_version(version)
+                        .with_display_name(tool_info.display_name().unwrap_or(tool_name)),
                 );
             }
         }
@@ -290,7 +277,7 @@ impl ToolsetManifest {
     /// Note: In `release` build, because this program has an embedded toolkit manifest,
     /// therefore it assumes the parent directory of this running binary as the package root.
     /// But in `debug` build, because we have cached all those packages inside of
-    /// `resource/packages` folder, we will be assuming it as the pacakge root.
+    /// `resource/packages` folder, we will be assuming it as the package root.
     fn package_root(&self) -> Result<PathBuf> {
         let res = if let Some(p) = &self.path {
             p.to_path_buf()
@@ -335,7 +322,7 @@ impl ToolsetManifest {
         for tool in self.tools.target.values_mut() {
             for tool_info in tool.values_mut() {
                 if let Some(path) = tool_info.path_mut() {
-                    *path = utils::to_nomalized_abspath(path.as_path(), Some(&parent_dir))?;
+                    *path = utils::to_normalized_absolute_path(path.as_path(), Some(&parent_dir))?;
                 }
             }
         }
@@ -365,7 +352,7 @@ impl ToolsetManifest {
                 };
                 let display_name = tool_info.display_name().unwrap_or(name).to_string();
 
-                if let Some(source) = tool_info.user_provided_source_mut() {
+                if let Some(source) = tool_info.restricted_source_mut() {
                     let new_val = callback(display_name)?;
                     *source = Some(new_val.clone());
 
@@ -373,7 +360,7 @@ impl ToolsetManifest {
                     if let Some(s) = comp_to_modify
                         .tool_installer
                         .as_mut()
-                        .and_then(|c| c.user_provided_source_mut())
+                        .and_then(|c| c.restricted_source_mut())
                     {
                         *s = Some(new_val);
                     }
@@ -381,17 +368,6 @@ impl ToolsetManifest {
             }
         }
         Ok(())
-    }
-
-    pub fn rust_version(&self) -> &str {
-        self.rust.version.as_str()
-    }
-
-    pub fn toolchain_display_name(&self) -> Option<&str> {
-        self.rust
-            .profile
-            .as_ref()
-            .and_then(|p| p.verbose_name.as_deref())
     }
 }
 
@@ -428,17 +404,29 @@ impl TryFrom<&Proxy> for reqwest::Proxy {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct RustToolchain {
-    pub(crate) version: String,
-    pub(crate) profile: Option<ToolchainProfile>,
+    /// Toolchain channel name, such as stable/nightly/beta,
+    /// a specific sematic version (x.x.x), or nightly with specific date (nightly-xxxx-xx-xx).
+    #[serde(alias = "version")]
+    pub(crate) channel: String,
+    /// Toolchain profile that rustup uses to install rust,
+    /// such as default/minimal/complete.
+    pub(crate) profile: Option<String>,
+    /// Optional name to label the rust toolchain on UI, allowing toolkit provider to
+    /// label the toolchain with another name such as "Core", "Rust" etc.
+    #[serde(alias = "verbose-name")]
+    pub(crate) display_name: Option<String>,
+    /// Optional description for the rust toolchain.
+    pub(crate) description: Option<String>,
     /// Components are installed by default
     #[serde(default)]
     pub(crate) components: Vec<String>,
     /// Optional components are only installed if user choose to.
     #[serde(default)]
     pub(crate) optional_components: Vec<String>,
-    /// Specifies a verbose name if this was provided.
-    #[serde(alias = "group")]
-    pub(crate) name: Option<String>,
+    /// Optional category (group) name for the rust toolchain,
+    /// so you can group the toolchain components `Rust Toolchain` or something else.
+    /// note that all optional components falls into this group as well.
+    pub(crate) group: Option<String>,
     /// File [`Url`] to install rust toolchain.
     offline_dist_server: Option<String>,
     /// Contains target specific `rustup-init` binaries.
@@ -450,36 +438,24 @@ impl RustToolchain {
     #[allow(unused)]
     pub(crate) fn new(ver: &str) -> Self {
         Self {
-            version: ver.to_string(),
+            channel: ver.to_string(),
             ..Default::default()
         }
     }
-}
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
-#[serde(rename_all = "kebab-case")]
-pub struct ToolchainProfile {
-    pub name: String,
-    pub verbose_name: Option<String>,
-    pub description: Option<String>,
-}
-
-impl Default for ToolchainProfile {
-    fn default() -> Self {
-        Self {
-            name: "default".to_string(),
-            verbose_name: None,
-            description: None,
-        }
-    }
-}
-
-impl From<&str> for ToolchainProfile {
-    fn from(value: &str) -> Self {
-        Self {
-            name: value.to_string(),
-            ..Default::default()
-        }
+    /// The name of toolchain for display purpose.
+    ///
+    /// Name of the toolchain is not required but is good to have on UI,
+    /// the returned value follows a specific fallback order:
+    ///
+    /// 1. The [display_name](RustToolchain::display_name) set in manifest file.
+    /// 2. The [group](RustToolchain::group) name set in manifest file.
+    /// 3. Simply just `"Rust"`
+    pub(crate) fn name(&self) -> &str {
+        self.display_name
+            .as_deref()
+            .or(self.group.as_deref())
+            .unwrap_or("Rust")
     }
 }
 
@@ -529,17 +505,17 @@ pub enum ToolInfo {
     /// expand = { version = "0.2.0", option = true, identifier = "cargo-expand" }
     /// hello_world = { version = "0.2.0", option = true, path = "path/to/hello.zip" }
     /// ```
-    Complex(ToolInfoDetails),
+    Complex(Box<ToolInfoDetails>),
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct ToolInfoDetails {
     #[serde(default)]
-    required: bool,
+    pub required: bool,
     #[serde(default)]
-    optional: bool,
-    identifier: Option<String>,
+    pub optional: bool,
+    pub identifier: Option<String>,
     #[serde(flatten)]
     pub source: ToolSource,
     /// Pre-determined kind.
@@ -548,22 +524,40 @@ pub struct ToolInfoDetails {
     pub kind: Option<ToolKind>,
     /// A name that only used for display purpose.
     pub display_name: Option<String>,
+    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    /// A list of tools that are obsoleted/replaced by this package.
+    pub obsoletes: Vec<String>,
+    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    /// A list of tools that this package requires.
+    pub requires: Vec<String>,
+    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    /// A list of tools that this package conflicts with.
+    pub conflicts: Vec<String>,
 }
 
 impl ToolInfoDetails {
     pub fn new(source: ToolSource) -> Self {
         Self {
             source,
-            required: false,
-            optional: false,
-            identifier: None,
-            kind: None,
-            display_name: None,
+            ..Default::default()
         }
     }
-    setter!(required(self.required, bool));
-    setter!(optional(self.optional, bool));
-    setter!(identifier(self.identifier, value: String) { Some(value) });
+}
+
+fn ser_empty_vec_to_none<S, T>(vec: &[T], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+    T: serde::Serialize,
+{
+    if vec.is_empty() {
+        serializer.serialize_none()
+    } else {
+        let mut seq = serializer.serialize_seq(Some(vec.len()))?;
+        for elem in vec {
+            seq.serialize_element(elem)?;
+        }
+        seq.end()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
@@ -604,7 +598,17 @@ pub enum ToolSource {
     },
 }
 
+impl Default for ToolSource {
+    fn default() -> Self {
+        Self::Version {
+            version: String::new(),
+        }
+    }
+}
+
 impl ToolInfo {
+    /// Get a mutable reference of this tools' package source if it's from a local path,
+    /// check [`ToolSource::Path`] for more info.
     pub fn path_mut(&mut self) -> Option<&mut PathBuf> {
         if let Self::Complex(details) = self {
             if let ToolSource::Path { path, .. } = &mut details.source {
@@ -614,7 +618,9 @@ impl ToolInfo {
         None
     }
 
-    pub fn user_provided_source_mut(&mut self) -> Option<&mut Option<String>> {
+    /// Get the mutable reference of package source if it's using restricted package source,
+    /// check [`ToolSource::Restricted`] for more info.
+    pub fn restricted_source_mut(&mut self) -> Option<&mut Option<String>> {
         if let Self::Complex(details) = self {
             if let ToolSource::Restricted { source, .. } = &mut details.source {
                 return Some(source);
@@ -623,6 +629,11 @@ impl ToolInfo {
         None
     }
 
+    /// Get the detailed information ([`ToolInfoDetails`]) of this tool, return `None` if
+    /// it uses pure version string such as:
+    /// ```toml
+    /// tool = "0.1.0"
+    /// ```
     pub fn details(&self) -> Option<&ToolInfoDetails> {
         if let Self::Complex(details) = self {
             Some(details)
@@ -631,10 +642,16 @@ impl ToolInfo {
         }
     }
 
+    /// Return `true` if this tool is required to be installed.
     pub fn is_required(&self) -> bool {
         self.details().map(|d| d.required).unwrap_or_default()
     }
 
+    /// Get the version of this tool, return `None` if it:
+    ///
+    /// 1. Uses `git` url as source without a `tag`.
+    /// 2. Uses `path` or `url` as source without `version`.
+    /// 3. Uses `restricted` source without specifying a `version`.
     pub fn version(&self) -> Option<&str> {
         match self {
             Self::Basic(ver) => Some(ver),
@@ -648,10 +665,12 @@ impl ToolInfo {
         }
     }
 
+    /// Return `true` if the installation of this tool is optional.
     pub fn is_optional(&self) -> bool {
         self.details().map(|d| d.optional).unwrap_or_default()
     }
 
+    /// Return `true` if this tool can be installed by `cargo`
     pub fn is_cargo_tool(&self) -> bool {
         match self {
             ToolInfo::Basic(_) => true,
@@ -687,6 +706,8 @@ impl ToolInfo {
         self.details().and_then(|d| d.display_name.as_deref())
     }
 
+    /// Return `true` if this tool uses restricted source, usually meaning that we cannot
+    /// provide its package source without violating it's license term.
     pub fn is_restricted(&self) -> bool {
         matches!(
             self.details(),
@@ -763,20 +784,24 @@ pub async fn get_toolset_manifest(url: Option<Url>, insecure: bool) -> Result<To
 mod tests {
     use super::*;
 
+    fn complex_tool(tool_info: ToolInfoDetails) -> ToolInfo {
+        ToolInfo::Complex(Box::new(tool_info))
+    }
+
     /// Convenient macro to initialize **Non-Required** `ToolInfo`
     macro_rules! tool_info {
         ($version:literal) => {
             ToolInfo::Basic($version.into())
         };
         ($url_str:literal, $version:expr) => {
-            ToolInfo::Complex(ToolInfoDetails::new(ToolSource::Url {
+            complex_tool(ToolInfoDetails::new(ToolSource::Url {
                 version: $version.map(ToString::to_string),
                 url: $url_str.parse().unwrap(),
                 filename: None,
             }))
         };
         ($git:literal, $branch:expr, $tag:expr, $rev:expr) => {
-            ToolInfo::Complex(ToolInfoDetails::new(ToolSource::Git {
+            complex_tool(ToolInfoDetails::new(ToolSource::Git {
                 git: $git.parse().unwrap(),
                 branch: $branch.map(ToString::to_string),
                 tag: $tag.map(ToString::to_string),
@@ -784,7 +809,7 @@ mod tests {
             }))
         };
         ($path:expr, $version:expr) => {
-            ToolInfo::Complex(ToolInfoDetails::new(ToolSource::Path {
+            complex_tool(ToolInfoDetails::new(ToolSource::Path {
                 path: $path,
                 version: $version.map(ToString::to_string),
             }))
@@ -811,7 +836,7 @@ version = "1.0.0"
         let input = r#"
 [rust]
 version = "1.0.0"
-profile = { name = "minimal" }
+profile = "minimal"
 components = ["clippy-preview", "llvm-tools-preview"]
 
 [tools.target.x86_64-pc-windows-msvc]
@@ -860,7 +885,7 @@ t4 = { git = "https://git.example.com/org/tool", branch = "stable" }
 
         let expected = ToolsetManifest {
             rust: RustToolchain {
-                version: "1.0.0".into(),
+                channel: "1.0.0".into(),
                 profile: Some("minimal".into()),
                 components: vec!["clippy-preview".into(), "llvm-tools-preview".into()],
                 ..Default::default()
@@ -890,7 +915,7 @@ t4 = { git = "https://git.example.com/org/tool", branch = "stable" }
         let input = include_str!("../../../tests/assets/toolset_manifest.toml");
         let expected = ToolsetManifest {
             rust: RustToolchain {
-                version: "stable".into(),
+                channel: "stable".into(),
                 profile: Some("minimal".into()),
                 components: vec!["clippy-preview".into(), "rustfmt".into()],
                 ..Default::default()
@@ -1140,7 +1165,7 @@ optional-components = ["opt_c1", "opt_c2"]
 "#;
 
         let expected = ToolsetManifest::from_str(input).unwrap();
-        assert_eq!(&expected.rust.version, "1.0.0");
+        assert_eq!(&expected.rust.channel, "1.0.0");
         assert_eq!(expected.rust.components, vec!["c1", "c2"]);
         assert_eq!(expected.rust.optional_components, vec!["opt_c1", "opt_c2"]);
     }
@@ -1176,21 +1201,23 @@ t3 = { ver = "0.3.0", optional = true } # use cargo install
         assert_eq!(tools.get("t1"), Some(&ToolInfo::Basic("0.1.0".into())));
         assert_eq!(
             tools.get("t2"),
-            Some(&ToolInfo::Complex(
-                ToolInfoDetails::new(ToolSource::Version {
+            Some(&complex_tool(ToolInfoDetails {
+                source: ToolSource::Version {
                     version: "0.2.0".into(),
-                })
-                .required(true)
-            ))
+                },
+                required: true,
+                ..Default::default()
+            }))
         );
         assert_eq!(
             tools.get("t3"),
-            Some(&ToolInfo::Complex(
-                ToolInfoDetails::new(ToolSource::Version {
+            Some(&complex_tool(ToolInfoDetails {
+                source: ToolSource::Version {
                     version: "0.3.0".into(),
-                })
-                .optional(true)
-            ))
+                },
+                optional: true,
+                ..Default::default()
+            }))
         );
     }
 
@@ -1199,14 +1226,14 @@ t3 = { ver = "0.3.0", optional = true } # use cargo install
         let specified = r#"
 [rust]
 version = "1.0.0"
-name = "Rust-lang"
+display-name = "Rust-lang"
 "#;
         let expected = ToolsetManifest::from_str(specified).unwrap();
-        assert_eq!(expected.toolchain_group_name(), "Rust-lang");
+        assert_eq!(expected.rust.name(), "Rust-lang");
 
         let unspecified = "[rust]\nversion = \"1.0.0\"";
         let expected = ToolsetManifest::from_str(unspecified).unwrap();
-        assert_eq!(expected.toolchain_group_name(), "Rust Toolchain");
+        assert_eq!(expected.rust.name(), "Rust");
     }
 
     #[test]
@@ -1214,34 +1241,16 @@ name = "Rust-lang"
         let basic = r#"
 [rust]
 version = "1.0.0"
-[rust.profile]
-name = "minimal"
-"#;
-        let expected = ToolsetManifest::from_str(basic).unwrap();
-        assert_eq!(
-            expected.rust.profile.unwrap(),
-            ToolchainProfile {
-                name: "minimal".into(),
-                ..Default::default()
-            }
-        );
-
-        let full = r#"
-[rust]
-version = "1.0.0"
-[rust.profile]
-name = "complete"
+profile = "complete"
 verbose-name = "Everything"
 description = "Everything provided by official Rust-lang"
 "#;
-        let expected = ToolsetManifest::from_str(full).unwrap();
+        let expected = ToolsetManifest::from_str(basic).unwrap();
+        assert_eq!(expected.rust.profile.unwrap(), "complete");
+        assert_eq!(expected.rust.display_name.unwrap(), "Everything");
         assert_eq!(
-            expected.rust.profile.unwrap(),
-            ToolchainProfile {
-                name: "complete".into(),
-                verbose_name: Some("Everything".into()),
-                description: Some("Everything provided by official Rust-lang".into()),
-            }
+            expected.rust.description.unwrap(),
+            "Everything provided by official Rust-lang"
         );
     }
 
@@ -1363,9 +1372,8 @@ t2 = { path = "/some/path", identifier = "surprise_program_2" }
         let (_, t2_info) = tools.next().unwrap();
         assert_eq!(t1_info.identifier(), Some("surprise_program_1"));
         assert!(matches!(
-            t2_info,
-            ToolInfo::Complex(ToolInfoDetails { identifier: Some(name), .. })
-                if name == "surprise_program_2"
+            t2_info.details().unwrap(),
+            ToolInfoDetails { identifier: Some(name), .. } if name == "surprise_program_2"
         ));
     }
 
@@ -1394,7 +1402,7 @@ t4 = { url = "https://example.com/t4.zip" }
     #[test]
     fn complex_tools_deser_and_ser() {
         let input = r#"[rust]
-version = "1.0.0"
+channel = "1.0.0"
 components = []
 optional-components = []
 
@@ -1508,5 +1516,25 @@ tool_b = { default = "https://example.com/installer.exe", restricted = true }
                 version: None
             }
         );
+    }
+
+    #[test]
+    fn tool_dependency_control() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.x86_64-pc-windows-msvc]
+tool_a = { version = "0.1.0", requires = ["tool_b"], obsoletes = ["tool_c"], conflicts = ["tool_d"] }
+tool_b = "0.1.0"
+tool_c = "0.1.0"
+tool_d = "0.1.0""#;
+
+        let expected = ToolsetManifest::from_str(input).unwrap();
+        let (_, tool) = expected.tools.target.first_key_value().unwrap();
+        let tool_a = tool["tool_a"].details().unwrap();
+        assert_eq!(tool_a.requires, ["tool_b".to_string()]);
+        assert_eq!(tool_a.obsoletes, ["tool_c".to_string()]);
+        assert_eq!(tool_a.conflicts, ["tool_d".to_string()]);
     }
 }
