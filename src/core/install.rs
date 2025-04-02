@@ -45,7 +45,7 @@ pub struct InstallConfiguration<'a> {
     /// Note that this folder will includes `cargo` and `rustup` folders as well.
     /// And the default location will under `$HOME` directory (`%USERPROFILE%` on windows).
     /// So, even if the user didn't specify any install path, a pair of env vars will still
-    /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the defult location
+    /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the default location
     /// defined by [`default_install_dir`].
     pub install_dir: PathBuf,
     pub rustup_dist_server: Url,
@@ -80,7 +80,7 @@ impl<'a> InstallConfiguration<'a> {
             insecure: false,
         })
     }
-    /// Creating install diretory and other preperations related to filesystem.
+    /// Creating install directory and other preparations related to filesystem.
     ///
     /// This is suitable for first-time installation.
     pub fn setup(&mut self) -> Result<()> {
@@ -149,7 +149,7 @@ impl<'a> InstallConfiguration<'a> {
             .cargo_home()
             .to_str()
             .map(ToOwned::to_owned)
-            .context("`install-dir` cannot contains invalid unicodes")?;
+            .context("`install-dir` cannot contains invalid unicode")?;
         // This `unwrap` is safe here because we've already make sure the `install_dir`'s path can be
         // converted to string with the `cargo_home` variable.
         let rustup_home = self.rustup_home().to_str().unwrap().to_string();
@@ -235,7 +235,7 @@ impl<'a> InstallConfiguration<'a> {
 
         // Add the rust info to the fingerprint.
         self.install_record
-            .add_rust_record(manifest.rust_version(), components);
+            .add_rust_record(&manifest.rust.channel, components);
         // record meta info
         // TODO(?): Maybe this should be moved as a separate step?
         self.install_record
@@ -461,7 +461,7 @@ impl InstallConfiguration<'_> {
 
         let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        record.add_rust_record(manifest.rust_version(), components);
+        record.add_rust_record(&manifest.rust.channel, components);
         // record meta info
         record.clone_toolkit_meta_from_manifest(manifest);
         // write changes
@@ -488,7 +488,7 @@ pub fn default_install_dir() -> PathBuf {
 /// as we are running `rustup` to install toolchain components, but using other methods
 /// for toolset components.
 ///
-/// Note: the splited `toolchain_components` contains the base profile name
+/// Note: the splitted `toolchain_components` contains the base profile name
 /// such as `minimal` at first index.
 fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, ToolMap) {
     let toolset_components = component_list_to_tool_map(

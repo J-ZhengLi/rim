@@ -67,7 +67,10 @@ pub fn ensure_parent_dir<P: AsRef<Path>>(path: P) -> Result<()> {
 ///
 /// # Error
 /// If the `root` is not given, and the current directory cannot be determined, an error will be returned.
-pub fn to_nomalized_abspath<P: AsRef<Path>>(path: P, root: Option<&Path>) -> Result<PathBuf> {
+pub fn to_normalized_absolute_path<P: AsRef<Path>>(
+    path: P,
+    root: Option<&Path>,
+) -> Result<PathBuf> {
     let abs_pathbuf = if path.as_ref().is_absolute() {
         path.as_ref().to_path_buf()
     } else {
@@ -79,18 +82,18 @@ pub fn to_nomalized_abspath<P: AsRef<Path>>(path: P, root: Option<&Path>) -> Res
             })?
     };
     // Remove any `.` and `..` from origin path
-    let mut nomalized_path = PathBuf::new();
+    let mut normalized_path = PathBuf::new();
     for path_component in abs_pathbuf.components() {
         match path_component {
             Component::CurDir => (),
             Component::ParentDir => {
-                nomalized_path.pop();
+                normalized_path.pop();
             }
-            _ => nomalized_path.push(path_component),
+            _ => normalized_path.push(path_component),
         }
     }
 
-    Ok(nomalized_path)
+    Ok(normalized_path)
 }
 
 pub fn write_file<P: AsRef<Path>>(path: P, content: &str, append: bool) -> Result<()> {
@@ -132,7 +135,7 @@ where
 {
     assert!(
         from.as_ref().is_file(),
-        "Interal Error: '{}' is not a path to file, \
+        "Internal Error: '{}' is not a path to file, \
         but `copy_file_to` only works with file path, try using `copy_to` instead.",
         from.as_ref().display()
     );
