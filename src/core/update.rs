@@ -4,16 +4,17 @@ use std::sync::{Arc, OnceLock};
 use std::{env, sync::atomic::AtomicBool};
 
 use anyhow::{Context, Result};
-use rim_common::build_config;
+use rim_common::types::TomlParser;
+use rim_common::{build_config, utils};
 use semver::Version;
 use tokio::sync::Notify;
 use url::Url;
 
 use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
-use super::parser::TomlParser;
+use super::{AppInfo, GlobalOpts};
 use crate::configuration::{Configuration, UpdateTarget};
-use crate::{setter, toolkit, utils};
+use crate::toolkit;
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
 static LATEST_RELEASE: OnceLock<ReleaseInfo> = OnceLock::new();
@@ -25,7 +26,7 @@ pub struct UpdateOpt {
 
 impl RimDir for UpdateOpt {
     fn install_dir(&self) -> &Path {
-        crate::get_installed_dir()
+        AppInfo::get_installed_dir()
     }
 }
 
@@ -73,7 +74,7 @@ impl UpdateOpt {
         let cli = "";
 
         let id = &build_config().identifier;
-        let src_name = utils::exe!(format!("{id}-manager{cli}"));
+        let src_name = exe!(format!("{id}-manager{cli}"));
         let latest_version = &latest_manager_release(self.insecure).await?.version;
         let download_url = parse_download_url(&format!(
             "manager/archive/{latest_version}/{}/{src_name}",
@@ -90,9 +91,9 @@ impl UpdateOpt {
             .prefix("manager-download_")
             .tempdir_in(self.temp_dir())?;
         // dest file don't need the `-cli` suffix to confuse users
-        let dest_name = utils::exe!(format!("{}-manager", &build_config().identifier));
+        let dest_name = exe!(format!("{}-manager", &build_config().identifier));
         let newer_manager = temp_root.path().join(dest_name);
-        utils::DownloadOpt::new("latest manager")
+        utils::DownloadOpt::new("latest manager", GlobalOpts::get().quiet)
             .download(&download_url, &newer_manager)
             .await?;
 
@@ -104,7 +105,7 @@ impl UpdateOpt {
     }
 }
 
-/// Try to get the manager's latest release infomation.
+/// Try to get the manager's latest release information.
 ///
 /// This will try to access the internet upon first call in order to
 /// read the `release.toml` file from the server, and the result will be "cached" after.
@@ -114,7 +115,7 @@ async fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> 
     }
 
     let download_url = parse_download_url(&format!("manager/{}", ReleaseInfo::FILENAME))?;
-    let raw = utils::DownloadOpt::new("manager release info")
+    let raw = utils::DownloadOpt::new("manager release info", GlobalOpts::get().quiet)
         .insecure(insecure)
         .read(&download_url)
         .await?;

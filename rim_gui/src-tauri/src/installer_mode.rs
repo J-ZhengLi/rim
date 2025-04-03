@@ -11,10 +11,11 @@ use tokio::sync::Mutex;
 use super::{common, INSTALL_DIR};
 use crate::error::Result;
 use rim::components::Component;
-use rim::toolset_manifest::{get_toolset_manifest, ToolInfo, ToolSource, ToolsetManifest};
-use rim::{try_it, utils};
+use rim::{get_toolkit_manifest, try_it, ToolkitManifestExt};
+use rim_common::types::{ToolInfo, ToolSource, ToolkitManifest};
+use rim_common::utils;
 
-static TOOLSET_MANIFEST: OnceLock<Mutex<ToolsetManifest>> = OnceLock::new();
+static TOOLSET_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
 
 pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
@@ -102,7 +103,7 @@ fn welcome_label() -> String {
 async fn load_manifest_and_ret_version() -> Result<String> {
     // TODO: Give an option for user to specify another manifest.
     // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
-    let mut manifest = get_toolset_manifest(None, false).await?;
+    let mut manifest = get_toolkit_manifest(None, false).await?;
     manifest.adjust_paths()?;
     let version = manifest.version.clone().unwrap_or_default();
 
@@ -199,7 +200,7 @@ async fn install_toolchain(
 ///
 /// # Panic
 /// Will panic if the manifest is not cached.
-fn cached_manifest() -> &'static Mutex<ToolsetManifest> {
+fn cached_manifest() -> &'static Mutex<ToolkitManifest> {
     TOOLSET_MANIFEST
         .get()
         .expect("toolset manifest should be loaded by now")

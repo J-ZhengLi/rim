@@ -1,4 +1,4 @@
-use rim::utils::{self, Extractable};
+use rim_common::utils;
 use rim_test_support::rim_test;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -19,7 +19,7 @@ fn extract_to_temp(filename: &str, skip_prefix: bool) -> (PathBuf, TempDir) {
         .tempdir_in(&cache_dir)
         .unwrap();
 
-    let mut extractable = Extractable::load(path.as_path(), None).unwrap();
+    let mut extractable = utils::Extractable::load(path.as_path(), None).unwrap();
 
     if skip_prefix {
         let path = extractable

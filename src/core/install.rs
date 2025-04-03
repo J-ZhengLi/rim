@@ -1,24 +1,19 @@
+use super::components::ToolchainComponent;
 use super::{
     components::{component_list_to_tool_map, Component, ComponentType},
     directories::RimDir,
     parser::{
         cargo_config::CargoConfig,
         fingerprint::{InstallationRecord, ToolRecord},
-        toolset_manifest::{ToolInfo, ToolsetManifest},
-        TomlParser,
     },
     rustup::ToolchainInstaller,
-    tools::{Tool, ToolKind},
-    CARGO_HOME, RUSTUP_DIST_SERVER, RUSTUP_HOME, RUSTUP_UPDATE_ROOT,
+    tools::Tool,
+    GlobalOpts, CARGO_HOME, RUSTUP_DIST_SERVER, RUSTUP_HOME, RUSTUP_UPDATE_ROOT,
 };
-use crate::{
-    core::os::add_to_path,
-    setter,
-    toolset_manifest::{ToolMap, ToolSource, ToolchainComponent},
-    utils::{self, Extractable, Progress},
-};
+use crate::core::os::add_to_path;
 use anyhow::{anyhow, bail, Context, Result};
-use rim_common::build_config;
+use rim_common::types::{TomlParser, ToolInfo, ToolKind, ToolMap, ToolSource, ToolkitManifest};
+use rim_common::{build_config, utils};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -45,7 +40,7 @@ pub struct InstallConfiguration<'a> {
     /// Note that this folder will includes `cargo` and `rustup` folders as well.
     /// And the default location will under `$HOME` directory (`%USERPROFILE%` on windows).
     /// So, even if the user didn't specify any install path, a pair of env vars will still
-    /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the defult location
+    /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the default location
     /// defined by [`default_install_dir`].
     pub install_dir: PathBuf,
     pub rustup_dist_server: Url,
@@ -53,8 +48,8 @@ pub struct InstallConfiguration<'a> {
     /// Indicates whether `cargo` was already installed, useful when installing third-party tools.
     pub cargo_is_installed: bool,
     install_record: InstallationRecord,
-    pub(crate) progress_indicator: Option<Progress<'a>>,
-    manifest: &'a ToolsetManifest,
+    pub(crate) progress_indicator: Option<utils::Progress<'a>>,
+    manifest: &'a ToolkitManifest,
     insecure: bool,
 }
 
@@ -65,7 +60,7 @@ impl RimDir for InstallConfiguration<'_> {
 }
 
 impl<'a> InstallConfiguration<'a> {
-    pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
+    pub fn new(install_dir: &'a Path, manifest: &'a ToolkitManifest) -> Result<Self> {
         let (reg_name, reg_url) = super::default_cargo_registry();
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
@@ -80,7 +75,7 @@ impl<'a> InstallConfiguration<'a> {
             insecure: false,
         })
     }
-    /// Creating install diretory and other preperations related to filesystem.
+    /// Creating install directory and other preparations related to filesystem.
     ///
     /// This is suitable for first-time installation.
     pub fn setup(&mut self) -> Result<()> {
@@ -98,7 +93,7 @@ impl<'a> InstallConfiguration<'a> {
         let manager_name = format!("{id}-manager");
 
         // Add this manager to the `PATH` environment
-        let manager_exe = install_dir.join(utils::exe!(manager_name));
+        let manager_exe = install_dir.join(exe!(manager_name));
         utils::copy_as(self_exe, &manager_exe)?;
         add_to_path(install_dir)?;
 
@@ -141,7 +136,7 @@ impl<'a> InstallConfiguration<'a> {
     );
     setter!(with_rustup_dist_server(self.rustup_dist_server, Url));
     setter!(with_rustup_update_root(self.rustup_update_root, Url));
-    setter!(with_progress_indicator(self.progress_indicator, Option<Progress<'a>>));
+    setter!(with_progress_indicator(self.progress_indicator, Option<utils::Progress<'a>>));
     setter!(insecure(self.insecure, bool));
 
     pub(crate) fn env_vars(&self) -> Result<HashMap<&'static str, String>> {
@@ -149,7 +144,7 @@ impl<'a> InstallConfiguration<'a> {
             .cargo_home()
             .to_str()
             .map(ToOwned::to_owned)
-            .context("`install-dir` cannot contains invalid unicodes")?;
+            .context("`install-dir` cannot contains invalid unicode")?;
         // This `unwrap` is safe here because we've already make sure the `install_dir`'s path can be
         // converted to string with the `cargo_home` variable.
         let rustup_home = self.rustup_home().to_str().unwrap().to_string();
@@ -235,7 +230,7 @@ impl<'a> InstallConfiguration<'a> {
 
         // Add the rust info to the fingerprint.
         self.install_record
-            .add_rust_record(manifest.rust_version(), components);
+            .add_rust_record(&manifest.rust.channel, components);
         // record meta info
         // TODO(?): Maybe this should be moved as a separate step?
         self.install_record
@@ -348,7 +343,7 @@ impl<'a> InstallConfiguration<'a> {
                 .ok_or_else(|| anyhow!("'{url}' doesn't appear to be a downloadable file"))?
         };
         let dest = temp_dir.path().join(downloaded_file_name);
-        utils::DownloadOpt::new(name)
+        utils::DownloadOpt::new(name, GlobalOpts::get().quiet)
             .with_proxy(self.manifest.proxy.clone())
             .blocking_download(url, &dest)?;
 
@@ -364,7 +359,7 @@ impl<'a> InstallConfiguration<'a> {
     ) -> Result<ToolRecord> {
         let (tool_installer_path, _maybe_temp) = if path.is_dir() {
             (path.to_path_buf(), None)
-        } else if Extractable::is_supported(path) {
+        } else if utils::Extractable::is_supported(path) {
             let temp_dir = self.create_temp_dir(name)?;
             let tool_installer_path = self.extract_or_copy_to(path, temp_dir.path())?;
             (tool_installer_path, Some(temp_dir))
@@ -421,7 +416,7 @@ impl<'a> InstallConfiguration<'a> {
     /// If `maybe_file` is a path to compressed file, this will try to extract it to `dest`;
     /// otherwise this will copy that file into dest.
     fn extract_or_copy_to(&self, maybe_file: &Path, dest: &Path) -> Result<PathBuf> {
-        if let Ok(mut extractable) = Extractable::load(maybe_file, None) {
+        if let Ok(mut extractable) = utils::Extractable::load(maybe_file, None) {
             extractable.extract_then_skip_solo_dir(dest, Some("bin"))
         } else {
             utils::copy_into(maybe_file, dest)
@@ -461,7 +456,7 @@ impl InstallConfiguration<'_> {
 
         let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        record.add_rust_record(manifest.rust_version(), components);
+        record.add_rust_record(&manifest.rust.channel, components);
         // record meta info
         record.clone_toolkit_meta_from_manifest(manifest);
         // write changes
@@ -488,7 +483,7 @@ pub fn default_install_dir() -> PathBuf {
 /// as we are running `rustup` to install toolchain components, but using other methods
 /// for toolset components.
 ///
-/// Note: the splited `toolchain_components` contains the base profile name
+/// Note: the splitted `toolchain_components` contains the base profile name
 /// such as `minimal` at first index.
 fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, ToolMap) {
     let toolset_components = component_list_to_tool_map(
@@ -514,7 +509,7 @@ fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, Too
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::toolset_manifest::get_toolset_manifest;
+    use crate::core::get_toolkit_manifest;
 
     #[tokio::test]
     async fn init_install_config() {
@@ -525,7 +520,7 @@ mod tests {
         std::fs::create_dir_all(&cache_dir).unwrap();
 
         let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
-        let manifest = get_toolset_manifest(None, false).await.unwrap();
+        let manifest = get_toolkit_manifest(None, false).await.unwrap();
         let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
         config.setup().unwrap();
 

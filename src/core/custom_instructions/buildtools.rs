@@ -1,13 +1,11 @@
 use std::path::{Path, PathBuf};
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use cc::windows_registry;
+use rim_common::utils;
 use crate::core::directories::RimDir;
 use crate::core::install::InstallConfiguration;
 
 pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
-    use crate::utils;
-    use anyhow::anyhow;
-
     let mut args = vec![
         "--wait",
         "--nocache",
@@ -40,7 +38,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
 
     // Step 3: Invoke the install command.
     info!("{}", t!("installing_msvc_info"));
-    let mut cmd = utils::cmd!(buildtools_exe);
+    let mut cmd = cmd!(buildtools_exe);
     cmd.args(args);
     let exit_code: VSExitCode = utils::execute_for_ret_code(cmd)?.into();
     match exit_code {

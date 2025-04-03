@@ -1,14 +1,13 @@
 use anyhow::Result;
-use indexmap::IndexMap;
-use std::path::PathBuf;
+use rim_common::{types::ToolKind, utils::Progress};
+use std::{collections::HashMap, path::PathBuf};
 
 use super::{
     directories::RimDir,
     parser::fingerprint::{installed_tools_fresh, InstallationRecord, ToolRecord},
     rustup::ToolchainInstaller,
-    tools::ToolKind,
 };
-use crate::{core::tools::Tool, utils::Progress};
+use crate::core::tools::Tool;
 
 /// Contains definition of uninstallation steps.
 pub(crate) trait Uninstallation {
@@ -91,7 +90,7 @@ impl<'a> UninstallConfiguration<'a> {
     }
 
     /// Uninstall all tools
-    fn remove_tools(&mut self, tools: IndexMap<String, ToolRecord>, weight: f32) -> Result<()> {
+    fn remove_tools(&mut self, tools: HashMap<String, ToolRecord>, weight: f32) -> Result<()> {
         let mut tools_to_uninstall = vec![];
         for (name, tool_detail) in &tools {
             let kind = tool_detail.tool_kind();

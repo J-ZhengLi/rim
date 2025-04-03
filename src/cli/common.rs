@@ -340,7 +340,7 @@ fn readline() -> Result<String> {
     Ok(input_buf.trim().to_string())
 }
 
-/// Specify the string after each component's name, which is usually wrapped in parenthese.
+/// Specify the string after each component's name, which is usually wrapped in parentheses.
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) enum ComponentDecoration<'c> {
     /// Version change info, i.e.:
@@ -426,7 +426,11 @@ impl<'c, I: IntoIterator<Item = &'c Component>> ComponentListBuilder<'c, I> {
             .map(|c| {
                 let deco = self.decoration.for_component(c);
                 let desc = if self.show_desc {
-                    format!("\n\t{}: {}", t!("description"), &c.desc)
+                    if let Some(description) = &c.desc {
+                        format!("\n\t{}: {description}", t!("description"))
+                    } else {
+                        String::new()
+                    }
                 } else {
                     String::new()
                 };

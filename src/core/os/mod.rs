@@ -15,8 +15,8 @@ use std::path::Path;
 /// Add a given path to OS's `PATH` variable.
 ///
 /// Note this will do nothing if either
-/// [`no_modify_path`](GlobalOpts::no_modify_path) or [`no_modify_env`](GlobalOpts::no_modify_env)
-/// was set to true.
+/// [`no_modify_path`](crate::core::GlobalOpts::no_modify_path) or
+/// [`no_modify_env`](crate::core::GlobalOpts::no_modify_env) return `true`.
 pub(crate) fn add_to_path(path: &Path) -> Result<()> {
     #[cfg(windows)]
     windows::add_to_path(path)?;

@@ -25,7 +25,7 @@ Options:
       --no-modify-env
           Don't make any environment modifications on user's machine.
           
-          This includes environment veriables including `PATH`, `CARGO_HOME`, `RUSTUP_HOME` etc, keeping them intact even after uninstallation. This Does not includes Windows `Uninstall` entry of course, which will get removed after uninstallation.
+          This includes environment variables including `PATH`, `CARGO_HOME`, `RUSTUP_HOME` etc, keeping them intact even after uninstallation. This Does not includes Windows `Uninstall` entry of course, which will get removed after uninstallation.
 
   -l, --lang <LANG>
           Specify another language to display

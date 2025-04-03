@@ -2,10 +2,9 @@
 //! each of them contains brief information about it such as its
 //! name, version, description, changelog, an url leading to the toolset manifest, and other info.
 
+use rim_common::types::TomlParser;
 use serde::Deserialize;
 use url::Url;
-
-use super::TomlParser;
 
 #[allow(unused)]
 #[derive(Debug, Deserialize)]

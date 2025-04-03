@@ -10,11 +10,10 @@ use crate::cli::GlobalOpts;
 use crate::components::Component;
 use crate::core::install::InstallConfiguration;
 use crate::core::{
-    default_cargo_registry, default_rustup_dist_server, default_rustup_update_root, try_it,
+    default_cargo_registry, default_rustup_dist_server, default_rustup_update_root,
+    get_toolkit_manifest, try_it, ToolkitManifestExt,
 };
-use crate::toolset_manifest::get_toolset_manifest;
-use crate::utils::blocking;
-use crate::{default_install_dir, utils};
+use crate::default_install_dir;
 
 use super::common::{
     question_single_choice, ComponentChoices, ComponentDecoration, ComponentListBuilder,
@@ -22,6 +21,7 @@ use super::common::{
 use super::{Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
+use rim_common::utils;
 
 /// Perform installer actions.
 ///
@@ -45,7 +45,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     }
 
     let manifest_url = manifest_src.as_ref().map(|s| s.to_url()).transpose()?;
-    let mut manifest = blocking!(get_toolset_manifest(manifest_url, *insecure))?;
+    let mut manifest = blocking!(get_toolkit_manifest(manifest_url, *insecure))?;
 
     if *list_components {
         // print a list of available components then return, don't do anything else
@@ -56,7 +56,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
 
     let component_list = manifest.current_target_components(true)?;
     let abs_prefix = if let Some(path) = prefix {
-        utils::to_nomalized_abspath(path, None)?
+        utils::to_normalized_absolute_path(path, None)?
     } else {
         default_install_dir()
     };
@@ -125,7 +125,7 @@ impl CustomInstallOpt {
     /// then return user specified installation options.
     ///
     /// It takes default values, such as `prefix`, `components`, etc.
-    /// and a full list of available compoents allowing user to choose from.
+    /// and a full list of available components allowing user to choose from.
     fn collect_from_user(
         prefix: &Path,
         all_components: Vec<Component>,
@@ -298,7 +298,7 @@ fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Resul
 static SHOW_MISSING_PKG_SRC_ONCE: OnceLock<()> = OnceLock::new();
 
 fn ask_tool_source(name: String) -> Result<String> {
-    // print addtional info for the first tool
+    // print additional info for the first tool
     SHOW_MISSING_PKG_SRC_ONCE.get_or_init(|| {
         let mut stdout = std::io::stdout();
         _ = writeln!(&mut stdout, "\n{}\n", t!("package_source_missing_info"));

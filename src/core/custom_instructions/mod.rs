@@ -1,9 +1,9 @@
 use std::env::consts::EXE_SUFFIX;
 use std::{collections::HashMap, sync::LazyLock};
 
-use crate::utils;
+use rim_common::utils;
 
-macro_rules! declare_instrcutions {
+macro_rules! declare_instructions {
     ($($name:ident),+) => {
         $(pub(crate) mod $name;)*
         pub(crate) static SUPPORTED_TOOLS: &[&str] = &[$(stringify!($name)),+];
@@ -39,15 +39,15 @@ macro_rules! declare_instrcutions {
 }
 
 #[cfg(windows)]
-declare_instrcutions!(buildtools, vscode, vscodium, codearts_rust);
+declare_instructions!(buildtools, vscode, vscodium, codearts_rust);
 #[cfg(not(windows))]
-declare_instrcutions!(vscode, vscodium, codearts_rust);
+declare_instructions!(vscode, vscodium, codearts_rust);
 
 pub(crate) fn is_supported(name: &str) -> bool {
     SUPPORTED_TOOLS.contains(&name.replace('-', "_").as_str())
 }
 
-/// This is a map with toolname and a list of programs to check for existence.
+/// This is a map with tool's name and a list of programs to check for existence.
 /// Since the list to check is highly rely on tool's name, let's calling it `semi-supported` for now.
 static SEMI_SUPPORTED_TOOLS: LazyLock<HashMap<&str, Vec<String>>> = LazyLock::new(|| {
     HashMap::from([
@@ -66,7 +66,7 @@ static SEMI_SUPPORTED_TOOLS: LazyLock<HashMap<&str, Vec<String>>> = LazyLock::ne
 /// 3. Looking up a pre-defined list related to the given tool, to see if
 ///     those are all in the path.
 pub(crate) fn is_installed(name: &str) -> bool {
-    if supported_tool_is_installed(name) || utils::cmd_exist(utils::exe!(name)) {
+    if supported_tool_is_installed(name) || utils::cmd_exist(exe!(name)) {
         return true;
     }
 

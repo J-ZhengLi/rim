@@ -1,14 +1,15 @@
-use crate::core::parser::dist_manifest::DistManifest;
-use crate::core::parser::TomlParser;
+use crate::components;
+use crate::core::{parser::dist_manifest::DistManifest, GlobalOpts};
 use crate::fingerprint::InstallationRecord;
-use crate::toolset_manifest::ToolsetManifest;
-use crate::{components, utils};
 use anyhow::Result;
+use rim_common::types::ToolkitManifest;
+use rim_common::{types::TomlParser, utils};
 use semver::Version;
 use serde::Serialize;
 use tokio::sync::{Mutex, OnceCell};
 
 use super::parser::dist_manifest::DistPackage;
+use super::ToolkitManifestExt;
 
 /// A cached installed [`Toolkit`] struct to prevent the program doing
 /// excessive IO operations as in [`installed`](Toolkit::installed).
@@ -91,14 +92,14 @@ impl From<DistPackage> for Toolkit {
     }
 }
 
-impl TryFrom<&ToolsetManifest> for Toolkit {
+impl TryFrom<&ToolkitManifest> for Toolkit {
     type Error = anyhow::Error;
-    fn try_from(value: &ToolsetManifest) -> Result<Self> {
+    fn try_from(value: &ToolkitManifest) -> Result<Self> {
         Ok(Self {
             name: value
                 .name
                 .clone()
-                .unwrap_or_else(|| t!("unkown_toolkit").into()),
+                .unwrap_or_else(|| t!("unknown_toolkit").into()),
             version: value.version.clone().unwrap_or_else(|| "N/A".to_string()),
             desc: None,
             info: None,
@@ -123,7 +124,7 @@ pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>>
     info!("{} {dist_m_filename}", t!("fetching"));
     let dist_m_url = utils::url_join(&dist_server, format!("dist/{dist_m_filename}"))?;
     let dist_m_file = utils::make_temp_file("dist-manifest-", None)?;
-    utils::DownloadOpt::new("distribution manifest")
+    utils::DownloadOpt::new("distribution manifest", GlobalOpts::get().quiet)
         .insecure(insecure)
         .download(&dist_m_url, dist_m_file.path())
         .await?;

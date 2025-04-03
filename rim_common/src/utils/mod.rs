@@ -1,7 +1,4 @@
 //! Utility functions/types to use across the whole crate.
-//!
-//! NOTE: Most of these are moved from the `experimental` branch,
-//! some of them might turns out to be unused, so remember to clean those after version `1.0`.
 
 mod download;
 mod extraction;
@@ -10,6 +7,14 @@ mod log;
 mod process;
 mod progress_bar;
 
+// Re-exports
+pub use download::DownloadOpt;
+pub use extraction::Extractable;
+pub use file_system::*;
+pub use log::*;
+pub use process::*;
+pub use progress_bar::*;
+
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -17,17 +22,10 @@ use std::{
     time::Duration,
 };
 
-pub use download::DownloadOpt;
-pub use extraction::Extractable;
-pub use file_system::*;
-pub use log::{log_file_path, logger_is_set, Logger};
-pub use process::*;
-pub use progress_bar::{CliProgress, Progress, Style as CliProgressStyle};
-
 use anyhow::Result;
 use url::Url;
 
-pub static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
 
 /// Insert a `.exe` postfix to given input.
 ///
@@ -46,6 +44,7 @@ pub static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new
 ///     assert!(this_works, "hello_world");
 /// }
 /// ```
+#[macro_export]
 macro_rules! exe {
     ($input:expr) => {{
         #[cfg(windows)]
@@ -58,7 +57,6 @@ macro_rules! exe {
         }
     }};
 }
-pub(crate) use exe;
 
 /// A convenient macro to write struct variables setter.
 ///
@@ -117,12 +115,12 @@ macro_rules! setter {
 ///     blocking!(async_func());
 /// }
 /// ```
+#[macro_export]
 macro_rules! blocking {
     ($blk:expr) => {
         tokio::runtime::Runtime::new()?.block_on($blk)
     };
 }
-pub(crate) use blocking;
 
 /// Forcefully parsing a `&str` to [`Url`].
 ///
@@ -161,7 +159,7 @@ pub fn path_to_str(path: &Path) -> Result<&str> {
 /// * On Unix, root directory is just `/`.
 ///
 /// * On Windows, a path is root if it has a root (check [`has_root`](Path::has_root) for details)
-///     and has no child components.
+///   and has no child components.
 pub fn is_root_dir<P: AsRef<Path>>(path: P) -> bool {
     cfg_if::cfg_if! {
         if #[cfg(windows)] {
@@ -212,7 +210,7 @@ pub fn set_locale(loc: &str) {
 /// Get the configured locale string from `configuration.toml`
 pub fn build_cfg_locale(key: &str) -> &str {
     let cur_locale = &*CURRENT_LOCALE.lock().unwrap();
-    rim_common::cfg_locale!(cur_locale, key)
+    crate::cfg_locale!(cur_locale, key)
 }
 
 /// Waits until `duration` has elapsed.

@@ -12,21 +12,27 @@ pub(crate) mod parser;
 mod path_ext;
 pub(crate) mod rustup;
 pub mod toolkit;
+mod toolkit_manifest_ext;
 pub(crate) mod tools;
 pub mod try_it;
 pub(crate) mod uninstall;
 pub mod update;
 
-use anyhow::Result;
 // re-exports
 pub use locales::Language;
 pub(crate) use path_ext::PathExt;
-use rim_common::build_config;
-use serde::{Deserialize, Serialize};
-use url::Url;
+pub use toolkit_manifest_ext::*;
 
-use crate::{cli, utils};
-use std::{env, sync::OnceLock};
+use crate::{cli, fingerprint::InstallationRecord};
+use anyhow::{bail, Context, Result};
+use rim_common::{build_config, types::TomlParser, utils};
+use serde::{Deserialize, Serialize};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
+use url::Url;
 
 macro_rules! declare_env_vars {
     ($($key:ident),+) => {
@@ -46,6 +52,7 @@ declare_env_vars!(
 /// Globally cached values
 static GLOBAL_OPTS: OnceLock<GlobalOpts> = OnceLock::new();
 static APP_INFO: OnceLock<AppInfo> = OnceLock::new();
+static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
 pub(crate) fn default_rustup_dist_server() -> &'static Url {
     &build_config().rustup_dist_server
@@ -77,8 +84,8 @@ pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {
 /// This struct will be stored globally for easy access, also make
 /// sure the [`set`](GlobalOpts::set) function is called exactly once
 /// to initialize the global singleton.
-// TODO: add verbose and quiest options
-#[derive(Debug, Default)]
+// TODO: add verbose and quiet options
+#[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct GlobalOpts {
     pub(crate) verbose: bool,
     pub(crate) quiet: bool,
@@ -92,20 +99,26 @@ impl GlobalOpts {
     /// static reference to the global stored value.
     ///
     /// Note that the value cannot be updated once initialized.
+    ///
+    /// # Panic
+    /// Panics if the options were already set.
     pub(crate) fn set(
         verbose: bool,
         quiet: bool,
         yes: bool,
         no_modify_env: bool,
         no_modify_path: bool,
-    ) -> &'static Self {
-        GLOBAL_OPTS.get_or_init(|| Self {
+    ) {
+        let opts = Self {
             verbose,
             quiet,
             yes_to_all: yes,
             no_modify_env,
             no_modify_path,
-        })
+        };
+        GLOBAL_OPTS
+            .set(opts)
+            .expect("failed to set `GlobalOpts` as it was already set somewhere else");
     }
 
     /// Get the stored global options.
@@ -179,7 +192,7 @@ impl Mode {
         Self::Installer(maybe_args)
     }
 
-    /// Automatically determain which mode that this program is running as.
+    /// Automatically determine which mode that this program is running as.
     ///
     /// Optional callback functions can be passed,
     /// which will be run after a mode has been determined.
@@ -232,6 +245,54 @@ impl AppInfo {
     pub fn is_manager() -> bool {
         Self::get().is_manager
     }
+
+    /// Try guessing the installation directory base on current exe path, and return the path.
+    ///
+    /// This program should be installed directly under `install_dir`,
+    /// but in case someone accidentally put this binary into some other locations such as
+    /// the root, we should definitely NOT remove the parent dir after installation.
+    /// Therefor we need some checks:
+    /// 1. Make sure the parent directory is not root.
+    /// 2. Make sure there is a `.fingerprint` file alongside current binary.
+    /// 3. Make sure the parent directory matches the recorded `root` path in the fingerprint file.
+    ///
+    /// # Panic
+    /// If the program is not currently running in **manager** mode
+    /// or any of the above check fails.
+    pub fn get_installed_dir() -> &'static Path {
+        if !Self::is_manager() {
+            panic!("`get_installed_dir` should only be used in `manager` mode");
+        }
+
+        fn inner_() -> Result<PathBuf> {
+            let maybe_install_dir = utils::parent_dir_of_cur_exe()?;
+
+            // the first check
+            if maybe_install_dir.parent().is_none() {
+                bail!("it appears that this program was mistakenly installed in root directory");
+            }
+            // the second check
+            if !maybe_install_dir
+                .join(InstallationRecord::FILENAME)
+                .is_file()
+            {
+                bail!("installation record cannot be found");
+            }
+            // the third check
+            let fp = InstallationRecord::load_from_dir(&maybe_install_dir)
+                .context("'.fingerprint' file exists but cannot be loaded")?;
+            if fp.root != maybe_install_dir {
+                bail!(
+                    "`.fingerprint` file exists but the installation root in it \n\
+                    does not match the one its in"
+                );
+            }
+
+            Ok(maybe_install_dir.to_path_buf())
+        }
+
+        INSTALL_DIR_ONCE.get_or_init(|| inner_().expect("unable to determine install dir"))
+    }
 }
 
 #[cfg(test)]
@@ -247,7 +308,7 @@ mod tests {
         assert_eq!(opts.quiet, false);
         assert_eq!(opts.yes_to_all, true);
         assert_eq!(opts.no_modify_env(), true);
-        // no-modfy-path is dictated by no-modify-env, because PATH is part of env var
+        // no-modify-path is dictated by no-modify-env, because PATH is part of env var
         assert_eq!(opts.no_modify_path(), true);
     }
 }
