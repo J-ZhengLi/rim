@@ -1,14 +1,11 @@
+use super::ToolkitManifestExt;
+use crate::fingerprint::InstallationRecord;
 use anyhow::Result;
+use rim_common::types::{ToolInfo, ToolMap, ToolkitManifest};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     sync::atomic::{AtomicU32, Ordering},
-};
-
-use crate::{
-    fingerprint::InstallationRecord,
-    setter,
-    toolset_manifest::{ToolInfo, ToolMap, ToolsetManifest},
 };
 
 static COMPONENTS_COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -71,6 +68,24 @@ impl Component {
     setter!(with_description(self.desc, desc: Option<&str>) { desc.map(ToOwned::to_owned) });
 }
 
+/// A Rust toolchain component, such as `rustc`, `cargo`, `rust-docs`
+/// or even toolchain profile as as `minimal`, `default`.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ToolchainComponent {
+    pub name: String,
+    pub is_profile: bool,
+}
+
+impl ToolchainComponent {
+    pub fn new<T: ToString>(name: T) -> Self {
+        Self {
+            name: name.to_string(),
+            is_profile: false,
+        }
+    }
+    setter!(is_profile(self.is_profile, bool));
+}
+
 /// Get a combined list of tools and toolchain components in Vec<[Component]> format,
 /// whether it's installed or not.
 ///
@@ -83,7 +98,7 @@ pub(crate) fn all_components_from_installation(
     record: &InstallationRecord,
 ) -> Result<Vec<Component>> {
     let mut full_components =
-        ToolsetManifest::load_from_install_dir()?.current_target_components(false)?;
+        ToolkitManifest::load_from_install_dir()?.current_target_components(false)?;
 
     // components that are installed by rim previously.
     let installed_toolchain = record.installed_toolchain();

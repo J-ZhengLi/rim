@@ -12,16 +12,14 @@ use anyhow::{anyhow, bail, Result};
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand, ValueHint};
 use common::handle_user_choice;
+use rim_common::utils;
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
 use url::Url;
 
-use crate::{
-    core::{GlobalOpts, Language},
-    utils,
-};
+use crate::core::{GlobalOpts, Language};
 
 /// Try to pause terminal after executing a block or after error occurs.
 ///
@@ -33,7 +31,7 @@ macro_rules! execute_with_pause {
             $($body)*
         };
         if let Err(_err_) = _inner_() {
-            if $crate::utils::logger_is_set() {
+            if rim_common::utils::logger_is_set() {
                 log::error!("{_err_}");
             } else {
                 eprintln!("{_err_}");
@@ -172,7 +170,7 @@ pub struct Manager {
     no_modify_path: bool,
     /// Don't make any environment modifications on user's machine.
     ///
-    /// This includes environment veriables including `PATH`, `CARGO_HOME`, `RUSTUP_HOME` etc,
+    /// This includes environment variables including `PATH`, `CARGO_HOME`, `RUSTUP_HOME` etc,
     /// keeping them intact even after uninstallation.
     /// This Does not includes Windows `Uninstall` entry of course, which will get removed after
     /// uninstallation.
@@ -387,7 +385,7 @@ impl ManagerSubcommands {
     }
 
     /// Ask user about the update options, return a `bool` indicates whether the
-    /// user wishs to continue.
+    /// user wish to continue.
     fn question_update_option_(&mut self, insecure: bool) -> Result<bool> {
         // component choices are asked after executing update command,
         // so it's ok to leave it as None for now.
@@ -412,7 +410,7 @@ impl ManagerSubcommands {
     }
 
     /// Ask user about uninstallation options, return a `bool` indicates whether the
-    /// user wishs to continue.
+    /// user wish to continue.
     fn question_uninstall_option_(&mut self) -> Result<bool> {
         *self = handle_user_choice!(
             t!("choose_an_option"), 1,

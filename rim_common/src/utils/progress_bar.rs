@@ -8,8 +8,6 @@ use std::{
 use anyhow::Result;
 use indicatif::{ProgressBar as CliProgressBar, ProgressState, ProgressStyle};
 
-use crate::core::GlobalOpts;
-
 struct ProgressPos(Mutex<f32>);
 
 impl ProgressPos {
@@ -63,7 +61,7 @@ impl<'a> Progress<'a> {
     }
 }
 
-/// Convinent struct with methods that are useful to indicate various progress.
+/// Convenient struct with methods that are useful to indicate various progress.
 #[derive(Debug, Clone, Copy)]
 pub struct CliProgress<T: Sized> {
     /// A start/initializing function which will be called to setup progress bar.
@@ -145,14 +143,10 @@ impl CliProgress<CliProgressBar> {
             pb.finish_with_message(msg);
         }
 
-        if GlobalOpts::get().quiet {
-            Self::hidden()
-        } else {
-            CliProgress {
-                start,
-                update,
-                stop,
-            }
+        CliProgress {
+            start,
+            update,
+            stop,
         }
     }
 

@@ -1,5 +1,4 @@
-use rim::utils;
-
+use rim_common::utils;
 use rim_test_support::paths;
 use rim_test_support::prelude::*;
 

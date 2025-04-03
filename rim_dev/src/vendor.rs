@@ -3,8 +3,7 @@ use crate::{
     toolkits_parser::{Component, GlobalConfig, Toolkits},
 };
 use anyhow::{anyhow, Result};
-use indexmap::IndexMap;
-use std::{fs, path::Path};
+use std::{collections::HashMap, fs, path::Path};
 use toml::{map::Map, Value};
 
 const TOOLS_DIRNAME: &str = "tools";
@@ -177,7 +176,7 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
             toml::Value::String(TOOLCHAIN_DIRNAME.into()),
         );
         // Make a `[rust.rustup]` map, download rustup-init if necessary
-        let mut rustup_sources = IndexMap::new();
+        let mut rustup_sources = HashMap::new();
         for target in &toolkits.config.targets {
             let triple = target.triple();
             let suffix = if triple.contains("windows") {

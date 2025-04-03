@@ -62,7 +62,7 @@ pub fn ensure_parent_dir<P: AsRef<Path>>(path: P) -> Result<()> {
 /// Convert the given path to absolute path without `.` or `..` components.
 ///
 /// - If the `path` is already an absolute path, this will just go through each component
-///     and attempt to "remove" `.` and `..` components.
+///   and attempt to "remove" `.` and `..` components.
 /// - If the `root` is not specified, this will assume that `path` is related to current directory.
 ///
 /// # Error
@@ -333,4 +333,26 @@ pub fn make_temp_file(prefix: &str, root: Option<&Path>) -> Result<NamedTempFile
 /// Try getting the extension of a `path` as `str`.
 pub fn extension_str(path: &Path) -> Option<&str> {
     path.extension().and_then(|ext| ext.to_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // TODO: Move this test to `utils`
+    #[test]
+    fn path_ambiguity() {
+        let with_dots = PathBuf::from("/path/to/home/./my_app/../my_app");
+        let without_dots = PathBuf::from("/path/to/home/my_app");
+        assert_ne!(with_dots, without_dots);
+
+        let with_dots_comps: PathBuf = with_dots.components().collect();
+        let without_dots_comps: PathBuf = without_dots.components().collect();
+        // Components take `..` accountable in case of symlink.
+        assert_ne!(with_dots_comps, without_dots_comps);
+
+        let with_dots_normalized = to_normalized_absolute_path(&with_dots, None).unwrap();
+        let without_dots_normalized = to_normalized_absolute_path(&without_dots, None).unwrap();
+        assert_eq!(with_dots_normalized, without_dots_normalized);
+    }
 }

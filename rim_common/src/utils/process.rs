@@ -17,19 +17,19 @@ use anyhow::Result;
 /// // With env vars
 /// run!(["FOO"="foo", "BAR"="bar"] program, "cargo", "build");
 /// ```
+#[macro_export]
 macro_rules! run {
     ($program:expr) => {{
         $crate::utils::execute(std::process::Command::new($program))
     }};
     ($program:expr $(, $arg:expr )* $(,)?) => {{
-        $crate::utils::run!([] $program $(,$arg)*)
+        $crate::run!([] $program $(,$arg)*)
     }};
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
-        let cmd__ = $crate::utils::cmd!([$($key=$val),*] $program $(,$arg)*);
+        let cmd__ = $crate::cmd!([$($key=$val),*] $program $(,$arg)*);
         $crate::utils::execute(cmd__)
     }};
 }
-pub(crate) use run;
 
 /// Convenient macro to create a [`Command`], using shell-like command syntax.
 ///
@@ -44,12 +44,13 @@ pub(crate) use run;
 /// // With env vars
 /// cmd!(["FOO"="foo", "BAR"="bar"] program, "cargo", "build");
 /// ```
+#[macro_export]
 macro_rules! cmd {
     ($program:expr) => {
         std::process::Command::new($program)
     };
     ($program:expr $(, $arg:expr )* $(,)?) => {
-        $crate::utils::cmd!([] $program $(, $arg)*)
+        $crate::cmd!([] $program $(, $arg)*)
     };
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
         let mut cmd__ = std::process::Command::new($program);
@@ -58,15 +59,12 @@ macro_rules! cmd {
         cmd__
     }};
 }
-pub(crate) use cmd;
 
-pub(crate) fn execute(cmd: Command) -> Result<()> {
+pub fn execute(cmd: Command) -> Result<()> {
     execute_command(cmd, true).map(|_| ())
 }
 
-// Only used for `windows` for now, but... who knows.
-#[allow(unused)]
-pub(crate) fn execute_for_ret_code(cmd: Command) -> Result<i32> {
+pub fn execute_for_ret_code(cmd: Command) -> Result<i32> {
     execute_command(cmd, false)
 }
 
@@ -99,7 +97,7 @@ fn execute_command(mut cmd: Command, expect_success: bool) -> Result<i32> {
     let ret_code = get_ret_code(&status);
     if expect_success && !status.success() {
         anyhow::bail!(
-            "programm exited with code {ret_code}. \n\
+            "program exited with code {ret_code}. \n\
             Command: {cmd_content}"
         );
     } else {
