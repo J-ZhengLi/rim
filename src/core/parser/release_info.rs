@@ -1,4 +1,4 @@
-use super::TomlParser;
+use rim_common::types::TomlParser;
 use semver::Version;
 use serde::{de, Deserialize, Deserializer};
 

@@ -2,14 +2,14 @@ use std::io::Write;
 
 use anyhow::Result;
 use clap::Subcommand;
+use rim_common::types::ToolkitManifest;
 
 use super::{handle_user_choice, GlobalOpts, ManagerSubcommands};
 use crate::{
     components,
+    core::ToolkitManifestExt,
     fingerprint::InstallationRecord,
     toolkit::{toolkits_from_server, Toolkit},
-    toolset_manifest::ToolsetManifest,
-    utils::blocking,
 };
 
 #[derive(Subcommand, Debug, Default, Clone, Copy)]
@@ -17,7 +17,7 @@ pub(super) enum ListCommand {
     /// Show components that are available in current target.
     #[default]
     Component,
-    /// Show available toolkits.
+    /// Show available toolkit.
     Toolkit,
 }
 
@@ -35,7 +35,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
         return Ok(false);
     };
 
-    // `command` should either be passed from commandline option or being repeatly
+    // `command` should either be passed from commandline option or being repeat
     // asked from user interaction until determined, which means it couldn't be `none`,
     // but we still fallback to default in case something bad happens.
     let sub_cmd = command.unwrap_or_default();
@@ -60,7 +60,7 @@ pub(super) fn ask_list_command() -> Result<Option<ListCommand>> {
 /// Print a list of components and return them.
 pub(crate) fn list_components(
     installed_only: bool,
-    manifest: Option<&ToolsetManifest>,
+    manifest: Option<&ToolkitManifest>,
 ) -> Result<()> {
     let components = if let Some(mf) = manifest {
         mf.current_target_components(true)?

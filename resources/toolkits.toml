@@ -1,4 +1,4 @@
-# This configuration file stores information about every toolkits that we offer,
+# This configuration file stores information about every toolkit that we offer,
 # and all the component's information, including it's version, description, and it's
 # source URL.
 # This file is used to generate toolkit-manifest (aka toolset-manifest) for each toolkit,
@@ -56,7 +56,7 @@ optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
 [toolkit.basic.value.tools.descriptions]
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
 rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
-rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser useing the `rustup doc` command"
+rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser using the `rustup doc` command"
 mingw64 = "(windows only) Requirement for Windows GNU toolchain"
 
 [toolkit.basic.value.tools.group]

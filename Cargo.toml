@@ -21,6 +21,8 @@ members = ["rim_gui/src-tauri", "rim_dev", "rim_common"]
 serde = { version = "1", features = ["derive"] }
 anyhow = "1"
 cfg-if = "1"
+chrono = { version = "0.4.38", features = ["serde"] }
+dirs = "5.0.1"
 url = { version = "2", features = ["serde"] }
 toml = "0.8.15"
 tokio = { version = "1", features = ["time", "rt-multi-thread", "macros"] }
@@ -37,32 +39,23 @@ zip = "2"
 [dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true
+chrono.workspace = true
 clap = { version = "4", features = ["derive"] }
-dirs = "5.0.1"
-indicatif = "0.17"
+dirs.workspace = true
 serde.workspace = true
 url.workspace = true
 libc = "0.2"
 toml.workspace = true
 tempfile.workspace = true
-sevenz-rust = "0.6.1"
-tar.workspace = true
-xz2.workspace = true
-flate2 = "1"
 env_proxy = "0.4.1"
 indexmap.workspace = true
 rim_common = { path = "rim_common" }
 rust-i18n.workspace = true
-sys-locale = "0.3.1"
 log.workspace = true
-fern.workspace = true
-chrono = { version = "0.4.38", features = ["serde"] }
 semver = "1.0.23"
 self-replace = "1"
-os_pipe = "1.2.1"
 reqwest.workspace = true
 tokio.workspace = true
-zip.workspace = true
 
 [dev-dependencies]
 rim-test-support = { version = "0.1.0", path = "rim_test/rim-test-support" }

@@ -1,6 +1,6 @@
 use crate::core::tools::VSCODE_FAMILY;
-use crate::utils;
 use anyhow::Result;
+use rim_common::utils;
 use std::{
     env,
     path::{Path, PathBuf},
@@ -38,7 +38,7 @@ pub fn try_it(path: Option<&Path>) -> Result<()> {
         .find_map(|p| utils::cmd_exist(p).then_some(p.as_str()))
         .unwrap_or(file_explorer);
     // Try to open the project, but don't do anything if it fails cuz it's not critical.
-    _ = utils::run!(program, example_dir);
+    _ = run!(program, example_dir);
     Ok(())
 }
 

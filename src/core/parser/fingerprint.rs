@@ -1,18 +1,18 @@
 use anyhow::{anyhow, Context, Result};
-use indexmap::IndexMap;
+use rim_common::types::{TomlParser, ToolKind, ToolkitManifest};
+use rim_common::utils;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
-use std::path::{Path, PathBuf};
-
-use crate::{core::tools::ToolKind, setter, utils};
-
-use super::{
-    toolset_manifest::{ToolchainComponent, ToolsetManifest},
-    TomlParser,
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
 };
+
+use crate::components::ToolchainComponent;
+use crate::AppInfo;
 
 /// Re-load fingerprint file just to get the list of installed tools,
 /// therefore we can use this list to uninstall, while avoiding race condition.
-pub(crate) fn installed_tools_fresh(root: &Path) -> Result<IndexMap<String, ToolRecord>> {
+pub(crate) fn installed_tools_fresh(root: &Path) -> Result<HashMap<String, ToolRecord>> {
     Ok(InstallationRecord::load_from_dir(root)?.tools)
 }
 
@@ -27,7 +27,7 @@ pub struct InstallationRecord {
     pub root: PathBuf,
     pub rust: Option<RustRecord>,
     #[serde(default)]
-    pub tools: IndexMap<String, ToolRecord>,
+    pub tools: HashMap<String, ToolRecord>,
 }
 
 impl TomlParser for InstallationRecord {
@@ -61,7 +61,7 @@ impl InstallationRecord {
     /// Used to detect whether a fingerprint file exists in parent directory.
     ///
     /// This is useful when you want to know it without causing
-    /// the program to panic using [`get_installed_dir`](super::get_installed_dir).
+    /// the program to panic using [`get_installed_dir`](AppInfo::get_installed_dir).
     pub fn exists() -> Result<bool> {
         let parent_dir = utils::parent_dir_of_cur_exe()?;
         Ok(parent_dir.join(Self::FILENAME).is_file())
@@ -71,7 +71,7 @@ impl InstallationRecord {
     /// which is typically the parent directory of the current executable.
     // TODO: Cache the result using a `Cell` or `RwLock` or combined.
     pub(crate) fn load_from_install_dir() -> Result<Self> {
-        let root = super::get_installed_dir();
+        let root = AppInfo::get_installed_dir();
         Self::load_from_dir(root)
     }
 
@@ -89,7 +89,7 @@ impl InstallationRecord {
         })
     }
 
-    pub(crate) fn clone_toolkit_meta_from_manifest(&mut self, manifest: &ToolsetManifest) {
+    pub(crate) fn clone_toolkit_meta_from_manifest(&mut self, manifest: &ToolkitManifest) {
         self.name.clone_from(&manifest.name);
         self.version.clone_from(&manifest.version);
     }
@@ -128,7 +128,7 @@ impl InstallationRecord {
     }
 
     pub fn remove_tool_record(&mut self, tool_name: &str) {
-        self.tools.shift_remove(tool_name);
+        self.tools.remove(tool_name);
     }
 
     /// Return an iterator of installed tools' names.
@@ -315,19 +315,19 @@ d = { kind = 'executables', paths = []}
 e = { kind = 'plugin', paths = []}
 "#;
 
-        let kinds = &[
-            ToolKind::CargoTool,
-            ToolKind::Custom,
-            ToolKind::DirWithBin,
-            ToolKind::Executables,
-            ToolKind::Plugin,
-        ];
+        let kinds = HashMap::from([
+            ("a", ToolKind::CargoTool),
+            ("b", ToolKind::Custom),
+            ("c", ToolKind::DirWithBin),
+            ("d", ToolKind::Executables),
+            ("e", ToolKind::Plugin),
+        ]);
         let expected = InstallationRecord::from_str(input).unwrap();
         let all_kinds = expected
             .tools
-            .values()
-            .map(|rec| rec.kind)
-            .collect::<Vec<_>>();
+            .iter()
+            .map(|(name, rec)| (name.as_str(), rec.kind))
+            .collect::<HashMap<_, _>>();
 
         assert_eq!(all_kinds, kinds);
     }
@@ -343,19 +343,22 @@ b = { use-cargo = false, paths = ['some/path'] }
 c = { paths = ['some/other/path'] }"#;
 
         let expected = InstallationRecord::from_str(input).unwrap();
-        let mut it = expected.tools.values().map(|rec| rec.tool_kind());
+        let hm = expected
+            .tools
+            .iter()
+            .map(|(name, rec)| (name.as_str(), rec.tool_kind()))
+            .collect::<HashMap<&str, ToolKind>>();
 
-        assert_eq!(it.next(), Some(ToolKind::CargoTool));
-        assert_eq!(it.next(), Some(ToolKind::Unknown));
-        assert_eq!(it.next(), Some(ToolKind::Unknown));
-        assert_eq!(it.next(), None);
+        assert_eq!(hm["a"], ToolKind::CargoTool);
+        assert_eq!(hm["b"], ToolKind::Unknown);
+        assert_eq!(hm["c"], ToolKind::Unknown);
     }
 
     #[test]
     fn do_not_ser_use_cargo() {
         let record = InstallationRecord {
             root: "/some/path".into(),
-            tools: IndexMap::from([("a".into(), ToolRecord::cargo_tool())]),
+            tools: HashMap::from([("a".into(), ToolRecord::cargo_tool())]),
             ..Default::default()
         };
         let ser = record.to_toml().unwrap();
@@ -380,9 +383,12 @@ kind = "executables"
 paths = ["/some/other/path"]"#;
 
         let rec = InstallationRecord::from_str(input).unwrap();
-        let mut tools = rec.tools.values().map(|r| r.version.as_deref());
-        assert_eq!(tools.next(), Some(Some("1.2.0")));
-        assert_eq!(tools.next(), Some(None));
-        assert_eq!(tools.next(), None);
+        let ver_rec = rec
+            .tools
+            .iter()
+            .map(|(name, r)| (name.as_str(), r.version.as_deref()))
+            .collect::<HashMap<_, _>>();
+        let expecting = HashMap::from([("a", Some("1.2.0")), ("b", None)]);
+        assert_eq!(ver_rec, expecting);
     }
 }

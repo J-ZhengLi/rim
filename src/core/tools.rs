@@ -6,20 +6,15 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Result};
-use serde::{Deserialize, Serialize};
+use rim_common::{types::ToolKind, utils};
 
 use super::{
     directories::RimDir, parser::fingerprint::ToolRecord, uninstall::UninstallConfiguration,
     GlobalOpts, PathExt, CARGO_HOME,
 };
-use crate::{
-    core::custom_instructions,
-    setter,
-    utils::{self, run},
-    InstallConfiguration,
-};
+use crate::{core::custom_instructions, InstallConfiguration};
 
-/// All supported VS Code varients
+/// All supported VS Code variants
 pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
     #[cfg(windows)]
     let suffix = ".cmd";
@@ -47,39 +42,6 @@ pub(crate) struct Tool<'a> {
     pub(crate) kind: ToolKind,
     /// Additional args to run installer, currently only used for `cargo install`.
     install_args: Option<Vec<&'a str>>,
-}
-
-/// Representing the structure of an (extracted) tool's directory.
-// NB: Mind the order of the variants, they are crucial to installation/uninstallation.
-#[derive(Debug, Default, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "kebab-case")]
-pub enum ToolKind {
-    /// Directory containing `bin` subfolder:
-    /// ```text
-    /// tool/
-    /// ├─── bin/
-    /// ├─── ...
-    /// ```
-    DirWithBin,
-    /// Installer type, which need to be executed to install a certain tool.
-    Installer,
-    /// Pre-built executable files.
-    /// i.e.:
-    /// ```text
-    /// ├─── some_binary.exe
-    /// ├─── cargo-some_binary.exe
-    /// ```
-    Executables,
-    /// We have a custom "script" for how to deal with such directory.
-    Custom,
-    /// Plugin file, such as `.vsix` files for Visual Studio.
-    Plugin,
-    // `Cargo` just don't make any sense
-    #[allow(clippy::enum_variant_names)]
-    CargoTool,
-    /// Unknown tool, install and uninstall are not fully supported.
-    #[default]
-    Unknown,
 }
 
 impl<'a> Tool<'a> {
@@ -252,9 +214,9 @@ impl<'a> Tool<'a> {
 fn cargo_install_or_uninstall(op: &str, args: &[&str], cargo_home: &Path) -> Result<()> {
     let mut cargo_bin = cargo_home.to_path_buf();
     cargo_bin.push("bin");
-    cargo_bin.push(utils::exe!("cargo"));
+    cargo_bin.push(exe!("cargo"));
 
-    let mut cmd = utils::cmd!([CARGO_HOME=cargo_home] cargo_bin, op);
+    let mut cmd = cmd!([CARGO_HOME=cargo_home] cargo_bin, op);
     let mut full_args = vec![];
 
     if GlobalOpts::get().verbose {
@@ -311,7 +273,7 @@ impl FromStr for Plugin {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
             "vsix" => Ok(Self::Vsix),
-            _ => bail!("unsupprted plugin file type '{s}'"),
+            _ => bail!("unsupported plugin file type '{s}'"),
         }
     }
 }
@@ -354,7 +316,7 @@ impl Plugin {
                                 program = program
                             )
                         );
-                        match utils::run!(program, arg_opt, plugin_path) {
+                        match run!(program, arg_opt, plugin_path) {
                             Ok(()) => continue,
                             // Ignore error when uninstalling.
                             Err(_) if uninstall => {

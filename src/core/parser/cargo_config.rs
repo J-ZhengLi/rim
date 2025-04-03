@@ -1,13 +1,12 @@
 //! Module defining types that could be serialized to a working `config.toml` for cargo.
 
+use indexmap::IndexMap;
+use rim_common::types::TomlParser;
 use serde::{ser::SerializeMap, Serialize};
-use std::collections::BTreeMap;
-
-use super::TomlParser;
 
 /// A simple struct representing the fields in `config.toml`.
 ///
-/// Only covers a small range of options we need to configurate.
+/// Only covers a small range of options we need to configure.
 /// Fwiw, the full set of configuration options can be found
 /// in the [Cargo Configuration Book](https://doc.rust-lang.org/cargo/reference/config.html).
 #[derive(Debug, Default, Serialize)]
@@ -15,7 +14,7 @@ pub(crate) struct CargoConfig {
     net: Option<CargoNetConfig>,
     http: Option<CargoHttpConfig>,
     #[serde(serialize_with = "serialize_source_map")]
-    source: BTreeMap<String, Source>,
+    source: IndexMap<String, Source>,
 }
 
 impl TomlParser for CargoConfig {
@@ -96,7 +95,7 @@ pub(crate) struct Source {
 }
 
 // Serialize empty map to an empty string.
-fn serialize_source_map<S>(map: &BTreeMap<String, Source>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_source_map<S>(map: &IndexMap<String, Source>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -117,7 +116,7 @@ mod tests {
 
     #[test]
     fn cargo_config_default_serialize() {
-        // serized default should be an empty toml
+        // serialized default should be an empty toml
         let default = CargoConfig::default();
 
         assert_eq!(default.to_toml().unwrap(), "");

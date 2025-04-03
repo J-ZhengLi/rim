@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{common::FrontendFunctionPayload, Result};
-use rim::setter;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, PhysicalPosition};
 
@@ -60,7 +59,7 @@ impl Notification {
 
     /// Show notification as a separated window at the bottom right of the screen.
     ///
-    /// Note: Although it's preferrable to use OS native notification system,
+    /// Note: Although it's preferable to use OS native notification system,
     /// such as relying on third-party crate such as [`notify-rust`].
     /// However, it doesn't seem like any of those crates supports
     /// custom actions on Windows and MacOS yet. If that feature ever became available on

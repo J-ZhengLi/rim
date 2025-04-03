@@ -3,20 +3,20 @@ use std::path::PathBuf;
 use std::thread;
 
 use anyhow::{Context, Result};
+use rim_common::types::Proxy;
+use rim_common::types::ToolkitManifest;
+use rim_common::utils;
 use url::Url;
 
+use super::components::ToolchainComponent;
 use super::directories::RimDir;
 use super::install::InstallConfiguration;
-use super::parser::toolset_manifest::ToolsetManifest;
 use super::uninstall::UninstallConfiguration;
 use super::GlobalOpts;
+use super::ToolkitManifestExt;
 use super::CARGO_HOME;
 use super::RUSTUP_DIST_SERVER;
 use super::RUSTUP_HOME;
-use crate::setter;
-use crate::toolset_manifest::Proxy;
-use crate::toolset_manifest::ToolchainComponent;
-use crate::utils::{self, set_exec_permission, url_join};
 
 #[cfg(windows)]
 pub(crate) const RUSTUP_INIT: &str = "rustup-init.exe";
@@ -43,7 +43,7 @@ impl ToolchainInstaller {
     fn install_toolchain_via_rustup(
         &self,
         rustup: &Path,
-        manifest: &ToolsetManifest,
+        manifest: &ToolkitManifest,
         components: Vec<&str>,
     ) -> Result<()> {
         // TODO: check local manifest.
@@ -58,7 +58,7 @@ impl ToolchainInstaller {
             args.push(&comps_arg);
         }
         let mut cmd = if let Some(local_server) = manifest.offline_dist_server()? {
-            utils::cmd!([RUSTUP_DIST_SERVER=local_server.as_str()] rustup)
+            cmd!([RUSTUP_DIST_SERVER=local_server.as_str()] rustup)
         } else if let Ok(dist_server) = std::env::var(RUSTUP_DIST_SERVER) {
             let mut server: Url = dist_server.parse()?;
             if server.scheme() == "https" && self.insecure {
@@ -67,9 +67,9 @@ impl ToolchainInstaller {
                 // is guaranteed to be `Ok`.
                 server.set_scheme("http").unwrap();
             }
-            utils::cmd!([RUSTUP_DIST_SERVER=server.as_str()] rustup)
+            cmd!([RUSTUP_DIST_SERVER=server.as_str()] rustup)
         } else {
-            utils::cmd!(rustup)
+            cmd!(rustup)
         };
         cmd.args(args);
         utils::execute(cmd)
@@ -79,7 +79,7 @@ impl ToolchainInstaller {
     pub(crate) fn install(
         &self,
         config: &InstallConfiguration,
-        manifest: &ToolsetManifest,
+        manifest: &ToolkitManifest,
         components: &[ToolchainComponent],
     ) -> Result<()> {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
@@ -110,14 +110,11 @@ impl ToolchainInstaller {
     pub(crate) fn update(
         &self,
         config: &InstallConfiguration,
-        manifest: &ToolsetManifest,
+        manifest: &ToolkitManifest,
     ) -> Result<()> {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
         let tc_ver = &manifest.rust.channel;
-
-        // FIXME: rust-analyzer kept showing error on this below line
-        // saying: 'overflow expending macro...', find the cause
-        utils::run!(&rustup, "toolchain", "add", tc_ver, "--no-self-update")
+        run!(&rustup, "toolchain", "add", tc_ver, "--no-self-update")
     }
 
     // Rustup self uninstall all the components and toolchains.
@@ -125,7 +122,7 @@ impl ToolchainInstaller {
         let progress = utils::CliProgress::new();
         let spinner = (progress.start)(
             t!("uninstalling_rust_toolchain").to_string(),
-            utils::CliProgressStyle::Spinner {
+            utils::Style::Spinner {
                 auto_tick_duration: None,
             },
         )?;
@@ -134,7 +131,7 @@ impl ToolchainInstaller {
         let cargo_home = config.cargo_home().to_path_buf();
         let rustup_home = config.rustup_home().to_path_buf();
         let handle = thread::spawn(
-            move || utils::run!([CARGO_HOME=cargo_home, RUSTUP_HOME=rustup_home] rustup, "self", "uninstall", "-y"),
+            move || run!([CARGO_HOME=cargo_home, RUSTUP_HOME=rustup_home] rustup, "self", "uninstall", "-y"),
         );
         while !handle.is_finished() {
             (progress.update)(&spinner, None);
@@ -148,7 +145,7 @@ impl ToolchainInstaller {
 
 fn ensure_rustup(
     config: &InstallConfiguration,
-    manifest: &ToolsetManifest,
+    manifest: &ToolkitManifest,
     insecure: bool,
 ) -> Result<PathBuf> {
     let rustup_bin = config.cargo_bin().join(RUSTUP);
@@ -192,9 +189,9 @@ fn download_rustup_init(
 ) -> Result<()> {
     info!("{}", t!("downloading_rustup_init"));
 
-    let download_url = url_join(server, format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
+    let download_url = utils::url_join(server, format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
         .context("Failed to init rustup download url.")?;
-    utils::DownloadOpt::new(RUSTUP_INIT)
+    utils::DownloadOpt::new(RUSTUP_INIT, GlobalOpts::get().quiet)
         .insecure(insecure)
         .with_proxy(proxy.cloned())
         .blocking_download(&download_url, dest)
@@ -203,7 +200,7 @@ fn download_rustup_init(
 
 fn install_rustup(rustup_init: &PathBuf) -> Result<()> {
     // make sure it can be executed
-    set_exec_permission(rustup_init)?;
+    utils::set_exec_permission(rustup_init)?;
 
     let mut args = vec![
         // tell rustup not to add `. $HOME/.cargo/env` because we already wrote one for them.
@@ -219,7 +216,7 @@ fn install_rustup(rustup_init: &PathBuf) -> Result<()> {
     } else if GlobalOpts::get().quiet {
         args.push("-q");
     }
-    let mut cmd = utils::cmd!(rustup_init);
+    let mut cmd = cmd!(rustup_init);
     cmd.args(args);
     utils::execute(cmd)
 }

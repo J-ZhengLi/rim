@@ -10,11 +10,10 @@ use crate::cli::GlobalOpts;
 use crate::components::Component;
 use crate::core::install::InstallConfiguration;
 use crate::core::{
-    default_cargo_registry, default_rustup_dist_server, default_rustup_update_root, try_it,
+    default_cargo_registry, default_rustup_dist_server, default_rustup_update_root,
+    get_toolkit_manifest, try_it, ToolkitManifestExt,
 };
-use crate::toolset_manifest::get_toolset_manifest;
-use crate::utils::blocking;
-use crate::{default_install_dir, utils};
+use crate::default_install_dir;
 
 use super::common::{
     question_single_choice, ComponentChoices, ComponentDecoration, ComponentListBuilder,
@@ -22,6 +21,7 @@ use super::common::{
 use super::{Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
+use rim_common::utils;
 
 /// Perform installer actions.
 ///
@@ -45,7 +45,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
     }
 
     let manifest_url = manifest_src.as_ref().map(|s| s.to_url()).transpose()?;
-    let mut manifest = blocking!(get_toolset_manifest(manifest_url, *insecure))?;
+    let mut manifest = blocking!(get_toolkit_manifest(manifest_url, *insecure))?;
 
     if *list_components {
         // print a list of available components then return, don't do anything else
