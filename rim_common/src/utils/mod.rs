@@ -63,7 +63,7 @@ macro_rules! exe {
 /// # Usage
 ///
 /// ```rust
-/// # use rim::setter;
+/// # use rim_common::setter;
 /// #[derive(Default)]
 /// struct Foo {
 ///     a: bool,

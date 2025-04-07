@@ -60,7 +60,7 @@ where
     /// A package root is:
     /// - The folder to store tools' packages such as `tools/hello-world.tar.xz`, etc.
     /// - The folder to store local rustup dist server such as `toolchain/`, where all
-    ///     the rust installer stuffs stored, such as `toolchain/channel-rust-x.xx.x.toml`.
+    ///   the rust installer stuffs stored, such as `toolchain/channel-rust-x.xx.x.toml`.
     /// - Usually the parent directory of this manifest file.
     ///
     /// Note: In `release` build, because this program has an embedded toolkit manifest,
@@ -76,10 +76,10 @@ where
     ///
     /// There are some rules applied when converting, including:
     /// 1. If the manifest was loaded from a path,
-    ///     all relative paths will be forced to combine with the path loading from.
+    ///    all relative paths will be forced to combine with the path loading from.
     /// 2. If the manifest was not loaded from path,
-    ///     all relative paths will be forced to combine with the parent directory of this executable.
-    ///     (Assuming the manifest was baked in the executable)
+    ///    all relative paths will be forced to combine with the parent directory of this executable.
+    ///    (Assuming the manifest was baked in the executable)
     ///
     /// # Errors
     /// Return `Result::Err` if the manifest was not loaded from path, and the current executable path

@@ -33,8 +33,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     // Step 2: Make a copy of this installer to the `tools` directory,
     // which is later used for uninstallation.
     let installer_dir = config.tools_dir().join("buildtools");
-    utils::ensure_dir(&installer_dir)?;
-    utils::copy_file_to(&buildtools_exe, &installer_dir)?;
+    utils::copy_file(&buildtools_exe, &installer_dir)?;
 
     // Step 3: Invoke the install command.
     info!("{}", t!("installing_msvc_info"));

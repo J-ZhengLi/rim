@@ -1,10 +1,13 @@
 use crate::{
-    common::{download, ensure_dir, ensure_parent_dir, resources_dir},
+    common::{download, resources_dir},
     toolkits_parser::{Component, GlobalConfig, Toolkits},
 };
 use anyhow::{anyhow, Result};
+use rim_common::{
+    types::{ToolInfo, ToolSource},
+    utils::{ensure_dir, ensure_parent_dir},
+};
 use std::{collections::HashMap, fs, path::Path};
-use toml::{map::Map, Value};
 
 const TOOLS_DIRNAME: &str = "tools";
 const TOOLCHAIN_DIRNAME: &str = "toolchain";
@@ -23,8 +26,8 @@ Options:
         --download-only
                     Do not update toolkit-manifests, just download packages
         --split-only
-                    Update toolkit-manifests by spliting the `toolkits.toml` under resources folder, but don't download packages.
-                    Note that spliting will generate offline toolset-manifest as well,
+                    Update toolkit-manifests by splitting the `toolkits.toml` under resources folder, but don't download packages.
+                    Note that splitting will generate offline toolset-manifest as well,
                     which might not work properly if the packages are not downloaded.
     -h, -help       Print this help message
 "#;
@@ -99,9 +102,9 @@ pub(super) fn vendor(
 /// Reads the `toolkits` value, and:
 ///
 /// - In `SplitOnly` mode, this will write data into `toolkits` value,
-///     changing the `url` field of every tool's source to `path`.
+///   changing the `url` field of every tool's source to `path`.
 /// - In `DownloadOnly` mode, this will just try download the packages to
-///     specific location, and will not split `toolkits` into `toolkit-manifest`s.
+///   specific location, and will not split `toolkits` into `toolkit-manifest`s.
 /// - In `Regular` mode, this does both things above.
 fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits) -> Result<()> {
     let toolkit_manifests_dir = resources_dir().join("toolkit-manifest");
@@ -120,7 +123,7 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
             fs::remove_dir_all(&toolkit_root)?;
         }
 
-        // spliting online manifest is easy, because every manifest section was
+        // splitting online manifest is easy, because every manifest section was
         // already considered as online manifest, we just need to write its string
         // directly under the right folder.
         let online_manifest = toolkit.manifest_string()?;
@@ -134,47 +137,44 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
         // and change it to a relative `path`
         // (assuming that path is valid, we will use it to download packages).
         let offline_manifest_path = offline_manifests_dir.join(format!("{name}.toml"));
-        if let Some(targeted_tools) = toolkit.targeted_tools_mut() {
-            for (target, tool) in targeted_tools {
-                let Some(tool_info) = tool.as_table_mut() else {
+        let targeted_tools = toolkit.targeted_tools_mut();
+        for (target, tool_info) in targeted_tools {
+            let tools_dir = toolkit_root.join(target).join(TOOLS_DIRNAME);
+
+            for (_name, info_table) in tool_info.iter_mut() {
+                let ToolInfo::Complex(details) = info_table else {
                     continue;
                 };
-                let tools_dir = toolkit_root.join(target).join(TOOLS_DIRNAME);
-
-                for (_name, info) in tool_info {
-                    let Some(info_table) = info.as_table_mut() else {
-                        continue;
+                if let ToolSource::Url {
+                    version: _,
+                    url,
+                    filename,
+                } = &details.source
+                {
+                    let filename = if let Some(name) = filename {
+                        name
+                    } else {
+                        url.as_str()
+                            .rsplit_once("/")
+                            .ok_or_else(|| anyhow!("missing filename for URL: {url}"))?
+                            .1
                     };
-                    if let Some(url) = info_table.get("url").and_then(|v| v.as_str()) {
-                        let filename = if let Some(name) =
-                            info_table.get("filename").and_then(|v| v.as_str())
-                        {
-                            name
-                        } else {
-                            url.rsplit_once("/")
-                                .ok_or_else(|| anyhow!("missing filename for URL: {url}"))?
-                                .1
-                        };
-                        let rel_path = format!("{TOOLS_DIRNAME}/{filename}");
+                    let rel_path = format!("{TOOLS_DIRNAME}/{filename}");
 
-                        if args.should_download(name, target) {
-                            let dest = tools_dir.join(filename);
-                            ensure_parent_dir(&dest)?;
-                            download(url, &dest)?;
-                        }
-
-                        info_table.remove("url");
-                        info_table.insert("path".into(), toml::Value::String(rel_path));
+                    if args.should_download(name, target) {
+                        let dest = tools_dir.join(filename);
+                        ensure_parent_dir(&dest)?;
+                        download(url.as_str(), &dest)?;
                     }
+
+                    // convert url package source to path.
+                    info_table.url_to_path(rel_path);
                 }
             }
         }
         // Then, insert `[rust.offline-dist-server]` value and `[rust.rustup]` section
         let rust_section = toolkit.rust_section_mut();
-        rust_section.insert(
-            "offline-dist-server".into(),
-            toml::Value::String(TOOLCHAIN_DIRNAME.into()),
-        );
+        rust_section.offline_dist_server = Some(TOOLCHAIN_DIRNAME.into());
         // Make a `[rust.rustup]` map, download rustup-init if necessary
         let mut rustup_sources = HashMap::new();
         for target in &toolkits.config.targets {
@@ -198,12 +198,9 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
                 download(&url, &dest)?;
             }
 
-            rustup_sources.insert(triple.into(), Value::String(value));
+            rustup_sources.insert(triple.into(), value);
         }
-        rust_section.insert(
-            "rustup".into(),
-            toml::Value::Table(Map::from_iter(rustup_sources)),
-        );
+        rust_section.rustup = rustup_sources;
 
         // Download rust-toolchain component packages if necessary
         for target in &toolkits.config.targets {

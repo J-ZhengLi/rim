@@ -247,9 +247,9 @@ fn rc_content_with_env_vars(
 ///
 /// - If there was no config section, create one with `export PATH="{path_str};$PATH"`.
 /// - If there was a config section but no `export PATH` line,
-///     insert `export PATH="{path_str};$PATH"` at the end of the config section.
+///   insert `export PATH="{path_str};$PATH"` at the end of the config section.
 /// - If there was a config section and an `export PATH` line with it,
-///     push the `path_str` at the start of the `PATH` value, such as `export PATH="{path_str};/old/value;$PATH"`
+///   push the `path_str` at the start of the `PATH` value, such as `export PATH="{path_str};/old/value;$PATH"`
 fn rc_content_with_path(
     sh: &dyn shell::UnixShell,
     path_str: &str,
@@ -544,7 +544,7 @@ mod shell {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils;
+    use rim_common::utils;
     use std::path::PathBuf;
 
     use super::{

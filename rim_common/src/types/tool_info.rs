@@ -38,6 +38,38 @@ impl ToolInfo {
         None
     }
 
+    /// Get a mutable reference of this tools' package source if it's a URL,
+    /// check [`ToolSource::Url`] for more info.
+    pub fn url_mut(&mut self) -> Option<&mut Url> {
+        if let Self::Complex(details) = self {
+            if let ToolSource::Url { url, .. } = &mut details.source {
+                return Some(url);
+            }
+        }
+        None
+    }
+
+    /// Convert package source form [`Url`](ToolSource::Url) to [`Path`](ToolSource::Path).
+    ///
+    /// Do nothing if current tool's source is not a `Url` type.
+    pub fn url_to_path<P: Into<PathBuf>>(&mut self, path: P) {
+        if let Self::Complex(details) = self {
+            let ToolSource::Url {
+                version,
+                url: _,
+                filename: _,
+            } = &details.source
+            else {
+                return;
+            };
+
+            details.source = ToolSource::Path {
+                version: version.clone(),
+                path: path.into(),
+            };
+        }
+    }
+
     /// Get the mutable reference of package source if it's using restricted package source,
     /// check [`ToolSource::Restricted`] for more info.
     pub fn restricted_source_mut(&mut self) -> Option<&mut Option<String>> {

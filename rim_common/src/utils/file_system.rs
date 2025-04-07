@@ -122,39 +122,44 @@ pub fn write_bytes<P: AsRef<Path>>(path: P, content: &[u8], append: bool) -> Res
     Ok(())
 }
 
-/// Copy a file into an existing directory.
+/// An [`fs::copy`] wrapper that only copies a file if:
 ///
-/// Returns the path to pasted file.
+/// - `to` does not exist yet.
+/// - `to` exists but have different modified date.
 ///
-/// # Errors
-/// Return `Err` if `to` location does not exist, or [`fs::copy`] operation fails.
-pub fn copy_file_to<P, Q>(from: P, to: Q) -> Result<PathBuf>
+/// Will attempt to create parent directory if not exists.
+pub fn copy_file<P, Q>(from: P, to: Q) -> Result<()>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
-    assert!(
-        from.as_ref().is_file(),
-        "Internal Error: '{}' is not a path to file, \
-        but `copy_file_to` only works with file path, try using `copy_to` instead.",
-        from.as_ref().display()
-    );
+    // Make sure no redundant work is done
+    if let (Ok(src_modify_time), Ok(dest_modify_time)) = (
+        fs::metadata(&from).and_then(|m| m.modified()),
+        fs::metadata(&to).and_then(|m| m.modified()),
+    ) {
+        if src_modify_time == dest_modify_time {
+            return Ok(());
+        }
+    }
 
-    copy_into(from, to)
+    ensure_parent_dir(&to)?;
+    fs::copy(&from, &to).with_context(|| {
+        format!(
+            "could not copy file '{}' to '{}'",
+            from.as_ref().display(),
+            to.as_ref().display()
+        )
+    })?;
+    Ok(())
 }
 
-/// Copy file or directory into an existing directory.
-///
-/// Similar to [`copy_file_to`], except this will recursively copy directory as well.
+/// Copy file or directory into a directory, and return the full path after copying.
 pub fn copy_into<P, Q>(from: P, to: Q) -> Result<PathBuf>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
-    if !to.as_ref().is_dir() {
-        bail!("'{}' is not a directory", to.as_ref().display());
-    }
-
     let dest = to.as_ref().join(from.as_ref().file_name().ok_or_else(|| {
         anyhow!(
             "path '{}' does not have a file name",
@@ -181,7 +186,7 @@ where
             if entry.file_type()?.is_dir() {
                 copy_dir_(&src, &dest)?;
             } else {
-                fs::copy(&src, &dest)?;
+                copy_file(&src, &dest)?;
             }
         }
         Ok(())
@@ -195,13 +200,7 @@ where
     }
 
     if from.as_ref().is_file() {
-        fs::copy(&from, &to).with_context(|| {
-            format!(
-                "could not copy file '{}' to '{}'",
-                from.as_ref().display(),
-                to.as_ref().display()
-            )
-        })?;
+        copy_file(from, to)?;
     } else {
         copy_dir_(from.as_ref(), to.as_ref()).with_context(|| {
             format!(

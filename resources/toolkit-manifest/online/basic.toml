@@ -5,24 +5,27 @@ name = "XuanWu Rust Development Kit"
 version = "stable v1.81.0"
 
 [rust]
-components = ["clippy", "rustfmt", "rust-src"]
-description = "Basic set of tools to use Rust properly"
-display-name = "Basic"
-group = "Rust"
-optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
+channel = "1.81.0"
 profile = "minimal"
-version = "1.81.0"
+display-name = "Basic"
+description = "Basic set of tools to use Rust properly"
+components = ["clippy", "rustfmt", "rust-src"]
+optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
+group = "Rust"
+
+[rust.rustup]
 
 [tools.descriptions]
-llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
-mingw64 = "(windows only) Requirement for Windows GNU toolchain"
 rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser using the `rustup doc` command"
 rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
+mingw64 = "(windows only) Requirement for Windows GNU toolchain"
+llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
 
 [tools.group]
 Prerequisites = ["mingw64"]
 
 [tools.target.x86_64-pc-windows-gnu.mingw64]
 required = true
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"
+optional = false
 version = "14.2.0-rt_v12-rev0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z"

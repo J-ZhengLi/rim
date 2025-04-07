@@ -61,10 +61,10 @@ static SEMI_SUPPORTED_TOOLS: LazyLock<HashMap<&str, Vec<String>>> = LazyLock::ne
 
 /// Checking if a certain tool is installed by:
 ///
-/// 1. If it has it's on module, it should be detemined there, see list: [`SUPPORTED_TOOLS`].
+/// 1. If it has it's on module, it should be determined there, see list: [`SUPPORTED_TOOLS`].
 /// 2. Looking up the same name in path.
 /// 3. Looking up a pre-defined list related to the given tool, to see if
-///     those are all in the path.
+///    those are all in the path.
 pub(crate) fn is_installed(name: &str) -> bool {
     if supported_tool_is_installed(name) || utils::cmd_exist(exe!(name)) {
         return true;

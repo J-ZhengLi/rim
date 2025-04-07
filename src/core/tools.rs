@@ -141,7 +141,7 @@ impl<'a> Tool<'a> {
             ToolKind::Executables => {
                 let mut res = vec![];
                 for exe in self.path.iter() {
-                    res.push(utils::copy_file_to(exe, config.cargo_bin())?);
+                    res.push(utils::copy_into(exe, config.cargo_bin())?);
                 }
                 res
             }
@@ -157,7 +157,7 @@ impl<'a> Tool<'a> {
                 // run the installation command.
                 Plugin::install(path)?;
                 // we need to "cache" to installer, so that we could uninstall with it.
-                let plugin_backup = utils::copy_file_to(path, config.tools_dir())?;
+                let plugin_backup = utils::copy_into(path, config.tools_dir())?;
                 vec![plugin_backup]
             }
             ToolKind::Installer => {
@@ -169,7 +169,7 @@ impl<'a> Tool<'a> {
                 run!(path)?;
                 // Make a backup for this installer, in some case,
                 // it can be used for uninstallation
-                let backup = utils::copy_file_to(path, config.tools_dir())?;
+                let backup = utils::copy_into(path, config.tools_dir())?;
                 vec![backup]
             }
             // Just throw it under `tools` dir
