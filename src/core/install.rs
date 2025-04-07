@@ -337,7 +337,7 @@ impl<'a> InstallConfiguration<'a> {
         } else {
             url.path_segments()
                 .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
-                .last()
+                .next_back()
                 // Sadly, a path segment could be empty string, so we need to filter that out
                 .filter(|seg| !seg.is_empty())
                 .ok_or_else(|| anyhow!("'{url}' doesn't appear to be a downloadable file"))?

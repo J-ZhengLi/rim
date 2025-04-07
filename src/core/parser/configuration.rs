@@ -186,11 +186,11 @@ impl UpdateCheckerOpt {
     /// Return how much time (in duration) until the next update check.
     ///
     /// - If the update hasn't be checked yet, we should check now,
-    ///     thus returning [`Duration::ZERO`].
+    ///   thus returning [`Duration::ZERO`].
     /// - If the update has been checked, but right now is not the time for the
-    ///     next check, the remaining time will be returned.
+    ///   next check, the remaining time will be returned.
     /// - If the update has been checked, and it's already past the time for the next
-    ///     update check, then [`Duration::ZERO`] will be returned.
+    ///   update check, then [`Duration::ZERO`] will be returned.
     pub fn duration_until_next_run(&self, target: UpdateTarget) -> Duration {
         let Some(conf) = self.0.get(&target) else {
             // return the full default duration

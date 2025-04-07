@@ -49,7 +49,7 @@ impl CargoConfig {
     /// - `key` is the name of the source.
     /// - `url` is the registry url.
     /// - `as_default` specify whether this source is used as a replaced source of `crates-io`,
-    ///     note the first `add_source` call will always be default.
+    ///   note the first `add_source` call will always be default.
     pub(crate) fn add_source(&mut self, key: &str, url: &str, as_default: bool) -> &mut Self {
         self.source
             .entry("crates-io".to_string())
