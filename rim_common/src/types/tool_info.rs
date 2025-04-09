@@ -1,6 +1,7 @@
 //! The information about single tool in toolkit manifest.
 
-use serde::{ser::SerializeSeq, Deserialize, Serialize};
+use super::utils::ser_empty_vec_to_none;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use url::Url;
 
@@ -169,6 +170,25 @@ impl ToolInfo {
             })
         )
     }
+
+    /// Return a list of names that this tool requires.
+    pub fn dependencies(&self) -> &[String] {
+        if let Self::Complex(details) = self {
+            details.requires.as_slice()
+        } else {
+            &[]
+        }
+    }
+
+    /// Get a designated filename for `Url` source.
+    pub fn filename(&self) -> Option<&str> {
+        if let Some(det) = self.details() {
+            if let ToolSource::Url { filename, .. } = &det.source {
+                return filename.as_deref();
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, PartialEq, Eq, Clone)]
@@ -204,22 +224,6 @@ impl ToolInfoDetails {
             source,
             ..Default::default()
         }
-    }
-}
-
-fn ser_empty_vec_to_none<S, T>(vec: &[T], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-    T: serde::Serialize,
-{
-    if vec.is_empty() {
-        serializer.serialize_none()
-    } else {
-        let mut seq = serializer.serialize_seq(Some(vec.len()))?;
-        for elem in vec {
-            seq.serialize_element(elem)?;
-        }
-        seq.end()
     }
 }
 

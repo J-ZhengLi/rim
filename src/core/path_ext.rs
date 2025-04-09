@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 /// All-in-one rust path type,
 /// currently supports single [`Path`] and multiple owned [`PathBuf`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum PathExt<'p> {
     Single(&'p Path),

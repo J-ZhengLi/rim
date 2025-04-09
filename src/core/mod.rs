@@ -4,6 +4,7 @@
 
 pub mod components;
 mod custom_instructions;
+mod dependency_handler;
 pub(crate) mod directories;
 pub mod install;
 mod locales;
