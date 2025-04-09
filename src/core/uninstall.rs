@@ -3,9 +3,11 @@ use rim_common::{types::ToolKind, utils::Progress};
 use std::{collections::HashMap, path::PathBuf};
 
 use super::{
+    dependency_handler::DependencyHandler,
     directories::RimDir,
-    parser::fingerprint::{installed_tools_fresh, InstallationRecord, ToolRecord},
+    parser::fingerprint::{installed_tools, InstallationRecord, ToolRecord},
     rustup::ToolchainInstaller,
+    tools::ToolWithDeps,
 };
 use crate::core::tools::Tool;
 
@@ -56,7 +58,7 @@ impl<'a> UninstallConfiguration<'a> {
     pub fn uninstall(mut self, remove_self: bool) -> Result<()> {
         // remove all tools.
         info!("{}", t!("uninstalling_third_party_tools"));
-        self.remove_tools(installed_tools_fresh(&self.install_dir)?, 40.0)?;
+        self.remove_tools(installed_tools(&self.install_dir)?, 40.0)?;
 
         // Remove rust toolchain via rustup.
         if self.install_record.rust.is_some() {
@@ -96,10 +98,6 @@ impl<'a> UninstallConfiguration<'a> {
             let kind = tool_detail.tool_kind();
             let tool = match kind {
                 ToolKind::CargoTool => Tool::cargo_tool(name, None),
-                // TODO: (>1.0) We didn't have a proper way to track tool's type,
-                // so we uses a `use-cargo`, then we have to guess it by looking at the content
-                // of the paths if `use-cargo = false`.
-                // After 1.0 release, remove this branch.
                 ToolKind::Unknown => {
                     if let [path] = tool_detail.paths.as_slice() {
                         // don't interrupt uninstallation if the path of some tools cannot be found,
@@ -123,7 +121,10 @@ impl<'a> UninstallConfiguration<'a> {
                 }
                 _ => Tool::new(name.into(), kind).with_path(tool_detail.paths.clone()),
             };
-            tools_to_uninstall.push(tool);
+            tools_to_uninstall.push(ToolWithDeps {
+                tool,
+                dependencies: &tool_detail.dependencies,
+            });
         }
 
         if tools_to_uninstall.is_empty() {
@@ -131,9 +132,20 @@ impl<'a> UninstallConfiguration<'a> {
         }
         let progress_dt = weight / tools_to_uninstall.len() as f32;
 
-        tools_to_uninstall.sort_by(|a, b| b.kind.cmp(&a.kind));
+        // in previous builds (< 0.6.0), we didn't support dependencies handling,
+        // instead, we sorted the tools by its kind. Therefore we use a fallback
+        // method to sort the tools here if there's no dependencies info to be found,
+        // making sure the tools are always sorted to prevent uninstallation failure.
+        let have_deps = tools_to_uninstall
+            .iter()
+            .any(|t| !t.dependencies.is_empty());
 
-        for tool in tools_to_uninstall {
+        let sorted = if have_deps {
+            tools_to_uninstall.topological_sorted()
+        } else {
+            tools_to_uninstall.sorted()
+        };
+        for tool in sorted.iter().rev() {
             info!("{}", t!("uninstalling_for", name = tool.name()));
             if tool.uninstall(self).is_err() {
                 info!(
@@ -148,5 +160,58 @@ impl<'a> UninstallConfiguration<'a> {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn uninstallation_order() {
+        let (a_deps, b_deps) = (
+            vec!["b".to_string(), "c".to_string()],
+            vec!["c".to_string()],
+        );
+        let tools: Vec<ToolWithDeps> = vec![
+            ToolWithDeps {
+                tool: Tool::new("b".into(), ToolKind::Custom),
+                dependencies: &b_deps,
+            },
+            ToolWithDeps {
+                tool: Tool::new("a".into(), ToolKind::Custom),
+                dependencies: &a_deps,
+            },
+            ToolWithDeps {
+                tool: Tool::new("c".into(), ToolKind::Custom),
+                dependencies: &[],
+            },
+        ];
+        let mut sorted = tools.topological_sorted();
+        assert_eq!(sorted.pop().unwrap().name(), "c");
+        assert_eq!(sorted.pop().unwrap().name(), "b");
+        assert_eq!(sorted.pop().unwrap().name(), "a");
+    }
+
+    #[test]
+    fn uninstallation_fallback_order() {
+        let tools: Vec<ToolWithDeps> = vec![
+            ToolWithDeps {
+                tool: Tool::new("b".into(), ToolKind::CargoTool),
+                dependencies: &[],
+            },
+            ToolWithDeps {
+                tool: Tool::new("a".into(), ToolKind::DirWithBin),
+                dependencies: &[],
+            },
+            ToolWithDeps {
+                tool: Tool::new("c".into(), ToolKind::Plugin),
+                dependencies: &[],
+            },
+        ];
+        let mut sorted = tools.sorted();
+        assert_eq!(sorted.pop().unwrap().name(), "b");
+        assert_eq!(sorted.pop().unwrap().name(), "c");
+        assert_eq!(sorted.pop().unwrap().name(), "a");
     }
 }

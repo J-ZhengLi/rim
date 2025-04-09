@@ -1,4 +1,5 @@
 use super::components::ToolchainComponent;
+use super::dependency_handler::DependencyHandler;
 use super::{
     components::{component_list_to_tool_map, Component, ComponentType},
     directories::RimDir,
@@ -12,7 +13,7 @@ use super::{
 };
 use crate::core::os::add_to_path;
 use anyhow::{anyhow, bail, Context, Result};
-use rim_common::types::{TomlParser, ToolInfo, ToolKind, ToolMap, ToolSource, ToolkitManifest};
+use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest};
 use rim_common::{build_config, utils};
 use std::{
     collections::HashMap,
@@ -173,7 +174,7 @@ impl<'a> InstallConfiguration<'a> {
     }
 
     fn install_tools_(&mut self, use_cargo: bool, tools: &ToolMap, weight: f32) -> Result<()> {
-        let to_install = tools
+        let mut to_install = tools
             .iter()
             .filter(|(_, t)| {
                 if use_cargo {
@@ -188,6 +189,10 @@ impl<'a> InstallConfiguration<'a> {
             return self.inc_progress(weight);
         }
         let sub_progress_delta = weight / to_install.len() as f32;
+
+        if !use_cargo {
+            to_install = to_install.topological_sorted();
+        }
 
         for (name, tool) in to_install {
             let info = if use_cargo {
@@ -247,12 +252,12 @@ impl<'a> InstallConfiguration<'a> {
         let record = match tool {
             ToolInfo::Basic(version) => {
                 Tool::cargo_tool(name, Some(vec![name, "--version", version]))
-                    .install(Some(version), self)?
+                    .install(self, tool)?
             }
             ToolInfo::Complex(details) => match &details.source {
                 ToolSource::Version { version } => {
                     Tool::cargo_tool(name, Some(vec![name, "--version", version]))
-                        .install(Some(version), self)?
+                        .install(self, tool)?
                 }
                 ToolSource::Git {
                     git,
@@ -271,25 +276,11 @@ impl<'a> InstallConfiguration<'a> {
                         args.extend(["--rev", s]);
                     }
 
-                    Tool::cargo_tool(name, Some(args)).install(tag.as_deref(), self)?
+                    Tool::cargo_tool(name, Some(args)).install(self, tool)?
                 }
-                ToolSource::Path { path, version } => {
-                    self.try_install_from_path(name, version.as_deref(), path, details.kind)?
-                }
-                ToolSource::Url {
-                    url,
-                    filename,
-                    version,
-                } => self.download_and_try_install(
-                    name,
-                    url,
-                    version.as_deref(),
-                    details.kind,
-                    filename.as_deref(),
-                )?,
-                ToolSource::Restricted {
-                    source, version, ..
-                } => {
+                ToolSource::Path { path, .. } => self.try_install_from_path(name, path, tool)?,
+                ToolSource::Url { url, .. } => self.download_and_try_install(name, url, tool)?,
+                ToolSource::Restricted { source, .. } => {
                     // the source should be filled before installation, if not, then it means
                     // the program hasn't ask for user input yet, which we should through an error.
                     let real_source = source
@@ -297,21 +288,14 @@ impl<'a> InstallConfiguration<'a> {
                         .with_context(|| t!("missing_restricted_source", name = name))?;
                     let maybe_path = PathBuf::from(real_source);
                     if maybe_path.exists() {
-                        self.try_install_from_path(
-                            name,
-                            version.as_deref(),
-                            &maybe_path,
-                            details.kind,
-                        )?
+                        self.try_install_from_path(name, &maybe_path, tool)?
                     } else {
                         self.download_and_try_install(
                             name,
                             &real_source.parse().with_context(|| {
                                 format!("'{real_source}' is not an existing path nor a valid URL")
                             })?,
-                            version.as_deref(),
-                            details.kind,
-                            None,
+                            tool,
                         )?
                     }
                 }
@@ -327,12 +311,10 @@ impl<'a> InstallConfiguration<'a> {
         &self,
         name: &str,
         url: &Url,
-        version: Option<&str>,
-        kind: Option<ToolKind>,
-        filename: Option<&str>,
+        info: &ToolInfo,
     ) -> Result<ToolRecord> {
         let temp_dir = self.create_temp_dir("download")?;
-        let downloaded_file_name = if let Some(name) = filename {
+        let downloaded_file_name = if let Some(name) = info.filename() {
             name
         } else {
             url.path_segments()
@@ -347,15 +329,14 @@ impl<'a> InstallConfiguration<'a> {
             .with_proxy(self.manifest.proxy.clone())
             .blocking_download(url, &dest)?;
 
-        self.try_install_from_path(name, version, &dest, kind)
+        self.try_install_from_path(name, &dest, info)
     }
 
     fn try_install_from_path(
         &self,
         name: &str,
-        version: Option<&str>,
         path: &Path,
-        kind: Option<ToolKind>,
+        info: &ToolInfo,
     ) -> Result<ToolRecord> {
         let (tool_installer_path, _maybe_temp) = if path.is_dir() {
             (path.to_path_buf(), None)
@@ -372,13 +353,13 @@ impl<'a> InstallConfiguration<'a> {
             );
         };
 
-        let tool_installer = if let Some(kind) = kind {
+        let tool_installer = if let Some(kind) = info.kind() {
             Tool::new(name.into(), kind).with_path(tool_installer_path.as_path())
         } else {
             Tool::from_path(name, &tool_installer_path)
                 .with_context(|| format!("no install method for tool '{name}'"))?
         };
-        tool_installer.install(version, self)
+        tool_installer.install(self, info)
     }
 
     /// Configuration options for `cargo`.

@@ -6,7 +6,10 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Result};
-use rim_common::{types::ToolKind, utils};
+use rim_common::{
+    types::{ToolInfo, ToolKind},
+    utils,
+};
 
 use super::{
     directories::RimDir, parser::fingerprint::ToolRecord, uninstall::UninstallConfiguration,
@@ -35,13 +38,20 @@ pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
     .collect()
 });
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Tool<'a> {
     name: String,
     path: PathExt<'a>,
     pub(crate) kind: ToolKind,
     /// Additional args to run installer, currently only used for `cargo install`.
     install_args: Option<Vec<&'a str>>,
+}
+
+/// Helper struct used for uninstallation, including basic [`Tool`] and it's dependencies list.
+#[derive(Debug)]
+pub(crate) struct ToolWithDeps<'a> {
+    pub(crate) tool: Tool<'a>,
+    pub(crate) dependencies: &'a [String],
 }
 
 impl<'a> Tool<'a> {
@@ -119,8 +129,8 @@ impl<'a> Tool<'a> {
 
     pub(crate) fn install(
         &self,
-        version: Option<&str>,
         config: &InstallConfiguration,
+        info: &ToolInfo,
     ) -> Result<ToolRecord> {
         let paths = match self.kind {
             ToolKind::CargoTool => {
@@ -136,7 +146,7 @@ impl<'a> Tool<'a> {
                     self.install_args.as_deref().unwrap_or(&[self.name()]),
                     config.cargo_home(),
                 )?;
-                return Ok(ToolRecord::cargo_tool().with_version(version));
+                return Ok(ToolRecord::cargo_tool().with_version(info.version()));
             }
             ToolKind::Executables => {
                 let mut res = vec![];
@@ -180,7 +190,8 @@ impl<'a> Tool<'a> {
 
         Ok(ToolRecord::new(self.kind)
             .with_paths(paths)
-            .with_version(version))
+            .with_version(info.version())
+            .with_dependencies(info.dependencies().to_vec()))
     }
 
     pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {

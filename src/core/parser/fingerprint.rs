@@ -6,13 +6,13 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
+use utils::ser_empty_vec_to_none;
 
 use crate::components::ToolchainComponent;
 use crate::AppInfo;
 
-/// Re-load fingerprint file just to get the list of installed tools,
-/// therefore we can use this list to uninstall, while avoiding race condition.
-pub(crate) fn installed_tools_fresh(root: &Path) -> Result<HashMap<String, ToolRecord>> {
+/// Load fingerprint file just to get the list of installed tools.
+pub(crate) fn installed_tools(root: &Path) -> Result<HashMap<String, ToolRecord>> {
     Ok(InstallationRecord::load_from_dir(root)?.tools)
 }
 
@@ -194,6 +194,8 @@ pub struct ToolRecord {
     version: Option<String>,
     #[serde(default)]
     pub(crate) paths: Vec<PathBuf>,
+    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    pub(crate) dependencies: Vec<String>,
 }
 
 impl ToolRecord {
@@ -218,6 +220,7 @@ impl ToolRecord {
 
     setter!(with_paths(self.paths, Vec<PathBuf>));
     setter!(with_version(self.version, ver: Option<impl Into<String>>) { ver.map(Into::into) });
+    setter!(with_dependencies(self.dependencies, Vec<String>));
 }
 
 // `use-cargo = true/false` was used during [0.2.0, 0.3.0], in order not to break
@@ -390,5 +393,20 @@ paths = ["/some/other/path"]"#;
             .collect::<HashMap<_, _>>();
         let expecting = HashMap::from([("a", Some("1.2.0")), ("b", None)]);
         assert_eq!(ver_rec, expecting);
+    }
+
+    #[test]
+    fn with_dependencies() {
+        let input = r#"
+root = '/path/to/something'
+
+[tools]
+a = { kind = "custom", version = "1.2.0", paths = ["/some/path"], dependencies = ["b"] }
+b = { kind = "executables", paths = ["/some/other/path"] }
+"#;
+
+        let rec = InstallationRecord::from_str(input).unwrap();
+        let a = rec.tools.get("a").unwrap();
+        assert_eq!(a.dependencies, ["b"]);
     }
 }

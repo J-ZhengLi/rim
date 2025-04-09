@@ -6,6 +6,7 @@ mod file_system;
 mod log;
 mod process;
 mod progress_bar;
+mod ser_and_deser;
 
 // Re-exports
 pub use download::DownloadOpt;
@@ -14,6 +15,7 @@ pub use file_system::*;
 pub use log::*;
 pub use process::*;
 pub use progress_bar::*;
+pub use ser_and_deser::*;
 
 use std::{
     ffi::OsStr,
