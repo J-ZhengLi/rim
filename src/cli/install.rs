@@ -195,23 +195,55 @@ fn read_install_dir_input(default: &str) -> Result<Option<String>> {
     }
 }
 
+/// Create a collection of component choices base of a filtering condition.
+/// Also taking component constrains, such as `requires`, `conflicts` into account.
+// TODO: handle conflicts
+fn component_choices_with_constrains<'a, F>(
+    all_components: &'a [Component],
+    condition_callback: F,
+) -> ComponentChoices<'a>
+where
+    F: Fn(usize, &Component) -> bool,
+{
+    // tracking dependency and conflicting component names.
+    // dependencies will be added, and conflicted tools will be removed later.
+    let mut dependencies = HashSet::new();
+
+    let mut selections = all_components
+        .iter()
+        .enumerate()
+        .filter(|(idx, c)| {
+            let selected = condition_callback(*idx, *c);
+            if selected {
+                dependencies.extend(&c.requires);
+            }
+            selected
+        })
+        .collect::<ComponentChoices>();
+
+    // iterate all components again to add dependencies
+    for (idx, comp) in all_components.iter().enumerate() {
+        if dependencies.contains(&comp.name) && !comp.installed {
+            selections.insert(idx, comp);
+        }
+    }
+
+    selections
+}
+
 fn default_component_choices<'a>(
     all_components: &'a [Component],
     user_selected_comps: Option<&[String]>,
 ) -> ComponentChoices<'a> {
     let selected_comps_set: HashSet<&String> =
         HashSet::from_iter(user_selected_comps.unwrap_or_default());
-    let should_install = |component: &Component| -> bool {
+
+    component_choices_with_constrains(all_components, |_idx, component: &Component| -> bool {
         let not_optional_and_not_installed =
             !component.installed && (component.required || !component.optional);
         let user_selected = selected_comps_set.contains(&component.name);
         user_selected || not_optional_and_not_installed
-    };
-    all_components
-        .iter()
-        .enumerate()
-        .filter(|(_, c)| should_install(c))
-        .collect()
+    })
 }
 
 fn custom_component_choices<'a>(
@@ -220,7 +252,7 @@ fn custom_component_choices<'a>(
 ) -> Result<ComponentChoices<'a>> {
     let list_of_comps = ComponentListBuilder::new(all_components)
         .show_desc(true)
-        .decorate(ComponentDecoration::InstalledOrRequired)
+        .decorate(ComponentDecoration::Selection)
         .build();
     let default_ids = default_component_choices(all_components, user_selected_comps)
         .keys()
@@ -238,11 +270,10 @@ fn custom_component_choices<'a>(
 
     // convert the input indexes to `ComponentChoices`,
     // also we need to add missing `required` tools even if the user didn't choose it.
-    Ok(all_components
-        .iter()
-        .enumerate()
-        .filter(|(idx, c)| (c.required && !c.installed) || index_set.contains(&(idx + 1)))
-        .collect())
+    Ok(component_choices_with_constrains(
+        all_components,
+        |idx, c| (c.required && !c.installed) || index_set.contains(&(idx + 1)),
+    ))
 }
 
 /// Read user response of what set of components they want to install.
@@ -283,13 +314,36 @@ fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Resul
 
     writeln!(&mut stdout, "\n{}\n", t!("current_install_option"))?;
     writeln!(&mut stdout, "{}:\n\t{install_dir}", t!("install_dir"))?;
-    writeln!(&mut stdout, "\n{}:", t!("selected_components"))?;
+    writeln!(&mut stdout, "\n{}:", t!("components_to_install"))?;
     let list_of_comp = ComponentListBuilder::new(choices.values().copied())
         .decorate(ComponentDecoration::Confirmation)
-        .build()
-        .join("\n");
-    for line in list_of_comp.lines() {
+        .build();
+    for line in list_of_comp {
         writeln!(&mut stdout, "\t{line}")?;
+    }
+
+    // list obsoleted components
+    let obsoletes_removal_list = choices
+        .iter()
+        .filter_map(|(_, comp)| {
+            if !comp.installed {
+                return None;
+            }
+            let mut line = String::new();
+            for obsolete in &comp.obsoletes {
+                line.push_str(&format!(
+                    "\t{obsolete} ({})",
+                    t!("replaced_by", name = &comp.name)
+                ));
+            }
+            (!line.is_empty()).then_some(line)
+        })
+        .collect::<Vec<_>>();
+    if !obsoletes_removal_list.is_empty() {
+        writeln!(&mut stdout, "\n{}:", t!("components_to_remove"))?;
+        for line in obsoletes_removal_list {
+            writeln!(&mut stdout, "\t{line}")?;
+        }
     }
 
     Ok(())

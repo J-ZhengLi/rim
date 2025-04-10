@@ -173,11 +173,23 @@ impl ToolInfo {
 
     /// Return a list of names that this tool requires.
     pub fn dependencies(&self) -> &[String] {
-        if let Self::Complex(details) = self {
-            details.requires.as_slice()
-        } else {
-            &[]
-        }
+        self.details()
+            .map(|det| det.requires.as_slice())
+            .unwrap_or_default()
+    }
+
+    /// Return a list of names that are obsoleted (replaced) by this tool.
+    pub fn obsoletes(&self) -> &[String] {
+        self.details()
+            .map(|det| det.obsoletes.as_slice())
+            .unwrap_or_default()
+    }
+
+    /// Return a list of names that are conflicting with this tool.
+    pub fn conflicts(&self) -> &[String] {
+        self.details()
+            .map(|det| det.conflicts.as_slice())
+            .unwrap_or_default()
     }
 
     /// Get a designated filename for `Url` source.
@@ -210,7 +222,11 @@ pub struct ToolInfoDetails {
     #[serde(default, serialize_with = "ser_empty_vec_to_none")]
     /// A list of tools that are obsoleted/replaced by this package.
     pub obsoletes: Vec<String>,
-    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    #[serde(
+        default,
+        serialize_with = "ser_empty_vec_to_none",
+        alias = "dependencies"
+    )]
     /// A list of tools that this package requires.
     pub requires: Vec<String>,
     #[serde(default, serialize_with = "ser_empty_vec_to_none")]

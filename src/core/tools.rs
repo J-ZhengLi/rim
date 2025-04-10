@@ -12,8 +12,7 @@ use rim_common::{
 };
 
 use super::{
-    directories::RimDir, parser::fingerprint::ToolRecord, uninstall::UninstallConfiguration,
-    GlobalOpts, PathExt, CARGO_HOME,
+    directories::RimDir, parser::fingerprint::ToolRecord, GlobalOpts, PathExt, CARGO_HOME,
 };
 use crate::{core::custom_instructions, InstallConfiguration};
 
@@ -127,6 +126,38 @@ impl<'a> Tool<'a> {
         Self::new(name.to_string(), ToolKind::CargoTool).with_install_args(extra_args)
     }
 
+    /// Convert a single [`tool record`](ToolRecord) into `Self`, return `None`
+    /// if this tool with `name` was not installed
+    pub(crate) fn from_installed(name: &str, tool_record: &'a ToolRecord) -> Option<Self> {
+        let kind = tool_record.tool_kind();
+        let tool = match kind {
+            ToolKind::CargoTool => Tool::cargo_tool(name, None),
+            ToolKind::Unknown => {
+                if let [path] = tool_record.paths.as_slice() {
+                    // don't interrupt uninstallation if the path of some tools cannot be found,
+                    // as the user might have manually remove them
+                    let Ok(tool) = Tool::from_path(name, path) else {
+                        warn!(
+                            "{}: {}",
+                            t!("uninstall_tool_skipped", tool = name),
+                            t!("path_to_installation_not_found", path = path.display())
+                        );
+                        return None;
+                    };
+                    tool
+                } else if !tool_record.paths.is_empty() {
+                    Tool::new(name.into(), ToolKind::Executables)
+                        .with_path(tool_record.paths.clone())
+                } else {
+                    info!("{}", t!("uninstall_unknown_tool_warn", tool = name));
+                    return None;
+                }
+            }
+            _ => Tool::new(name.into(), kind).with_path(tool_record.paths.clone()),
+        };
+        Some(tool)
+    }
+
     pub(crate) fn install(
         &self,
         config: &InstallConfiguration,
@@ -194,7 +225,7 @@ impl<'a> Tool<'a> {
             .with_dependencies(info.dependencies().to_vec()))
     }
 
-    pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {
+    pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
         match self.kind {
             ToolKind::CargoTool => {
                 cargo_install_or_uninstall(

@@ -346,10 +346,10 @@ pub(crate) enum ComponentDecoration<'c> {
     /// Version change info, i.e.:
     /// `hello-world (0.1.0 -> 0.2.0)`
     VersionDiff(&'c VersionDiffMap<'c>),
-    /// Pre-installation labels, including `installed|required` to indicate whether a tool
-    /// is installed or required but not installed, i.e.:
-    /// `hello-world (required)`
-    InstalledOrRequired,
+    /// Decorations to display during component selection, including `installed|required` tag
+    /// to indicate whether a tool is installed or required but not installed,
+    /// i.e.: `hello-world (required)`.
+    Selection,
     /// A label to show during confirmation page, indicates whether a tool is installed but will be re-install,
     /// i.e.: `hello-world (installed, reinstalling)`
     Confirmation,
@@ -363,7 +363,7 @@ impl ComponentDecoration<'_> {
     pub(crate) fn for_component(self, comp: &Component) -> String {
         match self {
             Self::None => String::new(),
-            Self::InstalledOrRequired => {
+            Self::Selection => {
                 if comp.installed {
                     format!(" ({})", t!("installed"))
                 } else if comp.required {

@@ -74,15 +74,32 @@ function handleComponentsClick(checkItem: CheckGroupItem<Component>) {
     });
   });
 }
+
+// FIXME: this function somehow gets called with each component title clicks,
+// and the body of it is not efficient at all.
 function handleComponentsChange(items: CheckGroupItem<Component>[]) {
+  let dependencies: [string, boolean][] = [];
+
   groupComponents.value.forEach((group) => {
     group.items.forEach((item) => {
       const findItem = items.find((i) => i.value.id === item.value.id);
       if (findItem) {
         item.checked = findItem.checked;
+        dependencies = dependencies.concat(item.value.requires.map(name => [name, findItem.checked]));
       }
     });
   });
+
+  // add dependencies
+  groupComponents.value.forEach((group) => {
+    group.items.forEach((item) => {
+      const findItem = dependencies.find(([name, _]) => name === item.value.name);
+      if (findItem) {
+        item.checked = findItem[1];
+      }
+    });
+  });
+
   updateInstallConf();
 }
 
