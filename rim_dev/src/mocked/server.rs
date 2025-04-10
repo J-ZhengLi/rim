@@ -131,10 +131,8 @@ version = \"{ver}\"
 group = \"Rust\"
 components = [\"clippy\", \"rustfmt\", \"rust-src\", \"rust-docs\"]
 optional-components = [\"llvm-tools\", \"rustc-dev\", \"rust-analyzer\"]
-
-[rust.profile]
-name = \"minimal\"
-verbose-name = \"Basic\"
+profile = \"minimal\"
+display-name = \"Basic\"
 description = \"Basic set of tools to use Rust properly\"
 
 [tools.descriptions]
