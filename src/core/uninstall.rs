@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rim_common::{types::ToolKind, utils::Progress};
+use rim_common::utils::Progress;
 use std::{collections::HashMap, path::PathBuf};
 
 use super::{
@@ -33,6 +33,12 @@ pub struct UninstallConfiguration<'a> {
 }
 
 impl RimDir for UninstallConfiguration<'_> {
+    fn install_dir(&self) -> &std::path::Path {
+        self.install_dir.as_path()
+    }
+}
+
+impl RimDir for &UninstallConfiguration<'_> {
     fn install_dir(&self) -> &std::path::Path {
         self.install_dir.as_path()
     }
@@ -95,31 +101,8 @@ impl<'a> UninstallConfiguration<'a> {
     fn remove_tools(&mut self, tools: HashMap<String, ToolRecord>, weight: f32) -> Result<()> {
         let mut tools_to_uninstall = vec![];
         for (name, tool_detail) in &tools {
-            let kind = tool_detail.tool_kind();
-            let tool = match kind {
-                ToolKind::CargoTool => Tool::cargo_tool(name, None),
-                ToolKind::Unknown => {
-                    if let [path] = tool_detail.paths.as_slice() {
-                        // don't interrupt uninstallation if the path of some tools cannot be found,
-                        // as the user might have manually remove them
-                        let Ok(tool) = Tool::from_path(name, path) else {
-                            warn!(
-                                "{}: {}",
-                                t!("uninstall_tool_skipped", tool = name),
-                                t!("path_to_installation_not_found", path = path.display())
-                            );
-                            continue;
-                        };
-                        tool
-                    } else if !tool_detail.paths.is_empty() {
-                        Tool::new(name.into(), ToolKind::Executables)
-                            .with_path(tool_detail.paths.clone())
-                    } else {
-                        info!("{}", t!("uninstall_unknown_tool_warn", tool = name));
-                        continue;
-                    }
-                }
-                _ => Tool::new(name.into(), kind).with_path(tool_detail.paths.clone()),
+            let Some(tool) = Tool::from_installed(name, tool_detail) else {
+                continue;
             };
             tools_to_uninstall.push(ToolWithDeps {
                 tool,
@@ -147,7 +130,7 @@ impl<'a> UninstallConfiguration<'a> {
         };
         for tool in sorted.iter().rev() {
             info!("{}", t!("uninstalling_for", name = tool.name()));
-            if tool.uninstall(self).is_err() {
+            if tool.uninstall(&*self).is_err() {
                 info!(
                     "{}: {}",
                     t!("uninstall_tool_skipped", tool = tool.name()),
@@ -166,6 +149,7 @@ impl<'a> UninstallConfiguration<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rim_common::types::ToolKind;
 
     #[test]
     fn uninstallation_order() {

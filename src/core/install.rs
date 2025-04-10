@@ -60,6 +60,12 @@ impl RimDir for InstallConfiguration<'_> {
     }
 }
 
+impl RimDir for &InstallConfiguration<'_> {
+    fn install_dir(&self) -> &Path {
+        self.install_dir.as_path()
+    }
+}
+
 impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolkitManifest) -> Result<Self> {
         let (reg_name, reg_url) = super::default_cargo_registry();
@@ -246,9 +252,9 @@ impl<'a> InstallConfiguration<'a> {
         self.inc_progress(30.0)
     }
 
-    // TODO: Write version info after installing each tool,
-    // which is later used for updating.
     fn install_tool(&mut self, name: &str, tool: &ToolInfo) -> Result<()> {
+        self.remove_obsoleted_tools(tool)?;
+
         let record = match tool {
             ToolInfo::Basic(version) => {
                 Tool::cargo_tool(name, Some(vec![name, "--version", version]))
@@ -450,6 +456,25 @@ impl InstallConfiguration<'_> {
         info!("{}", t!("update_tools"));
         self.install_tools_(false, tools, 15.0)?;
         self.install_tools_(true, tools, 15.0)?;
+        Ok(())
+    }
+
+    fn remove_obsoleted_tools(&mut self, tool: &ToolInfo) -> Result<()> {
+        let obsoleted_tool_names = tool.obsoletes();
+        for obsolete in obsoleted_tool_names {
+            // check if this tool was installed, if yes, get the installation record of it
+            let Some(rec) = self.install_record.tools.get(obsolete) else {
+                continue;
+            };
+            let Some(tool) = Tool::from_installed(obsolete, rec) else {
+                continue;
+            };
+
+            info!("{}", t!("removing_obsolete_tool", name = obsolete));
+            tool.uninstall(&*self)?;
+            self.install_record.remove_tool_record(obsolete);
+        }
+
         Ok(())
     }
 }

@@ -16,6 +16,9 @@ export interface Component {
     optional: boolean;
     path?: string;
   };
+  requires: string[];
+  obsoletes: string[];
+  conflicts: string[];
 }
 
 export interface RestrictedComponent {

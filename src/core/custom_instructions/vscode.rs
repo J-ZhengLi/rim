@@ -8,7 +8,6 @@
 use std::path::{Path, PathBuf};
 use crate::core::directories::RimDir;
 use crate::core::install::InstallConfiguration;
-use crate::core::uninstall::UninstallConfiguration;
 use crate::core::os::add_to_path;
 use anyhow::Result;
 use rim_common::utils;
@@ -112,7 +111,7 @@ Keywords=vscode;
         Ok(vec![vscode_dir])
     }
 
-    pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {
+    pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
         use crate::core::os::remove_from_path;
 
         // We've added a path for VSCode at `<InstallDir>/tools/vscode/bin`, try removing it from `PATH`.
@@ -160,7 +159,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     VSCODE.install(path, config)
 }
 
-pub(super) fn uninstall(config: &UninstallConfiguration) -> Result<()> {
+pub(super) fn uninstall<T: RimDir>(config: T) -> Result<()> {
     VSCODE.uninstall(config)
 }
 
