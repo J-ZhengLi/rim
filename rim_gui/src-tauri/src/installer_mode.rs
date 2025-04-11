@@ -152,17 +152,22 @@ impl TryFrom<(&str, &ToolInfo)> for RestrictedComponent {
 }
 
 #[tauri::command]
-fn get_restricted_components(components: Vec<Component>) -> Vec<RestrictedComponent> {
-    components
+async fn get_restricted_components(names: Vec<String>) -> Result<Vec<RestrictedComponent>> {
+    let manifest = cached_manifest();
+    Ok(manifest
+        .lock()
+        .await
+        .current_target_components(false)?
         .iter()
         .filter_map(|c| {
-            if let Some(info) = &c.tool_installer {
-                RestrictedComponent::try_from((c.name.as_str(), info)).ok()
-            } else {
-                None
+            if names.contains(&c.name) {
+                if let Some(info) = &c.tool_installer {
+                    return RestrictedComponent::try_from((c.name.as_str(), info)).ok();
+                }
             }
+            None
         })
-        .collect()
+        .collect())
 }
 
 #[tauri::command]

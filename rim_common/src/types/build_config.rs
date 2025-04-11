@@ -8,8 +8,6 @@ static BUILD_CFG_SINGLETON: OnceLock<BuildConfig> = OnceLock::new();
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BuildConfig {
-    pub name: String,
-    pub version: String,
     pub identifier: String,
     pub home_page_url: Url,
     pub rustup_dist_server: Url,

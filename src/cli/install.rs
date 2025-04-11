@@ -198,10 +198,10 @@ fn read_install_dir_input(default: &str) -> Result<Option<String>> {
 /// Create a collection of component choices base of a filtering condition.
 /// Also taking component constrains, such as `requires`, `conflicts` into account.
 // TODO: handle conflicts
-fn component_choices_with_constrains<'a, F>(
-    all_components: &'a [Component],
+fn component_choices_with_constrains<F>(
+    all_components: &[Component],
     condition_callback: F,
-) -> ComponentChoices<'a>
+) -> ComponentChoices<'_>
 where
     F: Fn(usize, &Component) -> bool,
 {
@@ -213,9 +213,9 @@ where
         .iter()
         .enumerate()
         .filter(|(idx, c)| {
-            let selected = condition_callback(*idx, *c);
+            let selected = condition_callback(*idx, c);
             if selected {
-                dependencies.extend(&c.requires);
+                dependencies.extend(c.dependencies());
             }
             selected
         })
@@ -330,7 +330,7 @@ fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Resul
                 return None;
             }
             let mut line = String::new();
-            for obsolete in &comp.obsoletes {
+            for obsolete in comp.obsoletes() {
                 line.push_str(&format!(
                     "\t{obsolete} ({})",
                     t!("replaced_by", name = &comp.name)
