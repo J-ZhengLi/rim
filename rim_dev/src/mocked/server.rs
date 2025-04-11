@@ -2,6 +2,7 @@ use crate::common;
 
 use super::TOOLKIT_NAME;
 use anyhow::{anyhow, Context, Result};
+use rim_common::utils;
 use sha2::Digest;
 use std::collections::HashMap;
 use std::fs;
@@ -11,7 +12,7 @@ use std::sync::LazyLock;
 
 /// The version list of rust toolchain
 static VERSIONS: &[&str] = &["1.80.1", "1.81.0", "1.82.0", "1.85.0"];
-/// The date of each rust toolchain to be destributed,
+/// The date of each rust toolchain to be distributed,
 /// make sure the length matches [`VERSIONS`].
 static DATES: &[&str] = &["2024-08-08", "2024-09-05", "2024-10-17", "2025-02-20"];
 // TARGETS and COMPONENTS are needed to generate mocked component packages
@@ -130,10 +131,8 @@ version = \"{ver}\"
 group = \"Rust\"
 components = [\"clippy\", \"rustfmt\", \"rust-src\", \"rust-docs\"]
 optional-components = [\"llvm-tools\", \"rustc-dev\", \"rust-analyzer\"]
-
-[rust.profile]
-name = \"minimal\"
-verbose-name = \"Basic\"
+profile = \"minimal\"
+display-name = \"Basic\"
 description = \"Basic set of tools to use Rust properly\"
 
 [tools.descriptions]
@@ -224,7 +223,7 @@ impl RustupServer {
         checksums: &mut Vec<(String, String)>,
     ) -> Result<()> {
         let date_dir = self.dist_dir.join(date);
-        common::ensure_dir(&date_dir)?;
+        utils::ensure_dir(&date_dir)?;
 
         for component in COMPONENTS {
             let targets = match component.target {
@@ -335,7 +334,7 @@ impl<'a> RustInstallerPackage<'a> {
             ..Default::default()
         }
     }
-    /// Generate the pacakge and return the checksum of it.
+    /// Generate the package and return the checksum of it.
     fn generate(self, root: &Path, target: Option<&str>) -> Result<String> {
         let temp_dir = tempfile::tempdir_in(root)?;
         let pkg_name = format!(
@@ -358,7 +357,7 @@ impl<'a> RustInstallerPackage<'a> {
         // but it doesn't seems that's needed for now.
         for path in bin_paths.chain(lib_paths) {
             let full_path = source_dir.join(&path);
-            common::ensure_parent_dir(&full_path)?;
+            utils::ensure_parent_dir(&full_path)?;
             fs::write(&full_path, "")?;
             manifest_in.push_str(&format!("file:{path}"));
         }

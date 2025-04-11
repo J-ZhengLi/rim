@@ -4,8 +4,8 @@ use crate::core::directories::RimDir;
 use crate::core::install::{EnvConfig, InstallConfiguration};
 use crate::core::uninstall::{UninstallConfiguration, Uninstallation};
 use crate::core::GlobalOpts;
-use crate::utils;
 use anyhow::Result;
+use rim_common::utils;
 
 pub(crate) use rustup::*;
 
@@ -67,7 +67,7 @@ impl Uninstallation for UninstallConfiguration<'_> {
 /// A module that contains functions that are modified from `rustup`:
 /// https://github.com/rust-lang/rustup/blob/master/src/cli/self_update/windows.rs
 pub(crate) mod rustup {
-    use super::GlobalOpts;
+    use super::{utils, GlobalOpts};
     use anyhow::{anyhow, Context, Result};
     use std::env;
     use std::ffi::OsString;
@@ -122,7 +122,7 @@ pub(crate) mod rustup {
 
         key.set_raw_value("UninstallString", &reg_value)
             .context("Failed to set `UninstallString`")?;
-        let product = super::utils::build_cfg_locale("product");
+        let product = utils::build_cfg_locale("product");
         key.set_value("DisplayName", &product)
             .context("Failed to set `DisplayName`")?;
 
@@ -274,8 +274,7 @@ pub(crate) mod rustup {
         match (orig_path, is_remove) {
             (Some(path_oss), false) => {
                 let mut path_list = env::split_paths(&path_oss).collect::<Vec<_>>();
-                // Bruh... come on, rustc
-                if path_list.contains(&path.to_path_buf()) {
+                if path_list.iter().any(|p| p.as_path() == path) {
                     return Ok(());
                 }
                 path_list.insert(0, path.to_path_buf());

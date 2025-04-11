@@ -58,7 +58,9 @@
     "invalid_input": "无效的输入 '%{actual}'，正确格式应为%{expect}，请重试",
     "current_install_option": "当前安装选项：",
     "install_dir": "安装路径",
-    "selected_components": "已选组件",
+    "components_to_install": "将安装以下组件",
+    "components_to_remove": "将移除以下组件",
+    "replaced_by": "替换为 '%{name}'",
 
     "uninstall_confirmation": "是否确认卸载以下组件: \n\n%{list}\n",
     "uninstall_all_confirmation": "是否确认卸载 %{vendor}-manager 及以下组件: \n\n%{list}\n",
@@ -140,5 +142,6 @@
     "self_update_finished": "自更新成功！该程序将在 %{eta} 秒后重新启动",
 
     "missing_restricted_source": "工具 '%{name}' 的安装包来源受限制，必须由用户明确提供或应具有默认值，但目前既未提供来源，也未设置默认值。",
-    "remove_path_retry": "移除路径 '%{path}' 失败, 正在重试..."
+    "remove_path_retry": "移除路径 '%{path}' 失败, 正在重试...",
+    "removing_obsolete_tool": "正在移除已淘汰工具 '%{name}'"
 }

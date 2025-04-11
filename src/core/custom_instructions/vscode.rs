@@ -8,9 +8,9 @@
 use std::path::{Path, PathBuf};
 use crate::core::directories::RimDir;
 use crate::core::install::InstallConfiguration;
-use crate::core::uninstall::UninstallConfiguration;
-use crate::{core::os::add_to_path, utils};
+use crate::core::os::add_to_path;
 use anyhow::Result;
+use rim_common::utils;
 
 #[derive(Debug)]
 pub(crate) struct VSCodeInstaller<'a> {
@@ -58,7 +58,7 @@ impl VSCodeInstaller<'_> {
                 utils::path_to_str(&shortcut_path)?,
                 utils::path_to_str(&target_path)?,
             );
-            if utils::run!("powershell", weird_powershell_cmd).is_err() {
+            if run!("powershell", weird_powershell_cmd).is_err() {
                 warn!(
                     "unable to create a shortcut for '{}', skipping...",
                     self.tool_name
@@ -111,7 +111,7 @@ Keywords=vscode;
         Ok(vec![vscode_dir])
     }
 
-    pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {
+    pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
         use crate::core::os::remove_from_path;
 
         // We've added a path for VSCode at `<InstallDir>/tools/vscode/bin`, try removing it from `PATH`.
@@ -123,7 +123,7 @@ Keywords=vscode;
         // TODO: Remove desktop shortcut and `%USERPROFILE%/.vscode`.
         // We need to see if the shortcut has the correct target before removing it,
         // and we also need to ask user if they want to remove the user profile
-        // before doing so, since that folder might be shared with other vscode varients.
+        // before doing so, since that folder might be shared with other vscode variants.
         #[cfg(unix)]
         {
             let Some(filepath)  = dirs::data_local_dir()
@@ -159,7 +159,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     VSCODE.install(path, config)
 }
 
-pub(super) fn uninstall(config: &UninstallConfiguration) -> Result<()> {
+pub(super) fn uninstall<T: RimDir>(config: T) -> Result<()> {
     VSCODE.uninstall(config)
 }
 

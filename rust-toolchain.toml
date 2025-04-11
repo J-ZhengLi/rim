@@ -1,0 +1,3 @@
+[toolchain]
+channel = "1.85.0" # 1.86.0 and above version breaks the `tauri-single-instance` plugin (https://github.com/tauri-apps/plugins-workspace/issues/2405), let's keep this until we upgrades to tauri v2.
+components = [ "rustfmt", "clippy" ]

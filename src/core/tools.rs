@@ -6,20 +6,17 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Result};
-use serde::{Deserialize, Serialize};
+use rim_common::{
+    types::{ToolInfo, ToolKind},
+    utils,
+};
 
 use super::{
-    directories::RimDir, parser::fingerprint::ToolRecord, uninstall::UninstallConfiguration,
-    GlobalOpts, PathExt, CARGO_HOME,
+    directories::RimDir, parser::fingerprint::ToolRecord, GlobalOpts, PathExt, CARGO_HOME,
 };
-use crate::{
-    core::custom_instructions,
-    setter,
-    utils::{self, run},
-    InstallConfiguration,
-};
+use crate::{core::custom_instructions, InstallConfiguration};
 
-/// All supported VS Code varients
+/// All supported VS Code variants
 pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
     #[cfg(windows)]
     let suffix = ".cmd";
@@ -40,7 +37,7 @@ pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
     .collect()
 });
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Tool<'a> {
     name: String,
     path: PathExt<'a>,
@@ -49,37 +46,11 @@ pub(crate) struct Tool<'a> {
     install_args: Option<Vec<&'a str>>,
 }
 
-/// Representing the structure of an (extracted) tool's directory.
-// NB: Mind the order of the variants, they are crucial to installation/uninstallation.
-#[derive(Debug, Default, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize, Clone, Copy)]
-#[serde(rename_all = "kebab-case")]
-pub enum ToolKind {
-    /// Directory containing `bin` subfolder:
-    /// ```text
-    /// tool/
-    /// ├─── bin/
-    /// ├─── ...
-    /// ```
-    DirWithBin,
-    /// Installer type, which need to be executed to install a certain tool.
-    Installer,
-    /// Pre-built executable files.
-    /// i.e.:
-    /// ```text
-    /// ├─── some_binary.exe
-    /// ├─── cargo-some_binary.exe
-    /// ```
-    Executables,
-    /// We have a custom "script" for how to deal with such directory.
-    Custom,
-    /// Plugin file, such as `.vsix` files for Visual Studio.
-    Plugin,
-    // `Cargo` just don't make any sense
-    #[allow(clippy::enum_variant_names)]
-    CargoTool,
-    /// Unknown tool, install and uninstall are not fully supported.
-    #[default]
-    Unknown,
+/// Helper struct used for uninstallation, including basic [`Tool`] and it's dependencies list.
+#[derive(Debug)]
+pub(crate) struct ToolWithDeps<'a> {
+    pub(crate) tool: Tool<'a>,
+    pub(crate) dependencies: &'a [String],
 }
 
 impl<'a> Tool<'a> {
@@ -155,10 +126,42 @@ impl<'a> Tool<'a> {
         Self::new(name.to_string(), ToolKind::CargoTool).with_install_args(extra_args)
     }
 
+    /// Convert a single [`tool record`](ToolRecord) into `Self`, return `None`
+    /// if this tool with `name` was not installed
+    pub(crate) fn from_installed(name: &str, tool_record: &'a ToolRecord) -> Option<Self> {
+        let kind = tool_record.tool_kind();
+        let tool = match kind {
+            ToolKind::CargoTool => Tool::cargo_tool(name, None),
+            ToolKind::Unknown => {
+                if let [path] = tool_record.paths.as_slice() {
+                    // don't interrupt uninstallation if the path of some tools cannot be found,
+                    // as the user might have manually remove them
+                    let Ok(tool) = Tool::from_path(name, path) else {
+                        warn!(
+                            "{}: {}",
+                            t!("uninstall_tool_skipped", tool = name),
+                            t!("path_to_installation_not_found", path = path.display())
+                        );
+                        return None;
+                    };
+                    tool
+                } else if !tool_record.paths.is_empty() {
+                    Tool::new(name.into(), ToolKind::Executables)
+                        .with_path(tool_record.paths.clone())
+                } else {
+                    info!("{}", t!("uninstall_unknown_tool_warn", tool = name));
+                    return None;
+                }
+            }
+            _ => Tool::new(name.into(), kind).with_path(tool_record.paths.clone()),
+        };
+        Some(tool)
+    }
+
     pub(crate) fn install(
         &self,
-        version: Option<&str>,
         config: &InstallConfiguration,
+        info: &ToolInfo,
     ) -> Result<ToolRecord> {
         let paths = match self.kind {
             ToolKind::CargoTool => {
@@ -174,12 +177,12 @@ impl<'a> Tool<'a> {
                     self.install_args.as_deref().unwrap_or(&[self.name()]),
                     config.cargo_home(),
                 )?;
-                return Ok(ToolRecord::cargo_tool().with_version(version));
+                return Ok(ToolRecord::cargo_tool().with_version(info.version()));
             }
             ToolKind::Executables => {
                 let mut res = vec![];
                 for exe in self.path.iter() {
-                    res.push(utils::copy_file_to(exe, config.cargo_bin())?);
+                    res.push(utils::copy_into(exe, config.cargo_bin())?);
                 }
                 res
             }
@@ -195,7 +198,7 @@ impl<'a> Tool<'a> {
                 // run the installation command.
                 Plugin::install(path)?;
                 // we need to "cache" to installer, so that we could uninstall with it.
-                let plugin_backup = utils::copy_file_to(path, config.tools_dir())?;
+                let plugin_backup = utils::copy_into(path, config.tools_dir())?;
                 vec![plugin_backup]
             }
             ToolKind::Installer => {
@@ -207,7 +210,7 @@ impl<'a> Tool<'a> {
                 run!(path)?;
                 // Make a backup for this installer, in some case,
                 // it can be used for uninstallation
-                let backup = utils::copy_file_to(path, config.tools_dir())?;
+                let backup = utils::copy_into(path, config.tools_dir())?;
                 vec![backup]
             }
             // Just throw it under `tools` dir
@@ -218,10 +221,11 @@ impl<'a> Tool<'a> {
 
         Ok(ToolRecord::new(self.kind)
             .with_paths(paths)
-            .with_version(version))
+            .with_version(info.version())
+            .with_dependencies(info.dependencies().to_vec()))
     }
 
-    pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {
+    pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
         match self.kind {
             ToolKind::CargoTool => {
                 cargo_install_or_uninstall(
@@ -252,9 +256,9 @@ impl<'a> Tool<'a> {
 fn cargo_install_or_uninstall(op: &str, args: &[&str], cargo_home: &Path) -> Result<()> {
     let mut cargo_bin = cargo_home.to_path_buf();
     cargo_bin.push("bin");
-    cargo_bin.push(utils::exe!("cargo"));
+    cargo_bin.push(exe!("cargo"));
 
-    let mut cmd = utils::cmd!([CARGO_HOME=cargo_home] cargo_bin, op);
+    let mut cmd = cmd!([CARGO_HOME=cargo_home] cargo_bin, op);
     let mut full_args = vec![];
 
     if GlobalOpts::get().verbose {
@@ -311,7 +315,7 @@ impl FromStr for Plugin {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
             "vsix" => Ok(Self::Vsix),
-            _ => bail!("unsupprted plugin file type '{s}'"),
+            _ => bail!("unsupported plugin file type '{s}'"),
         }
     }
 }
@@ -354,7 +358,7 @@ impl Plugin {
                                 program = program
                             )
                         );
-                        match utils::run!(program, arg_opt, plugin_path) {
+                        match run!(program, arg_opt, plugin_path) {
                             Ok(()) => continue,
                             // Ignore error when uninstalling.
                             Err(_) if uninstall => {

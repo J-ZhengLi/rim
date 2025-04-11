@@ -340,16 +340,16 @@ fn readline() -> Result<String> {
     Ok(input_buf.trim().to_string())
 }
 
-/// Specify the string after each component's name, which is usually wrapped in parenthese.
+/// Specify the string after each component's name, which is usually wrapped in parentheses.
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) enum ComponentDecoration<'c> {
     /// Version change info, i.e.:
     /// `hello-world (0.1.0 -> 0.2.0)`
     VersionDiff(&'c VersionDiffMap<'c>),
-    /// Pre-installation labels, including `installed|required` to indicate whether a tool
-    /// is installed or required but not installed, i.e.:
-    /// `hello-world (required)`
-    InstalledOrRequired,
+    /// Decorations to display during component selection, including `installed|required` tag
+    /// to indicate whether a tool is installed or required but not installed,
+    /// i.e.: `hello-world (required)`.
+    Selection,
     /// A label to show during confirmation page, indicates whether a tool is installed but will be re-install,
     /// i.e.: `hello-world (installed, reinstalling)`
     Confirmation,
@@ -363,7 +363,7 @@ impl ComponentDecoration<'_> {
     pub(crate) fn for_component(self, comp: &Component) -> String {
         match self {
             Self::None => String::new(),
-            Self::InstalledOrRequired => {
+            Self::Selection => {
                 if comp.installed {
                     format!(" ({})", t!("installed"))
                 } else if comp.required {
@@ -426,7 +426,11 @@ impl<'c, I: IntoIterator<Item = &'c Component>> ComponentListBuilder<'c, I> {
             .map(|c| {
                 let deco = self.decoration.for_component(c);
                 let desc = if self.show_desc {
-                    format!("\n\t{}: {}", t!("description"), &c.desc)
+                    if let Some(description) = &c.desc {
+                        format!("\n\t{}: {description}", t!("description"))
+                    } else {
+                        String::new()
+                    }
                 } else {
                     String::new()
                 };

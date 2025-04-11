@@ -63,7 +63,9 @@
     "invalid_input": "Invalid input '%{actual}', expecting %{expect}, please try again",
     "current_install_option": "Current installation options:",
     "install_dir": "installation path",
-    "selected_components": "selected components",
+    "components_to_install": "the component(s) below will get installed",
+    "components_to_remove": "the component(s) below will get removed",
+    "replaced_by": "replaced by '%{name}'",
 
     "uninstall_confirmation": "Are you sure you want to uninstall the following components: \n\n%{list}\n",
     "uninstall_all_confirmation": "Are you sure you want to uninstall %{vendor}-manager and the following components: \n\n%{list}\n",
@@ -145,5 +147,6 @@
     "self_update_finished": "self update success! this program will restart in %{eta}",
 
     "missing_restricted_source": "pacakge source of tool '%{name}' is restricted, which should be provided by user or has a default value, but none of those are presented",
-    "remove_path_retry": "failed when removing '%{path}', retrying..."
+    "remove_path_retry": "failed when removing '%{path}', retrying...",
+    "removing_obsolete_tool": "Removing obsoleted tool '%{name}'"
 }

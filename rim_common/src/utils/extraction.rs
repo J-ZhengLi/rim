@@ -10,6 +10,7 @@ use zip::ZipArchive;
 
 use crate::utils::progress_bar::Style;
 
+use super::file_system::{ensure_dir, ensure_parent_dir, walk_dir};
 use super::progress_bar::CliProgress;
 
 enum ExtractableKind {
@@ -128,7 +129,7 @@ impl<'a> Extractable<'a> {
     ) -> Result<PathBuf> {
         fn inner_<S: AsRef<OsStr>>(root: &Path, stop: Option<S>) -> Result<PathBuf> {
             let sub_entries = if root.is_dir() {
-                super::walk_dir(root, false)?
+                walk_dir(root, false)?
             } else {
                 return Ok(root.to_path_buf());
             };
@@ -216,9 +217,9 @@ impl<T: Sized> ExtractHelper<'_, T> {
             };
 
             if zip_file.is_dir() {
-                super::ensure_dir(&out_path)?;
+                ensure_dir(&out_path)?;
             } else {
-                super::ensure_parent_dir(&out_path)?;
+                ensure_parent_dir(&out_path)?;
                 let mut out_file = std::fs::File::create(&out_path)?;
                 std::io::copy(&mut zip_file, &mut out_file)?;
             }
@@ -255,7 +256,7 @@ impl<T: Sized> ExtractHelper<'_, T> {
             let out_path = self.output_dir.join(&entry_path);
 
             if entry.is_directory() {
-                super::ensure_dir(&out_path).map_err(|_| {
+                ensure_dir(&out_path).map_err(|_| {
                     sevenz_rust::Error::other(format!(
                         "unable to create entry directory '{}'",
                         out_path.display()
@@ -263,7 +264,7 @@ impl<T: Sized> ExtractHelper<'_, T> {
                 })?;
                 Ok(true)
             } else {
-                super::ensure_parent_dir(&out_path).map_err(|_| {
+                ensure_parent_dir(&out_path).map_err(|_| {
                     sevenz_rust::Error::other(format!(
                         "unable to create parent directory for '{}'",
                         out_path.display()
@@ -309,14 +310,14 @@ impl<T: Sized> ExtractHelper<'_, T> {
             let out_path = self.output_dir.join(&entry_path);
 
             if entry.header().entry_type().is_dir() {
-                super::ensure_dir(&out_path).with_context(|| {
+                ensure_dir(&out_path).with_context(|| {
                     format!(
                         "failed to create directory when extracting '{}'",
                         self.file_path.display()
                     )
                 })?;
             } else {
-                super::ensure_parent_dir(&out_path).with_context(|| {
+                ensure_parent_dir(&out_path).with_context(|| {
                     format!(
                         "failed to create directory when extracting '{}'",
                         self.file_path.display()

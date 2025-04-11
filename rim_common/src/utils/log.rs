@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
 
+use super::file_system::{ensure_dir, parent_dir_of_cur_exe};
+
 static LOGGER_SET: OnceLock<bool> = OnceLock::new();
 
 #[derive(Debug)]
@@ -59,9 +61,9 @@ impl Logger {
     /// any of the `info!`, `warn!`, `trace!`, `debug!`, `error!` macros.
     ///
     /// - If [`verbose`](Logger::verbose) was called with `true`, this will output more
-    ///     detailed log messages including `debug!`.
+    ///   detailed log messages including `debug!`.
     /// - If [`quiet`](Logger::quiet) was called with `true`, this will not output any message
-    ///     on `stdout`, but will still output them into log file.
+    ///   on `stdout`, but will still output them into log file.
     pub fn setup(self) -> Result<()> {
         let dispatch = fern::Dispatch::new().level(LevelFilter::Trace);
         let filter_log_for_output = move |md: &log::Metadata| -> bool {
@@ -126,12 +128,12 @@ static LOG_FILE_PATH: OnceLock<PathBuf> = OnceLock::new();
 ///
 /// # Error
 ///
-/// Because this will attemp to create a directory named `log` to place the actual log file,
+/// Because this will attempt to create a directory named `log` to place the actual log file,
 /// this function might fail if it cannot be created.
 pub fn log_file_path() -> Result<&'static Path> {
-    let mut log_dir = super::parent_dir_of_cur_exe().unwrap_or(PathBuf::from("."));
+    let mut log_dir = parent_dir_of_cur_exe().unwrap_or(PathBuf::from("."));
     log_dir.push("log");
-    super::ensure_dir(&log_dir)?;
+    ensure_dir(&log_dir)?;
 
     let bin_name = super::lowercase_program_name().unwrap_or(env!("CARGO_PKG_NAME").to_string());
 

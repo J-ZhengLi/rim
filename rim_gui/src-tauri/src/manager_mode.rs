@@ -14,26 +14,28 @@ use crate::{
     notification::{self, Notification, NotificationAction},
 };
 use anyhow::Context;
-use rim::configuration::{Configuration, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION};
 use rim::{
     components::Component,
     toolkit::{self, Toolkit},
-    toolset_manifest::{get_toolset_manifest, ToolsetManifest},
     update::{self, UpdateCheckBlocker, UpdateOpt},
-    utils,
 };
+use rim::{
+    configuration::{Configuration, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION},
+    get_toolkit_manifest, AppInfo,
+};
+use rim_common::{types::ToolkitManifest, utils};
 use tauri::{
     async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
     SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
 };
 use url::Url;
 
-static SELECTED_TOOLSET: Mutex<Option<ToolsetManifest>> = Mutex::new(None);
+static SELECTED_TOOLSET: Mutex<Option<ToolkitManifest>> = Mutex::new(None);
 // If adding more notification windows, make sure their label start with 'notification:'
 const MANAGER_UPD_POPUP_LABEL: &str = "notification:manager";
 const TOOLKIT_UPD_POPUP_LABEL: &str = "notification:toolkit";
 
-fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolsetManifest>> {
+fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolkitManifest>> {
     SELECTED_TOOLSET
         .lock()
         .expect("unable to lock global mutex")
@@ -117,7 +119,7 @@ async fn get_available_kits(reload: bool) -> Result<Vec<Toolkit>> {
 
 #[tauri::command]
 fn get_install_dir() -> String {
-    rim::get_installed_dir().to_string_lossy().to_string()
+    AppInfo::get_installed_dir().to_string_lossy().to_string()
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -219,7 +221,7 @@ fn get_toolkit_from_url(url: String) -> Result<Toolkit> {
     let url_ = Url::parse(&url)?;
 
     // load the manifest for components information
-    let manifest = async_runtime::block_on(get_toolset_manifest(Some(url_), false))?;
+    let manifest = async_runtime::block_on(get_toolkit_manifest(Some(url_), false))?;
     // convert it to toolkit
     let toolkit = Toolkit::try_from(&manifest)?;
 
@@ -251,7 +253,7 @@ async fn do_self_update(app: &AppHandle) -> Result<()> {
     }
 
     if let Some(win) = &window {
-        // schedual restart with 3 seconds timeout
+        // schedule restart with 3 seconds timeout
         win.emit(LOADING_FINISHED, true)?;
         for eta in (1..=3).rev() {
             win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta))?;
@@ -387,7 +389,7 @@ impl WindowState {
         let win = match self {
             Self::Normal(win) => win,
             Self::Closed => {
-                // TODO(?): maybe it is posible to revive a dead window, find a way.
+                // TODO(?): maybe it is possible to revive a dead window, find a way.
                 log::error!("Attempt to re-open manager window which has already been shutdown.");
                 return Ok(());
             }

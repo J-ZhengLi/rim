@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use crate::{InstallConfiguration, UninstallConfiguration};
+use crate::{core::directories::RimDir, InstallConfiguration};
 use super::vscode::VSCodeInstaller;
 
 const VSCODE: VSCodeInstaller = VSCodeInstaller {
@@ -16,7 +16,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     VSCODE.install(path, config)
 }
 
-pub(super) fn uninstall(config: &UninstallConfiguration) -> Result<()> {
+pub(super) fn uninstall<T: RimDir>(config: T) -> Result<()> {
     VSCODE.uninstall(config)
 }
 
