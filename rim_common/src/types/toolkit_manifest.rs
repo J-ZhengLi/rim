@@ -61,15 +61,13 @@ pub struct RustToolchain {
     /// a specific sematic version (x.x.x), or nightly with specific date (nightly-xxxx-xx-xx).
     #[serde(alias = "version")]
     pub channel: String,
-    /// Toolchain profile that rustup uses to install rust,
-    /// such as default/minimal/complete.
-    pub profile: Option<String>,
-    /// Optional name to label the rust toolchain on UI, allowing toolkit provider to
-    /// label the toolchain with another name such as "Core", "Rust" etc.
+    /// Prefer NOT to use this directly, use `profile()` method instead.
+    profile: Option<ToolchainProfile>,
+    /// Prefer NOT to use this directly, use `display_name()` method instead.
     #[serde(alias = "verbose-name")]
-    pub display_name: Option<String>,
-    /// Optional description for the rust toolchain.
-    pub description: Option<String>,
+    display_name: Option<String>,
+    /// Prefer NOT to use this directly, use `description()` method instead.
+    description: Option<String>,
     /// Components are installed by default
     #[serde(default)]
     pub components: Vec<String>,
@@ -87,12 +85,75 @@ pub struct RustToolchain {
     pub rustup: HashMap<String, String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
+#[serde(untagged)]
+enum ToolchainProfile {
+    Basic(String),
+    /// Semi-deprecated variant after 0.6.0, prefer not to use this at all.
+    /// Because, we had the `profile` configured as a separated section as:
+    /// ```toml
+    /// [rust.profile]
+    /// name = "minimal"
+    /// description = "Minimal toolchain for basic functionality"
+    /// verbose-name = "Basic"
+    /// ```
+    /// Which turns out to be confusing, we keep this variant here only
+    /// for the sake of backward compatibility.
+    Complex {
+        name: String,
+        #[serde(rename = "verbose-name")]
+        verbose_name: Option<String>,
+        description: Option<String>,
+    },
+}
+
+impl<T: ToString> From<T> for ToolchainProfile {
+    fn from(value: T) -> Self {
+        Self::Basic(value.to_string())
+    }
+}
+
 impl RustToolchain {
     pub fn new(ver: &str) -> Self {
         Self {
             channel: ver.to_string(),
             ..Default::default()
         }
+    }
+
+    /// Toolchain profile that rustup uses to install rust, such as default/minimal/complete.
+    pub fn profile(&self) -> Option<&str> {
+        self.profile.as_ref().map(|p| match p {
+            ToolchainProfile::Basic(name) => name.as_str(),
+            ToolchainProfile::Complex { name, .. } => name.as_str(),
+        })
+    }
+
+    /// Optional name to label the rust toolchain on UI, allowing toolkit provider to
+    /// label the toolchain with another name such as "Core", "Rust" etc.
+    pub fn display_name(&self) -> Option<&str> {
+        self.display_name
+            .as_deref()
+            .or(self.profile.as_ref().and_then(|p| {
+                if let ToolchainProfile::Complex { verbose_name, .. } = p {
+                    verbose_name.as_deref()
+                } else {
+                    None
+                }
+            }))
+    }
+
+    /// Optional description for the rust toolchain.
+    pub fn description(&self) -> Option<&str> {
+        self.description
+            .as_deref()
+            .or(self.profile.as_ref().and_then(|p| {
+                if let ToolchainProfile::Complex { description, .. } = p {
+                    description.as_deref()
+                } else {
+                    None
+                }
+            }))
     }
 
     /// The name of toolchain for display purpose.
@@ -104,8 +165,7 @@ impl RustToolchain {
     /// 2. The [group](RustToolchain::group) name set in manifest file.
     /// 3. Simply just `"Rust"`
     pub fn name(&self) -> &str {
-        self.display_name
-            .as_deref()
+        self.display_name()
             .or(self.group.as_deref())
             .unwrap_or("Rust")
     }
@@ -495,7 +555,7 @@ verbose-name = "Everything"
 description = "Everything provided by official Rust-lang"
 "#;
         let expected = ToolkitManifest::from_str(basic).unwrap();
-        assert_eq!(expected.rust.profile.unwrap(), "complete");
+        assert_eq!(expected.rust.profile.unwrap(), "complete".into());
         assert_eq!(expected.rust.display_name.unwrap(), "Everything");
         assert_eq!(
             expected.rust.description.unwrap(),
@@ -663,5 +723,27 @@ tool_d = "0.1.0""#;
         assert_eq!(tool_a.requires, ["tool_b".to_string()]);
         assert_eq!(tool_a.obsoletes, ["tool_c".to_string()]);
         assert_eq!(tool_a.conflicts, ["tool_d".to_string()]);
+    }
+
+    #[test]
+    fn rust_profile_backward_compatible() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[rust.profile]
+name = "complete"
+verbose-name = "Everything"
+description = "Everything provided by official Rust-lang"
+"#;
+
+        let expected = ToolkitManifest::from_str(input).unwrap();
+
+        assert_eq!(expected.rust.profile(), Some("complete"));
+        assert_eq!(expected.rust.display_name(), Some("Everything"));
+        assert_eq!(
+            expected.rust.description(),
+            Some("Everything provided by official Rust-lang")
+        );
     }
 }

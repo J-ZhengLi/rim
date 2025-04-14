@@ -41,9 +41,6 @@ pub struct Component {
     pub kind: ComponentType,
     /// Indicates whether this component was already installed or not.
     pub installed: bool,
-    pub(crate) requires: Vec<String>,
-    pub(crate) obsoletes: Vec<String>,
-    pub(crate) conflicts: Vec<String>,
 }
 
 impl Component {
@@ -60,6 +57,22 @@ impl Component {
         comp
     }
 
+    /// Get a list of component names that are required by this component.
+    pub fn dependencies(&self) -> &[String] {
+        self.tool_installer
+            .as_ref()
+            .map(|info| info.dependencies())
+            .unwrap_or_default()
+    }
+
+    /// Get a list of component names that are obsoleted (replaced) by this component.
+    pub fn obsoletes(&self) -> &[String] {
+        self.tool_installer
+            .as_ref()
+            .map(|info| info.obsoletes())
+            .unwrap_or_default()
+    }
+
     setter!(required(self.required, bool));
     setter!(optional(self.optional, bool));
     setter!(installed(self.installed, bool));
@@ -69,9 +82,6 @@ impl Component {
     setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });
     setter!(with_display_name(self.display_name, name: impl ToString) { name.to_string() });
     setter!(with_description(self.desc, desc: Option<&str>) { desc.map(ToOwned::to_owned) });
-    setter!(with_dependencies(self.requires, Vec<String>));
-    setter!(with_conflicts(self.conflicts, Vec<String>));
-    setter!(with_obsoletes(self.obsoletes, Vec<String>));
 }
 
 /// A Rust toolchain component, such as `rustc`, `cargo`, `rust-docs`

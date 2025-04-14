@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
 import ScrollBox from '@/components/ScrollBox.vue';
-import { installConf, invokeCommand } from '@/utils/index';
+import { ComponentHelper, installConf, invokeCommand } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -44,22 +44,21 @@ const curCheckComponent = computed(() => {
 });
 
 function updateInstallConf() {
-  installConf.setComponents(
-    groupComponents.value.reduce((components, group) => {
-      components.push(
-        ...group.items.map((item) => {
-          return {
-            label: item.label,
-            checked: item.checked,
-            disabled: item.disabled,
-            required: item.required,
-            value: { ...item.value },
-          };
-        })
-      );
-      return components;
-    }, [] as CheckItem<Component>[])
-  );
+  const comps = groupComponents.value.reduce((components, group) => {
+    components.push(
+      ...group.items.map((item) => {
+        return {
+          label: item.label,
+          checked: item.checked,
+          disabled: item.disabled,
+          required: item.required,
+          value: { ...item.value },
+        };
+      })
+    );
+    return components;
+  }, [] as CheckItem<Component>[]);
+  installConf.setComponents(comps);
 }
 
 function handleComponentsClick(checkItem: CheckGroupItem<Component>) {
@@ -85,7 +84,8 @@ function handleComponentsChange(items: CheckGroupItem<Component>[]) {
       const findItem = items.find((i) => i.value.id === item.value.id);
       if (findItem) {
         item.checked = findItem.checked;
-        dependencies = dependencies.concat(item.value.requires.map(name => [name, findItem.checked]));
+        const helper = new ComponentHelper(item.value);
+        dependencies = dependencies.concat(helper.requires().map(name => [name, findItem.checked]));
       }
     });
   });
@@ -99,8 +99,6 @@ function handleComponentsChange(items: CheckGroupItem<Component>[]) {
       }
     });
   });
-
-  updateInstallConf();
 }
 
 function handleSelectAll() {
@@ -114,7 +112,12 @@ function handleSelectAll() {
 }
 
 function handleNextClick() {
-  invokeCommand('get_restricted_components', { components: installConf.getCheckedComponents() }).then((res) => {
+  updateInstallConf();
+
+  const comps = installConf.getCheckedComponents();
+  console.log(comps);
+
+  invokeCommand('get_restricted_components', { components: comps }).then((res) => {
     const restricted = res as RestrictedComponent[];
     if (restricted.length > 0) {
       installConf.setRestrictedComponents(restricted);

@@ -1,6 +1,5 @@
 //! The information about single tool in toolkit manifest.
 
-use super::utils::ser_empty_vec_to_none;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use url::Url;
@@ -219,17 +218,13 @@ pub struct ToolInfoDetails {
     pub kind: Option<ToolKind>,
     /// A name that only used for display purpose.
     pub display_name: Option<String>,
-    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     /// A list of tools that are obsoleted/replaced by this package.
     pub obsoletes: Vec<String>,
-    #[serde(
-        default,
-        serialize_with = "ser_empty_vec_to_none",
-        alias = "dependencies"
-    )]
+    #[serde(default, skip_serializing_if = "Vec::is_empty", alias = "dependencies")]
     /// A list of tools that this package requires.
     pub requires: Vec<String>,
-    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     /// A list of tools that this package conflicts with.
     pub conflicts: Vec<String>,
 }

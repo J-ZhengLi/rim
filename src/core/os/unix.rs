@@ -544,7 +544,6 @@ mod shell {
 
 #[cfg(test)]
 mod tests {
-    use rim_common::utils;
     use std::path::PathBuf;
 
     use super::{

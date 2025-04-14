@@ -6,7 +6,6 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
-use utils::ser_empty_vec_to_none;
 
 use crate::components::ToolchainComponent;
 use crate::AppInfo;
@@ -194,7 +193,7 @@ pub struct ToolRecord {
     version: Option<String>,
     #[serde(default)]
     pub(crate) paths: Vec<PathBuf>,
-    #[serde(default, serialize_with = "ser_empty_vec_to_none")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) dependencies: Vec<String>,
 }
 
