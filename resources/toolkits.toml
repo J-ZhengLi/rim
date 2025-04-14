@@ -117,14 +117,14 @@ cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirro
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
-vscodium = { display-name = "VSCodium", optional = true, version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-x64-1.97.2.25045.tar.gz" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", optional = true, version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-x64.vsix" }
+vscodium = { display-name = "VSCodium", version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-x64-1.97.2.25045.tar.gz" }
+vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-x64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-unknown-linux-gnu.tar.gz" }
 typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-unknown-linux-musl.tar.gz" }
 
 [toolkit.community.value.tools.target.aarch64-unknown-linux-gnu]
-vscodium = { display-name = "VSCodium", optional = true, version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-arm64-1.97.2.25045.tar.gz" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", optional = true, version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-arm64.vsix" }
+vscodium = { display-name = "VSCodium", version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-arm64-1.97.2.25045.tar.gz" }
+vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-arm64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-aarch64-unknown-linux-gnu.tar.gz" }
 typos = { optional = true, ver = "1.29.7", identifier = "typos-cli" }
 # ========================= Manifest For Community Toolkit END =========================

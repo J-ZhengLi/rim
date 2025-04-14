@@ -140,7 +140,7 @@ impl ToolkitManifestExt for ToolkitManifest {
         let profile_name = self.rust.name();
         // Add a component that represents rust toolchain
         let mut components = vec![Component::new(profile_name)
-            .with_description(self.rust.description.as_deref())
+            .with_description(self.rust.description())
             .with_group(self.rust.group.as_deref())
             .set_kind(ComponentType::ToolchainProfile)
             .required(true)
@@ -185,10 +185,7 @@ impl ToolkitManifestExt for ToolkitManifest {
                         .optional(tool_info.is_optional())
                         .installed(installed)
                         .with_version(version)
-                        .with_display_name(tool_info.display_name().unwrap_or(tool_name))
-                        .with_dependencies(tool_info.dependencies().to_vec())
-                        .with_conflicts(tool_info.conflicts().to_vec())
-                        .with_obsoletes(tool_info.obsoletes().to_vec()),
+                        .with_display_name(tool_info.display_name().unwrap_or(tool_name)),
                 );
             }
         }

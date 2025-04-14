@@ -1,8 +1,6 @@
 # Build Configurations, if you modify anything here, make sure to modify
 # the parser (rim_common/src/build_config.rs) as well.
 
-name = "rim"
-version = "0.5.4"
 identifier = "xuanwu-rust"
 
 # For GUI

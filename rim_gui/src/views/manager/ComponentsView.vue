@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUpdated, Ref, ref, watch, nextTick } from 'vue';
 import ScrollBox from '@/components/ScrollBox.vue';
-import { managerConf } from '@/utils/index';
+import { ComponentHelper, managerConf } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -69,12 +69,28 @@ function handleComponentsClick(checkItem: CheckGroupItem<Component>) {
   });
 }
 
+// FIXME: this function somehow gets called with each component title clicks,
+// and the body of it is not efficient at all.
 function handleComponentsChange(items: CheckGroupItem<Component>[]) {
+  let dependencies: [string, boolean][] = [];
+
   groupComponents.value.forEach((group) => {
     group.items.forEach((item) => {
       const findItem = items.find((i) => i.value.id === item.value.id);
       if (findItem) {
         item.checked = findItem.checked;
+        const component = new ComponentHelper(item.value);
+        dependencies = dependencies.concat(component.requires().map(name => [name, findItem.checked]));
+      }
+    });
+  });
+
+  // add dependencies
+  groupComponents.value.forEach((group) => {
+    group.items.forEach((item) => {
+      const findItem = dependencies.find(([name, _]) => name === item.value.name);
+      if (findItem) {
+        item.checked = findItem[1];
       }
     });
   });

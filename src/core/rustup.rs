@@ -50,7 +50,7 @@ impl ToolchainInstaller {
         let version = &manifest.rust.channel;
         let mut args = vec!["toolchain", "install", version, "--no-self-update"];
         let comps_arg = components.join(",");
-        if let Some(profile) = &manifest.rust.profile {
+        if let Some(profile) = manifest.rust.profile() {
             args.extend(["--profile", profile]);
         }
         if !components.is_empty() {
