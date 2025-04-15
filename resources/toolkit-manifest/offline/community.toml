@@ -5,124 +5,142 @@ name = "Rust 中国社区一站式开发套件"
 version = "stable v1.85.0"
 
 [rust]
+channel = "1.85.0"
+profile = "minimal"
+display-name = "Rust 官方工具"
+description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
 components = ["clippy", "rustfmt", "rust-src"]
+optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
 group = "Rust 基础工具集"
 offline-dist-server = "toolchain"
-optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
-version = "1.85.0"
-
-[rust.profile]
-description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
-name = "minimal"
-verbose-name = "Rust 官方工具"
 
 [rust.rustup]
-aarch64-unknown-linux-gnu = "tools/rustup-init"
-x86_64-pc-windows-gnu = "tools/rustup-init.exe"
-x86_64-pc-windows-msvc = "tools/rustup-init.exe"
 x86_64-unknown-linux-gnu = "tools/rustup-init"
+aarch64-unknown-linux-gnu = "tools/rustup-init"
+x86_64-pc-windows-msvc = "tools/rustup-init.exe"
+x86_64-pc-windows-gnu = "tools/rustup-init.exe"
 
 [tools.descriptions]
-buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
-cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
-codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
-llvm-tools = "包含 LLVM 工具的集合"
-mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
 rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个; 仅当开发链接到编译器的工具时才需要它, 例如对 Clippy 进行修改"
 typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
+cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
 vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
-vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
+llvm-tools = "包含 LLVM 工具的集合"
+rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
+codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
+mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
+buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
+vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 
 [tools.group]
+"Rust 基础工具集" = ["buildtools", "mingw64"]
 "Rust 优选工具集" = ["typos", "cargo-nextest"]
-"Rust 基础工具集" = ["mingw64", "buildtools"]
-"Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
-
-[tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
-optional = true
-path = "tools/cargo-nextest-0.9.91-aarch64-unknown-linux-gnu.tar.gz"
-version = "0.9.91"
-
-[tools.target.aarch64-unknown-linux-gnu.typos]
-identifier = "typos-cli"
-optional = true
-ver = "1.29.7"
-
-[tools.target.aarch64-unknown-linux-gnu.vscode-rust-analyzer]
-display-name = "rust-analyzer (插件)"
-optional = true
-path = "tools/rust-analyzer-linux-arm64.vsix"
-version = "0.3.2299"
-
-[tools.target.aarch64-unknown-linux-gnu.vscodium]
-display-name = "VSCodium"
-optional = true
-path = "tools/VSCodium-linux-arm64-1.97.2.25045.tar.gz"
-version = "1.97.2.25045"
-
-[tools.target.x86_64-pc-windows-gnu.cargo-nextest]
-optional = true
-path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
-version = "0.9.91"
-
-[tools.target.x86_64-pc-windows-gnu.codearts-rust]
-display-name = "CodeArts IDE"
-path = "tools/codearts-rust.zip"
-version = "3.2.0"
-
-[tools.target.x86_64-pc-windows-gnu.mingw64]
-display-name = "MinGW-w64"
-path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev1.7z"
-required = true
-version = "14.2.0-rt_v12-rev1"
-
-[tools.target.x86_64-pc-windows-gnu.typos]
-optional = true
-path = "tools/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
-version = "1.29.7"
-
-[tools.target.x86_64-pc-windows-msvc.buildtools]
-default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
-display-name = "Visual Studio Build Tools"
-required = true
-restricted = true
-
-[tools.target.x86_64-pc-windows-msvc.cargo-nextest]
-optional = true
-path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
-version = "0.9.91"
-
-[tools.target.x86_64-pc-windows-msvc.codearts-rust]
-display-name = "CodeArts IDE"
-path = "tools/codearts-rust.zip"
-version = "3.2.0"
-
-[tools.target.x86_64-pc-windows-msvc.typos]
-optional = true
-path = "tools/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
-version = "1.29.7"
-
-[tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
-optional = true
-path = "tools/cargo-nextest-0.9.91-x86_64-unknown-linux-gnu.tar.gz"
-version = "0.9.91"
-
-[tools.target.x86_64-unknown-linux-gnu.typos]
-optional = true
-path = "tools/typos-v1.29.7-x86_64-unknown-linux-musl.tar.gz"
-version = "1.29.7"
-
-[tools.target.x86_64-unknown-linux-gnu.vscode-rust-analyzer]
-display-name = "rust-analyzer (插件)"
-optional = true
-path = "tools/rust-analyzer-linux-x64.vsix"
-version = "0.3.2299"
+"Rust 软件开发工具链" = ["codearts-rust", "vscodium", "vscode", "vscode-rust-analyzer"]
 
 [tools.target.x86_64-unknown-linux-gnu.vscodium]
-display-name = "VSCodium"
-optional = true
-path = "tools/VSCodium-linux-x64-1.97.2.25045.tar.gz"
+required = false
+optional = false
 version = "1.97.2.25045"
+path = "tools/VSCodium-linux-x64-1.97.2.25045.tar.gz"
+display-name = "VSCodium"
+
+[tools.target.x86_64-unknown-linux-gnu.vscode-rust-analyzer]
+required = false
+optional = false
+version = "0.3.2299"
+path = "tools/rust-analyzer-linux-x64.vsix"
+display-name = "rust-analyzer (插件)"
+requires = ["vscodium"]
+
+[tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
+required = false
+optional = true
+version = "0.9.91"
+path = "tools/cargo-nextest-0.9.91-x86_64-unknown-linux-gnu.tar.gz"
+
+[tools.target.x86_64-unknown-linux-gnu.typos]
+required = false
+optional = true
+version = "1.29.7"
+path = "tools/typos-v1.29.7-x86_64-unknown-linux-musl.tar.gz"
+
+[tools.target.x86_64-pc-windows-msvc.buildtools]
+required = true
+optional = false
+restricted = true
+default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
+display-name = "Visual Studio Build Tools"
+
+[tools.target.x86_64-pc-windows-msvc.codearts-rust]
+required = false
+optional = false
+version = "3.2.0"
+path = "tools/codearts-rust.zip"
+display-name = "CodeArts IDE"
+
+[tools.target.x86_64-pc-windows-msvc.cargo-nextest]
+required = false
+optional = true
+version = "0.9.91"
+path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
+
+[tools.target.x86_64-pc-windows-msvc.typos]
+required = false
+optional = true
+version = "1.29.7"
+path = "tools/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
+
+[tools.target.x86_64-pc-windows-gnu.mingw64]
+required = true
+optional = false
+version = "14.2.0-rt_v12-rev1"
+path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev1.7z"
+display-name = "MinGW-w64"
+
+[tools.target.x86_64-pc-windows-gnu.codearts-rust]
+required = false
+optional = false
+version = "3.2.0"
+path = "tools/codearts-rust.zip"
+display-name = "CodeArts IDE"
+
+[tools.target.x86_64-pc-windows-gnu.cargo-nextest]
+required = false
+optional = true
+version = "0.9.91"
+path = "tools/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip"
+
+[tools.target.x86_64-pc-windows-gnu.typos]
+required = false
+optional = true
+version = "1.29.7"
+path = "tools/typos-v1.29.7-x86_64-pc-windows-msvc.zip"
+
+[tools.target.aarch64-unknown-linux-gnu.vscodium]
+required = false
+optional = false
+version = "1.97.2.25045"
+path = "tools/VSCodium-linux-arm64-1.97.2.25045.tar.gz"
+display-name = "VSCodium"
+
+[tools.target.aarch64-unknown-linux-gnu.vscode-rust-analyzer]
+required = false
+optional = false
+version = "0.3.2299"
+path = "tools/rust-analyzer-linux-arm64.vsix"
+display-name = "rust-analyzer (插件)"
+requires = ["vscodium"]
+
+[tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
+required = false
+optional = true
+version = "0.9.91"
+path = "tools/cargo-nextest-0.9.91-aarch64-unknown-linux-gnu.tar.gz"
+
+[tools.target.aarch64-unknown-linux-gnu.typos]
+required = false
+optional = true
+identifier = "typos-cli"
+version = "1.29.7"

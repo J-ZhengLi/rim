@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 /// All-in-one rust path type,
 /// currently supports single [`Path`] and multiple owned [`PathBuf`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum PathExt<'p> {
     Single(&'p Path),
@@ -75,7 +75,7 @@ impl PathExt<'_> {
     ///
     /// - If this is a [`PathExt::Single`] variant, the enclosed path will be returned.
     /// - If this is a [`PathExt::MultiOwned`] variant, but only one path is in the vector
-    ///     the first element in the vector will be returned.
+    ///   the first element in the vector will be returned.
     ///
     /// # Error
     /// Returns error if `self` contains multiple path values.

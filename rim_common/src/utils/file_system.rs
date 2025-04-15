@@ -62,12 +62,15 @@ pub fn ensure_parent_dir<P: AsRef<Path>>(path: P) -> Result<()> {
 /// Convert the given path to absolute path without `.` or `..` components.
 ///
 /// - If the `path` is already an absolute path, this will just go through each component
-///     and attempt to "remove" `.` and `..` components.
+///   and attempt to "remove" `.` and `..` components.
 /// - If the `root` is not specified, this will assume that `path` is related to current directory.
 ///
 /// # Error
 /// If the `root` is not given, and the current directory cannot be determined, an error will be returned.
-pub fn to_nomalized_abspath<P: AsRef<Path>>(path: P, root: Option<&Path>) -> Result<PathBuf> {
+pub fn to_normalized_absolute_path<P: AsRef<Path>>(
+    path: P,
+    root: Option<&Path>,
+) -> Result<PathBuf> {
     let abs_pathbuf = if path.as_ref().is_absolute() {
         path.as_ref().to_path_buf()
     } else {
@@ -79,18 +82,18 @@ pub fn to_nomalized_abspath<P: AsRef<Path>>(path: P, root: Option<&Path>) -> Res
             })?
     };
     // Remove any `.` and `..` from origin path
-    let mut nomalized_path = PathBuf::new();
+    let mut normalized_path = PathBuf::new();
     for path_component in abs_pathbuf.components() {
         match path_component {
             Component::CurDir => (),
             Component::ParentDir => {
-                nomalized_path.pop();
+                normalized_path.pop();
             }
-            _ => nomalized_path.push(path_component),
+            _ => normalized_path.push(path_component),
         }
     }
 
-    Ok(nomalized_path)
+    Ok(normalized_path)
 }
 
 pub fn write_file<P: AsRef<Path>>(path: P, content: &str, append: bool) -> Result<()> {
@@ -119,39 +122,44 @@ pub fn write_bytes<P: AsRef<Path>>(path: P, content: &[u8], append: bool) -> Res
     Ok(())
 }
 
-/// Copy a file into an existing directory.
+/// An [`fs::copy`] wrapper that only copies a file if:
 ///
-/// Returns the path to pasted file.
+/// - `to` does not exist yet.
+/// - `to` exists but have different modified date.
 ///
-/// # Errors
-/// Return `Err` if `to` location does not exist, or [`fs::copy`] operation fails.
-pub fn copy_file_to<P, Q>(from: P, to: Q) -> Result<PathBuf>
+/// Will attempt to create parent directory if not exists.
+pub fn copy_file<P, Q>(from: P, to: Q) -> Result<()>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
-    assert!(
-        from.as_ref().is_file(),
-        "Interal Error: '{}' is not a path to file, \
-        but `copy_file_to` only works with file path, try using `copy_to` instead.",
-        from.as_ref().display()
-    );
+    // Make sure no redundant work is done
+    if let (Ok(src_modify_time), Ok(dest_modify_time)) = (
+        fs::metadata(&from).and_then(|m| m.modified()),
+        fs::metadata(&to).and_then(|m| m.modified()),
+    ) {
+        if src_modify_time == dest_modify_time {
+            return Ok(());
+        }
+    }
 
-    copy_into(from, to)
+    ensure_parent_dir(&to)?;
+    fs::copy(&from, &to).with_context(|| {
+        format!(
+            "could not copy file '{}' to '{}'",
+            from.as_ref().display(),
+            to.as_ref().display()
+        )
+    })?;
+    Ok(())
 }
 
-/// Copy file or directory into an existing directory.
-///
-/// Similar to [`copy_file_to`], except this will recursively copy directory as well.
+/// Copy file or directory into a directory, and return the full path after copying.
 pub fn copy_into<P, Q>(from: P, to: Q) -> Result<PathBuf>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
-    if !to.as_ref().is_dir() {
-        bail!("'{}' is not a directory", to.as_ref().display());
-    }
-
     let dest = to.as_ref().join(from.as_ref().file_name().ok_or_else(|| {
         anyhow!(
             "path '{}' does not have a file name",
@@ -178,7 +186,7 @@ where
             if entry.file_type()?.is_dir() {
                 copy_dir_(&src, &dest)?;
             } else {
-                fs::copy(&src, &dest)?;
+                copy_file(&src, &dest)?;
             }
         }
         Ok(())
@@ -192,13 +200,7 @@ where
     }
 
     if from.as_ref().is_file() {
-        fs::copy(&from, &to).with_context(|| {
-            format!(
-                "could not copy file '{}' to '{}'",
-                from.as_ref().display(),
-                to.as_ref().display()
-            )
-        })?;
+        copy_file(from, to)?;
     } else {
         copy_dir_(from.as_ref(), to.as_ref()).with_context(|| {
             format!(
@@ -330,4 +332,25 @@ pub fn make_temp_file(prefix: &str, root: Option<&Path>) -> Result<NamedTempFile
 /// Try getting the extension of a `path` as `str`.
 pub fn extension_str(path: &Path) -> Option<&str> {
     path.extension().and_then(|ext| ext.to_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn path_ambiguity() {
+        let with_dots = PathBuf::from("/path/to/home/./my_app/../my_app");
+        let without_dots = PathBuf::from("/path/to/home/my_app");
+        assert_ne!(with_dots, without_dots);
+
+        let with_dots_comps: PathBuf = with_dots.components().collect();
+        let without_dots_comps: PathBuf = without_dots.components().collect();
+        // Components take `..` accountable in case of symlink.
+        assert_ne!(with_dots_comps, without_dots_comps);
+
+        let with_dots_normalized = to_normalized_absolute_path(&with_dots, None).unwrap();
+        let without_dots_normalized = to_normalized_absolute_path(&without_dots, None).unwrap();
+        assert_eq!(with_dots_normalized, without_dots_normalized);
+    }
 }

@@ -1,11 +1,13 @@
 //! The major configuration file for this app, containing information about which version to skip,
 //! when the updates are checked, how long until next updates will be checked etc.
 
-use super::{get_installed_dir, TomlParser};
 use anyhow::Result;
 use chrono::{NaiveDateTime, Utc};
+use rim_common::types::TomlParser;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display, time::Duration};
+
+use crate::AppInfo;
 
 /// Default update check timeout is 1440 minutes (1 day)
 const DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES: u64 = 1440;
@@ -55,15 +57,15 @@ impl Configuration {
 
     /// Try loading from installation.
     ///
-    /// This guarentee to return a [`VersionSkip`] object,
+    /// This guarantee to return a [`VersionSkip`] object,
     /// even if the file does not exists, the default will got returned.
     pub fn load_from_install_dir() -> Self {
-        let install_dir = get_installed_dir();
+        let install_dir = AppInfo::get_installed_dir();
         Self::load_from_dir(install_dir).unwrap_or_default()
     }
 
     pub fn write_to_install_dir(&self) -> Result<()> {
-        let install_dir = get_installed_dir();
+        let install_dir = AppInfo::get_installed_dir();
         self.write_to_dir(install_dir)
     }
 
@@ -184,14 +186,14 @@ impl UpdateCheckerOpt {
     /// Return how much time (in duration) until the next update check.
     ///
     /// - If the update hasn't be checked yet, we should check now,
-    ///     thus returning [`Duration::ZERO`].
+    ///   thus returning [`Duration::ZERO`].
     /// - If the update has been checked, but right now is not the time for the
-    ///     next check, the remaining time will be returned.
+    ///   next check, the remaining time will be returned.
     /// - If the update has been checked, and it's already past the time for the next
-    ///     update check, then [`Duration::ZERO`] will be returned.
+    ///   update check, then [`Duration::ZERO`] will be returned.
     pub fn duration_until_next_run(&self, target: UpdateTarget) -> Duration {
         let Some(conf) = self.0.get(&target) else {
-            // return the full default duratin
+            // return the full default duration
             return Duration::ZERO;
         };
         let timeout = conf.timeout();

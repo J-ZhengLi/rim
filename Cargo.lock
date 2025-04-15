@@ -798,15 +798,15 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.15.8"
+version = "0.15.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e1f83fc076bd6dd27517eacdf25fef6c4dfe5f1d7448bafaaf3a26f13b5e4eb"
+checksum = "054ccb5b10f9f2cbf51eb355ca1d05c2d279ce1804688d0db74b4733a5aeafd8"
 dependencies = [
  "encode_unicode",
- "lazy_static",
  "libc",
+ "once_cell",
  "unicode-width",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1222,9 +1222,9 @@ checksum = "4ef6b89e5b37196644d8796de5268852ff179b44e96276cf4290264843743bb7"
 
 [[package]]
 name = "encode_unicode"
-version = "0.3.6"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
+checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
 name = "encoding_rs"
@@ -2214,15 +2214,15 @@ dependencies = [
 
 [[package]]
 name = "indicatif"
-version = "0.17.8"
+version = "0.17.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "763a5a8f45087d6bcea4222e7b72c291a054edf80e4ef6efd2a4979878c7bea3"
+checksum = "183b3088984b400f4cfac3620d5e076c84da5364016b4f49473de574b2586235"
 dependencies = [
  "console",
- "instant",
  "number_prefix",
  "portable-atomic",
  "unicode-width",
+ "web-time",
 ]
 
 [[package]]
@@ -3217,9 +3217,9 @@ dependencies = [
 
 [[package]]
 name = "portable-atomic"
-version = "1.9.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc9c68a3f6da06753e9335d63e27f6b9754dd1920d941135b7ea8224f141adb2"
+checksum = "350e9b48cbc6b0e028b0473b114454c6316e57336ee184ceab6e53f72c178b3e"
 
 [[package]]
 name = "powerfmt"
@@ -3542,7 +3542,7 @@ dependencies = [
 
 [[package]]
 name = "rim"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "cc",
@@ -3551,13 +3551,9 @@ dependencies = [
  "clap 4.5.13",
  "dirs 5.0.1",
  "env_proxy",
- "fern",
- "flate2",
  "indexmap 2.5.0",
- "indicatif",
  "libc",
  "log",
- "os_pipe",
  "reqwest",
  "rim-test-support",
  "rim_common",
@@ -3565,27 +3561,21 @@ dependencies = [
  "self-replace",
  "semver",
  "serde",
- "sevenz-rust",
- "sys-locale",
- "tar",
  "tempfile",
  "tokio",
  "toml 0.8.19",
  "url",
  "winapi",
  "winreg 0.52.0",
- "xz2",
- "zip",
 ]
 
 [[package]]
 name = "rim-gui"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "auto-launch",
  "fern",
- "indexmap 2.5.0",
  "log",
  "rim",
  "rim_common",
@@ -3620,9 +3610,30 @@ dependencies = [
 name = "rim_common"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "cfg-if",
+ "chrono",
+ "dirs 5.0.1",
+ "env_proxy",
+ "fern",
+ "flate2",
+ "indexmap 2.5.0",
+ "indicatif",
+ "log",
+ "os_pipe",
+ "reqwest",
+ "rust-i18n",
  "serde",
+ "sevenz-rust",
+ "sys-locale",
+ "tar",
+ "tempfile",
+ "tokio",
  "toml 0.8.19",
  "url",
+ "winapi",
+ "xz2",
+ "zip",
 ]
 
 [[package]]
@@ -4318,9 +4329,9 @@ dependencies = [
 
 [[package]]
 name = "sys-locale"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e801cf239ecd6ccd71f03d270d67dd53d13e90aab208bf4b8fe4ad957ea949b0"
+checksum = "8eab9a99a024a169fe8a903cf9d4a3b3601109bcc13bd9e3c6fff259138626c4"
 dependencies = [
  "libc",
 ]
@@ -5054,9 +5065,9 @@ checksum = "d4c87d22b6e3f4a18d4d40ef354e97c90fcb14dd91d7dc0aa9d8a1172ebf7202"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.14"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dd6e30e90baa6f72411720665d41d89b9a3d039dc45b8faea1ddd07f617f6af"
+checksum = "1fc81956842c57dac11422a97c3b8195a1ff727f06e85c84ed2e8aa277c9a0fd"
 
 [[package]]
 name = "untrusted"
@@ -5268,6 +5279,16 @@ name = "web-sys"
 version = "0.3.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77afa9a11836342370f4817622a2f0f418b134426d91a82dfb48f532d2ec13ef"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

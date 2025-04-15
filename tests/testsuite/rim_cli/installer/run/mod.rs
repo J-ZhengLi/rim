@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
-use rim::utils::Extractable;
+use rim_common::utils::Extractable;
 use rim_test_support::prelude::*;
 use rim_test_support::project::ProjectBuilder;
 

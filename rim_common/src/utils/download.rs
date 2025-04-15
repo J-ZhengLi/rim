@@ -5,15 +5,13 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context, Result};
 use indicatif::ProgressBar;
 use reqwest::{header, Client};
-use rim_common::build_config;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
 use super::progress_bar::{CliProgress, Style};
-use crate::core::GlobalOpts;
-use crate::setter;
-use crate::toolset_manifest::Proxy as CrateProxy;
+use crate::types::Proxy as CrateProxy;
+use crate::{build_config, setter};
 
 fn default_proxy() -> reqwest::Proxy {
     reqwest::Proxy::custom(|url| env_proxy::for_url(url).to_url())
@@ -25,7 +23,7 @@ pub struct DownloadOpt<T: Sized> {
     /// The verbose name of the file to download.
     pub name: String,
     /// Download progress handler, aka a progress bar.
-    pub handler: Option<CliProgress<T>>,
+    pub handler: CliProgress<T>,
     /// Option to skip SSL certificate verification when downloading.
     pub insecure: bool,
     /// Proxy configurations for download.
@@ -35,8 +33,8 @@ pub struct DownloadOpt<T: Sized> {
 }
 
 impl DownloadOpt<ProgressBar> {
-    pub fn new<S: ToString>(name: S) -> Self {
-        let handler = (!GlobalOpts::get().quiet).then_some(CliProgress::new());
+    pub fn new<S: ToString>(name: S, no_progress_bar: bool) -> Self {
+        let handler = CliProgress::new(no_progress_bar);
         Self {
             name: name.to_string(),
             handler,
@@ -47,7 +45,6 @@ impl DownloadOpt<ProgressBar> {
     }
 
     setter!(with_proxy(self.proxy, Option<CrateProxy>));
-    setter!(with_handler(self.handler, Option<CliProgress<ProgressBar>>));
     setter!(insecure(self.insecure, bool));
     setter!(resume(self.resume, bool));
 
@@ -72,7 +69,7 @@ impl DownloadOpt<ProgressBar> {
         Ok(client)
     }
 
-    /// Consume self, and retrive text response by sending request to a given url.
+    /// Consume self, and retrieve text response by sending request to a given url.
     ///
     /// If the `url` is a local file, this will use [`read_to_string`](fs::read_to_string) to
     /// get the text instead.
@@ -99,7 +96,7 @@ impl DownloadOpt<ProgressBar> {
             .get(url.as_ref())
             .send()
             .await
-            .with_context(|| format!("failed to receive surver response from '{url}'"))?;
+            .with_context(|| format!("failed to receive server response from '{url}'"))?;
         if resp.status().is_success() {
             Ok(resp.text().await?)
         } else {
@@ -133,27 +130,23 @@ impl DownloadOpt<ProgressBar> {
             .content_length()
             .ok_or_else(|| anyhow!("unable to get file length of '{url}'"))?;
 
-        let maybe_indicator = self.handler.as_ref().and_then(|h| {
-            (h.start)(
-                format!("downloading '{}'", &self.name),
-                Style::Bytes(total_size),
-            )
-            .ok()
-        });
+        let maybe_indicator = (self.handler.start)(
+            format!("downloading '{}'", &self.name),
+            Style::Bytes(total_size),
+        )
+        .ok();
 
         while let Some(chunk) = resp.chunk().await? {
             file.write_all(&chunk).await?;
 
             downloaded_bytes = min(downloaded_bytes + chunk.len() as u64, total_size);
             if let Some(indicator) = &maybe_indicator {
-                // safe to unwrap, because indicator won't exist if self.handler is none
-                (self.handler.as_ref().unwrap().update)(indicator, Some(downloaded_bytes));
+                (self.handler.update)(indicator, Some(downloaded_bytes));
             }
         }
 
         if let Some(indicator) = &maybe_indicator {
-            // safe to unwrap, because indicator won't exist if self.handler is none
-            (self.handler.as_ref().unwrap().stop)(
+            (self.handler.stop)(
                 indicator,
                 format!("'{}' successfully downloaded.", &self.name),
             );
@@ -166,7 +159,7 @@ impl DownloadOpt<ProgressBar> {
     ///
     /// Note: This will block the current thread until the download is finished.
     pub fn blocking_download(self, url: &Url, path: &Path) -> Result<()> {
-        super::blocking!(self.download(url, path))
+        crate::blocking!(self.download(url, path))
     }
 }
 
@@ -239,7 +232,7 @@ async fn get_response_(
         builder = builder.header(header::RANGE, format!("bytes={bytes}-"));
     }
     let resp = builder.send().await.with_context(|| {
-        format!("failed to receive surver response when downloading from '{url}'")
+        format!("failed to receive server response when downloading from '{url}'")
     })?;
     Ok(resp)
 }

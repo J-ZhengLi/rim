@@ -1,24 +1,21 @@
+use super::components::ToolchainComponent;
+use super::dependency_handler::DependencyHandler;
 use super::{
     components::{component_list_to_tool_map, Component, ComponentType},
     directories::RimDir,
     parser::{
         cargo_config::CargoConfig,
         fingerprint::{InstallationRecord, ToolRecord},
-        toolset_manifest::{ToolInfo, ToolsetManifest},
-        TomlParser,
     },
     rustup::ToolchainInstaller,
-    tools::{Tool, ToolKind},
-    CARGO_HOME, RUSTUP_DIST_SERVER, RUSTUP_HOME, RUSTUP_UPDATE_ROOT,
+    tools::Tool,
+    GlobalOpts, CARGO_HOME, RUSTUP_DIST_SERVER, RUSTUP_HOME, RUSTUP_UPDATE_ROOT,
 };
-use crate::{
-    core::os::add_to_path,
-    setter,
-    toolset_manifest::{ToolMap, ToolSource, ToolchainComponent},
-    utils::{self, Extractable, Progress},
-};
+use crate::core::os::add_to_path;
 use anyhow::{anyhow, bail, Context, Result};
-use rim_common::build_config;
+use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest};
+use rim_common::{build_config, utils};
+use std::collections::HashSet;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -45,7 +42,7 @@ pub struct InstallConfiguration<'a> {
     /// Note that this folder will includes `cargo` and `rustup` folders as well.
     /// And the default location will under `$HOME` directory (`%USERPROFILE%` on windows).
     /// So, even if the user didn't specify any install path, a pair of env vars will still
-    /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the defult location
+    /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the default location
     /// defined by [`default_install_dir`].
     pub install_dir: PathBuf,
     pub rustup_dist_server: Url,
@@ -53,8 +50,8 @@ pub struct InstallConfiguration<'a> {
     /// Indicates whether `cargo` was already installed, useful when installing third-party tools.
     pub cargo_is_installed: bool,
     install_record: InstallationRecord,
-    pub(crate) progress_indicator: Option<Progress<'a>>,
-    manifest: &'a ToolsetManifest,
+    pub(crate) progress_indicator: Option<utils::Progress<'a>>,
+    manifest: &'a ToolkitManifest,
     insecure: bool,
 }
 
@@ -64,8 +61,14 @@ impl RimDir for InstallConfiguration<'_> {
     }
 }
 
+impl RimDir for &InstallConfiguration<'_> {
+    fn install_dir(&self) -> &Path {
+        self.install_dir.as_path()
+    }
+}
+
 impl<'a> InstallConfiguration<'a> {
-    pub fn new(install_dir: &'a Path, manifest: &'a ToolsetManifest) -> Result<Self> {
+    pub fn new(install_dir: &'a Path, manifest: &'a ToolkitManifest) -> Result<Self> {
         let (reg_name, reg_url) = super::default_cargo_registry();
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
@@ -80,7 +83,7 @@ impl<'a> InstallConfiguration<'a> {
             insecure: false,
         })
     }
-    /// Creating install diretory and other preperations related to filesystem.
+    /// Creating install directory and other preparations related to filesystem.
     ///
     /// This is suitable for first-time installation.
     pub fn setup(&mut self) -> Result<()> {
@@ -98,7 +101,7 @@ impl<'a> InstallConfiguration<'a> {
         let manager_name = format!("{id}-manager");
 
         // Add this manager to the `PATH` environment
-        let manager_exe = install_dir.join(utils::exe!(manager_name));
+        let manager_exe = install_dir.join(exe!(manager_name));
         utils::copy_as(self_exe, &manager_exe)?;
         add_to_path(install_dir)?;
 
@@ -115,6 +118,7 @@ impl<'a> InstallConfiguration<'a> {
 
     pub fn install(mut self, components: Vec<Component>) -> Result<()> {
         let (tc_components, tools) = split_components(components);
+        reject_conflicting_tools(&tools)?;
 
         self.setup()?;
         self.config_env_vars()?;
@@ -141,7 +145,7 @@ impl<'a> InstallConfiguration<'a> {
     );
     setter!(with_rustup_dist_server(self.rustup_dist_server, Url));
     setter!(with_rustup_update_root(self.rustup_update_root, Url));
-    setter!(with_progress_indicator(self.progress_indicator, Option<Progress<'a>>));
+    setter!(with_progress_indicator(self.progress_indicator, Option<utils::Progress<'a>>));
     setter!(insecure(self.insecure, bool));
 
     pub(crate) fn env_vars(&self) -> Result<HashMap<&'static str, String>> {
@@ -149,7 +153,7 @@ impl<'a> InstallConfiguration<'a> {
             .cargo_home()
             .to_str()
             .map(ToOwned::to_owned)
-            .context("`install-dir` cannot contains invalid unicodes")?;
+            .context("`install-dir` cannot contains invalid unicode")?;
         // This `unwrap` is safe here because we've already make sure the `install_dir`'s path can be
         // converted to string with the `cargo_home` variable.
         let rustup_home = self.rustup_home().to_str().unwrap().to_string();
@@ -178,7 +182,7 @@ impl<'a> InstallConfiguration<'a> {
     }
 
     fn install_tools_(&mut self, use_cargo: bool, tools: &ToolMap, weight: f32) -> Result<()> {
-        let to_install = tools
+        let mut to_install = tools
             .iter()
             .filter(|(_, t)| {
                 if use_cargo {
@@ -193,6 +197,10 @@ impl<'a> InstallConfiguration<'a> {
             return self.inc_progress(weight);
         }
         let sub_progress_delta = weight / to_install.len() as f32;
+
+        if !use_cargo {
+            to_install = to_install.topological_sorted();
+        }
 
         for (name, tool) in to_install {
             let info = if use_cargo {
@@ -235,7 +243,7 @@ impl<'a> InstallConfiguration<'a> {
 
         // Add the rust info to the fingerprint.
         self.install_record
-            .add_rust_record(manifest.rust_version(), components);
+            .add_rust_record(&manifest.rust.channel, components);
         // record meta info
         // TODO(?): Maybe this should be moved as a separate step?
         self.install_record
@@ -246,18 +254,18 @@ impl<'a> InstallConfiguration<'a> {
         self.inc_progress(30.0)
     }
 
-    // TODO: Write version info after installing each tool,
-    // which is later used for updating.
     fn install_tool(&mut self, name: &str, tool: &ToolInfo) -> Result<()> {
+        self.remove_obsoleted_tools(tool)?;
+
         let record = match tool {
             ToolInfo::Basic(version) => {
                 Tool::cargo_tool(name, Some(vec![name, "--version", version]))
-                    .install(Some(version), self)?
+                    .install(self, tool)?
             }
             ToolInfo::Complex(details) => match &details.source {
                 ToolSource::Version { version } => {
                     Tool::cargo_tool(name, Some(vec![name, "--version", version]))
-                        .install(Some(version), self)?
+                        .install(self, tool)?
                 }
                 ToolSource::Git {
                     git,
@@ -276,25 +284,11 @@ impl<'a> InstallConfiguration<'a> {
                         args.extend(["--rev", s]);
                     }
 
-                    Tool::cargo_tool(name, Some(args)).install(tag.as_deref(), self)?
+                    Tool::cargo_tool(name, Some(args)).install(self, tool)?
                 }
-                ToolSource::Path { path, version } => {
-                    self.try_install_from_path(name, version.as_deref(), path, details.kind)?
-                }
-                ToolSource::Url {
-                    url,
-                    filename,
-                    version,
-                } => self.download_and_try_install(
-                    name,
-                    url,
-                    version.as_deref(),
-                    details.kind,
-                    filename.as_deref(),
-                )?,
-                ToolSource::Restricted {
-                    source, version, ..
-                } => {
+                ToolSource::Path { path, .. } => self.try_install_from_path(name, path, tool)?,
+                ToolSource::Url { url, .. } => self.download_and_try_install(name, url, tool)?,
+                ToolSource::Restricted { source, .. } => {
                     // the source should be filled before installation, if not, then it means
                     // the program hasn't ask for user input yet, which we should through an error.
                     let real_source = source
@@ -302,21 +296,14 @@ impl<'a> InstallConfiguration<'a> {
                         .with_context(|| t!("missing_restricted_source", name = name))?;
                     let maybe_path = PathBuf::from(real_source);
                     if maybe_path.exists() {
-                        self.try_install_from_path(
-                            name,
-                            version.as_deref(),
-                            &maybe_path,
-                            details.kind,
-                        )?
+                        self.try_install_from_path(name, &maybe_path, tool)?
                     } else {
                         self.download_and_try_install(
                             name,
                             &real_source.parse().with_context(|| {
                                 format!("'{real_source}' is not an existing path nor a valid URL")
                             })?,
-                            version.as_deref(),
-                            details.kind,
-                            None,
+                            tool,
                         )?
                     }
                 }
@@ -332,39 +319,36 @@ impl<'a> InstallConfiguration<'a> {
         &self,
         name: &str,
         url: &Url,
-        version: Option<&str>,
-        kind: Option<ToolKind>,
-        filename: Option<&str>,
+        info: &ToolInfo,
     ) -> Result<ToolRecord> {
         let temp_dir = self.create_temp_dir("download")?;
-        let downloaded_file_name = if let Some(name) = filename {
+        let downloaded_file_name = if let Some(name) = info.filename() {
             name
         } else {
             url.path_segments()
                 .ok_or_else(|| anyhow!("unsupported url format '{url}'"))?
-                .last()
+                .next_back()
                 // Sadly, a path segment could be empty string, so we need to filter that out
                 .filter(|seg| !seg.is_empty())
                 .ok_or_else(|| anyhow!("'{url}' doesn't appear to be a downloadable file"))?
         };
         let dest = temp_dir.path().join(downloaded_file_name);
-        utils::DownloadOpt::new(name)
+        utils::DownloadOpt::new(name, GlobalOpts::get().quiet)
             .with_proxy(self.manifest.proxy.clone())
             .blocking_download(url, &dest)?;
 
-        self.try_install_from_path(name, version, &dest, kind)
+        self.try_install_from_path(name, &dest, info)
     }
 
     fn try_install_from_path(
         &self,
         name: &str,
-        version: Option<&str>,
         path: &Path,
-        kind: Option<ToolKind>,
+        info: &ToolInfo,
     ) -> Result<ToolRecord> {
         let (tool_installer_path, _maybe_temp) = if path.is_dir() {
             (path.to_path_buf(), None)
-        } else if Extractable::is_supported(path) {
+        } else if utils::Extractable::is_supported(path) {
             let temp_dir = self.create_temp_dir(name)?;
             let tool_installer_path = self.extract_or_copy_to(path, temp_dir.path())?;
             (tool_installer_path, Some(temp_dir))
@@ -377,13 +361,13 @@ impl<'a> InstallConfiguration<'a> {
             );
         };
 
-        let tool_installer = if let Some(kind) = kind {
+        let tool_installer = if let Some(kind) = info.kind() {
             Tool::new(name.into(), kind).with_path(tool_installer_path.as_path())
         } else {
             Tool::from_path(name, &tool_installer_path)
                 .with_context(|| format!("no install method for tool '{name}'"))?
         };
-        tool_installer.install(version, self)
+        tool_installer.install(self, info)
     }
 
     /// Configuration options for `cargo`.
@@ -421,8 +405,10 @@ impl<'a> InstallConfiguration<'a> {
     /// If `maybe_file` is a path to compressed file, this will try to extract it to `dest`;
     /// otherwise this will copy that file into dest.
     fn extract_or_copy_to(&self, maybe_file: &Path, dest: &Path) -> Result<PathBuf> {
-        if let Ok(mut extractable) = Extractable::load(maybe_file, None) {
-            extractable.extract_then_skip_solo_dir(dest, Some("bin"))
+        if let Ok(extractable) = utils::Extractable::load(maybe_file, None) {
+            extractable
+                .quiet(GlobalOpts::get().quiet)
+                .extract_then_skip_solo_dir(dest, Some("bin"))
         } else {
             utils::copy_into(maybe_file, dest)
         }
@@ -461,7 +447,7 @@ impl InstallConfiguration<'_> {
 
         let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        record.add_rust_record(manifest.rust_version(), components);
+        record.add_rust_record(&manifest.rust.channel, components);
         // record meta info
         record.clone_toolkit_meta_from_manifest(manifest);
         // write changes
@@ -476,6 +462,61 @@ impl InstallConfiguration<'_> {
         self.install_tools_(true, tools, 15.0)?;
         Ok(())
     }
+
+    fn remove_obsoleted_tools(&mut self, tool: &ToolInfo) -> Result<()> {
+        let obsoleted_tool_names = tool.obsoletes();
+        for obsolete in obsoleted_tool_names {
+            // check if this tool was installed, if yes, get the installation record of it
+            let Some(rec) = self.install_record.tools.get(obsolete) else {
+                continue;
+            };
+            let Some(tool) = Tool::from_installed(obsolete, rec) else {
+                continue;
+            };
+
+            info!("{}", t!("removing_obsolete_tool", name = obsolete));
+            tool.uninstall(&*self)?;
+            self.install_record.remove_tool_record(obsolete);
+        }
+
+        Ok(())
+    }
+}
+
+// TODO: Conflict resolve should take place during user interaction, not here,
+// but it's kind hard to do with how we handle CLI interaction now, figure out a way.
+fn reject_conflicting_tools(tools: &ToolMap) -> Result<()> {
+    // use a HashSet to collect conflicting pairs to remove duplicates.
+    let mut conflicts = HashSet::new();
+
+    for (name, info) in tools {
+        for conflicted_name in info.conflicts() {
+            // ignore the tools that are not presented in the map
+            if !tools.contains_key(conflicted_name) {
+                continue;
+            }
+
+            // sort the conflicting pairs, so that (A, B) and (B, A) will both
+            // resulting to (A, B), thus became unique in the set
+            let pair = if name < conflicted_name.as_str() {
+                (name, conflicted_name.as_str())
+            } else {
+                (conflicted_name.as_str(), name)
+            };
+            conflicts.insert(pair);
+        }
+    }
+
+    if !conflicts.is_empty() {
+        let conflict_list = conflicts
+            .into_iter()
+            .map(|(a, b)| format!("\t{a} ({})", t!("conflicts_with", name = b)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        bail!("{}:\n{conflict_list}", t!("conflict_detected"));
+    }
+
+    Ok(())
 }
 
 /// Get the default installation directory,
@@ -488,7 +529,7 @@ pub fn default_install_dir() -> PathBuf {
 /// as we are running `rustup` to install toolchain components, but using other methods
 /// for toolset components.
 ///
-/// Note: the splited `toolchain_components` contains the base profile name
+/// Note: the splitted `toolchain_components` contains the base profile name
 /// such as `minimal` at first index.
 fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, ToolMap) {
     let toolset_components = component_list_to_tool_map(
@@ -514,7 +555,7 @@ fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, Too
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::toolset_manifest::get_toolset_manifest;
+    use crate::core::get_toolkit_manifest;
 
     #[tokio::test]
     async fn init_install_config() {
@@ -525,7 +566,7 @@ mod tests {
         std::fs::create_dir_all(&cache_dir).unwrap();
 
         let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
-        let manifest = get_toolset_manifest(None, false).await.unwrap();
+        let manifest = get_toolkit_manifest(None, false).await.unwrap();
         let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
         config.setup().unwrap();
 
@@ -534,5 +575,21 @@ mod tests {
             .path()
             .join(InstallationRecord::FILENAME)
             .is_file());
+    }
+
+    #[test]
+    fn detect_package_conflicts() {
+        let raw = r#"
+a = { version = "0.1.0", conflicts = ["b"] }
+b = { version = "0.1.0", conflicts = ["a"] }
+c = { version = "0.1.0", conflicts = ["d", "a"] }
+"#;
+        let map: ToolMap = toml::from_str(raw).unwrap();
+        let conflicts = reject_conflicting_tools(&map);
+
+        assert!(conflicts.is_err());
+
+        let error = conflicts.expect_err("has conflicts");
+        println!("{error}");
     }
 }

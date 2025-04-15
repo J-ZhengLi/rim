@@ -11,13 +11,10 @@ use std::{
 use super::consts::*;
 use crate::error::Result;
 use rim::{
-    components::Component,
-    setter,
-    toolset_manifest::ToolsetManifest,
-    update::UpdateCheckBlocker,
-    utils::{self, Progress},
-    AppInfo, InstallConfiguration, UninstallConfiguration,
+    components::Component, update::UpdateCheckBlocker, AppInfo, InstallConfiguration,
+    UninstallConfiguration,
 };
+use rim_common::{types::ToolkitManifest, utils};
 use serde::Serialize;
 use tauri::api::cli::{Matches, SubcommandMatches};
 use tauri::{App, AppHandle, Manager, Window};
@@ -34,13 +31,13 @@ pub(crate) struct SingleInstancePayload {
 }
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
-/// allowing us to send logs accrossing threads.
+/// allowing us to send logs across threads.
 ///
 /// This will return a log message's receiver which can be used to emitting
 /// messages onto [`tauri::Window`]
 pub(crate) fn setup_logger() -> Receiver<String> {
-    let (msg_sendr, msg_recvr) = mpsc::channel::<String>();
-    if let Err(e) = utils::Logger::new().sender(msg_sendr).setup() {
+    let (msg_sender, msg_recvr) = mpsc::channel::<String>();
+    if let Err(e) = utils::Logger::new().sender(msg_sender).setup() {
         // TODO: make this error more obvious
         eprintln!(
             "Unable to setup logger, cause: {e}\n\
@@ -64,9 +61,11 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<
                     log::error!("GUI runtime error: {e}");
                     emit(&window, ON_FAILED_EVENT, e.to_string());
                 }
-                // resume update check when all tasks are finished
                 if pool.is_empty() {
+                    // resume update check when all tasks are finished
                     UpdateCheckBlocker::unblock();
+                    // make sure to show the exit button
+                    emit(&window, BLOCK_EXIT_EVENT, false);
                 }
             } else {
                 // if a thread is finished, it will be removed,
@@ -81,7 +80,6 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<
         if let Ok(msg) = msg_recv.recv() {
             if msg.starts_with("error:") {
                 emit(&window, ON_FAILED_EVENT, msg);
-                break;
             } else {
                 emit(&window, MESSAGE_UPDATE_EVENT, msg);
             }
@@ -89,11 +87,11 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<
     });
 }
 
-fn emit(window: &tauri::Window, event: &str, msg: String) {
+fn emit<S: Serialize + Clone>(window: &tauri::Window, event: &str, msg: S) {
     window.emit(event, msg).unwrap_or_else(|e| {
         log::error!(
             "unexpected error occurred \
-            while emiting tauri event: {e}"
+            while emitting tauri event: {e}"
         )
     });
 }
@@ -102,13 +100,13 @@ pub(crate) fn install_toolkit_in_new_thread(
     window: tauri::Window,
     components_list: Vec<Component>,
     install_dir: PathBuf,
-    manifest: ToolsetManifest,
+    manifest: ToolkitManifest,
     is_update: bool,
 ) {
     UpdateCheckBlocker::block();
 
     let handle = thread::spawn(move || -> anyhow::Result<()> {
-        // FIXME: this is needed to make sure the other thread could recieve the first couple messages
+        // FIXME: this is needed to make sure the other thread could receive the first couple messages
         // we sent in this thread. But it feels very wrong, there has to be better way.
         thread::sleep(Duration::from_millis(500));
 
@@ -117,7 +115,7 @@ pub(crate) fn install_toolkit_in_new_thread(
         // Initialize a progress sender.
         let pos_cb =
             |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
-        let progress = Progress::new(&pos_cb);
+        let progress = utils::Progress::new(&pos_cb);
 
         // TODO: Use continuous progress
         let mut config = InstallConfiguration::new(&install_dir, &manifest)?
@@ -133,7 +131,6 @@ pub(crate) fn install_toolkit_in_new_thread(
 
         // 安装完成后，发送安装完成事件
         window.emit(ON_COMPLETE_EVENT, ())?;
-        window.emit(BLOCK_EXIT_EVENT, false)?;
 
         Ok(())
     });
@@ -149,7 +146,7 @@ pub(crate) fn uninstall_toolkit_in_new_thread(window: tauri::Window, remove_self
     UpdateCheckBlocker::block();
 
     let handle = thread::spawn(move || -> anyhow::Result<()> {
-        // FIXME: this is needed to make sure the other thread could recieve the first couple messages
+        // FIXME: this is needed to make sure the other thread could receive the first couple messages
         // we sent in this thread. But it feels very wrong, there has to be better way.
         thread::sleep(Duration::from_millis(500));
 
@@ -157,13 +154,12 @@ pub(crate) fn uninstall_toolkit_in_new_thread(window: tauri::Window, remove_self
 
         let pos_cb =
             |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
-        let progress = Progress::new(&pos_cb);
+        let progress = utils::Progress::new(&pos_cb);
 
         let config = UninstallConfiguration::init(Some(progress))?;
         config.uninstall(remove_self)?;
 
         window.emit(ON_COMPLETE_EVENT, ())?;
-        window.emit(BLOCK_EXIT_EVENT, false)?;
         Ok(())
     });
 
@@ -226,7 +222,7 @@ pub(crate) fn close_window(win: Window) {
     let label = win.label().to_owned();
     thread::spawn(move || win.close())
         .join()
-        .unwrap_or_else(|_| panic!("thread join failed when attemp to close window '{label}'"))
+        .unwrap_or_else(|_| panic!("thread join failed when attempt to close window '{label}'"))
         .unwrap_or_else(|e| log::error!("failed when closing window '{label}': {e}"))
 }
 
@@ -288,6 +284,10 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
     if let Err(e) = window_shadows::set_shadow(&window, true) {
         log::error!("unable to apply window effects: {e}");
     }
+
+    // enable dev console only on debug mode
+    #[cfg(debug_assertions)]
+    window.open_devtools();
 
     spawn_gui_update_thread(window.clone(), log_receiver);
     get_cli().execute(manager.handle())?;

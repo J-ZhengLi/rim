@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
 import ScrollBox from '@/components/ScrollBox.vue';
-import { installConf, invokeCommand } from '@/utils/index';
+import { ComponentHelper, installConf, invokeCommand } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -44,22 +44,21 @@ const curCheckComponent = computed(() => {
 });
 
 function updateInstallConf() {
-  installConf.setComponents(
-    groupComponents.value.reduce((components, group) => {
-      components.push(
-        ...group.items.map((item) => {
-          return {
-            label: item.label,
-            checked: item.checked,
-            disabled: item.disabled,
-            required: item.required,
-            value: { ...item.value },
-          };
-        })
-      );
-      return components;
-    }, [] as CheckItem<Component>[])
-  );
+  const comps = groupComponents.value.reduce((components, group) => {
+    components.push(
+      ...group.items.map((item) => {
+        return {
+          label: item.label,
+          checked: item.checked,
+          disabled: item.disabled,
+          required: item.required,
+          value: { ...item.value },
+        };
+      })
+    );
+    return components;
+  }, [] as CheckItem<Component>[]);
+  installConf.setComponents(comps);
 }
 
 function handleComponentsClick(checkItem: CheckGroupItem<Component>) {
@@ -74,16 +73,32 @@ function handleComponentsClick(checkItem: CheckGroupItem<Component>) {
     });
   });
 }
+
+// FIXME: this function somehow gets called with each component title clicks,
+// and the body of it is not efficient at all.
 function handleComponentsChange(items: CheckGroupItem<Component>[]) {
+  let dependencies: [string, boolean][] = [];
+
   groupComponents.value.forEach((group) => {
     group.items.forEach((item) => {
       const findItem = items.find((i) => i.value.id === item.value.id);
       if (findItem) {
         item.checked = findItem.checked;
+        const helper = new ComponentHelper(item.value);
+        dependencies = dependencies.concat(helper.requires().map(name => [name, findItem.checked]));
       }
     });
   });
-  updateInstallConf();
+
+  // add dependencies
+  groupComponents.value.forEach((group) => {
+    group.items.forEach((item) => {
+      const findItem = dependencies.find(([name, _]) => name === item.value.name);
+      if (findItem) {
+        item.checked = findItem[1];
+      }
+    });
+  });
 }
 
 function handleSelectAll() {
@@ -97,6 +112,8 @@ function handleSelectAll() {
 }
 
 function handleNextClick() {
+  updateInstallConf();
+
   invokeCommand('get_restricted_components', { components: installConf.getCheckedComponents() }).then((res) => {
     const restricted = res as RestrictedComponent[];
     if (restricted.length > 0) {

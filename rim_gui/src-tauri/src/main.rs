@@ -4,6 +4,8 @@
 extern crate rust_i18n;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate rim_common;
 
 mod common;
 mod consts;
@@ -16,7 +18,8 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use anyhow::Result;
-use rim::{configuration::Configuration, utils, AppInfo, Mode};
+use rim::{configuration::Configuration, AppInfo, Mode};
+use rim_common::utils;
 
 i18n!("../../locales", fallback = "en");
 
