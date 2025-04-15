@@ -34,11 +34,7 @@ pub struct DownloadOpt<T: Sized> {
 
 impl DownloadOpt<ProgressBar> {
     pub fn new<S: ToString>(name: S, no_progress_bar: bool) -> Self {
-        let handler = if no_progress_bar {
-            CliProgress::hidden()
-        } else {
-            CliProgress::new()
-        };
+        let handler = CliProgress::new(no_progress_bar);
         Self {
             name: name.to_string(),
             handler,
@@ -145,13 +141,11 @@ impl DownloadOpt<ProgressBar> {
 
             downloaded_bytes = min(downloaded_bytes + chunk.len() as u64, total_size);
             if let Some(indicator) = &maybe_indicator {
-                // safe to unwrap, because indicator won't exist if self.handler is none
                 (self.handler.update)(indicator, Some(downloaded_bytes));
             }
         }
 
         if let Some(indicator) = &maybe_indicator {
-            // safe to unwrap, because indicator won't exist if self.handler is none
             (self.handler.stop)(
                 indicator,
                 format!("'{}' successfully downloaded.", &self.name),

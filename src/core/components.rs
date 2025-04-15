@@ -44,17 +44,13 @@ pub struct Component {
 }
 
 impl Component {
-    #[must_use]
     pub fn new(name: &str) -> Self {
-        let comp = Component {
-            id: COMPONENTS_COUNTER.load(Ordering::Relaxed),
+        Component {
+            id: COMPONENTS_COUNTER.fetch_add(1, Ordering::SeqCst),
             name: name.into(),
             display_name: name.into(),
             ..Default::default()
-        };
-        COMPONENTS_COUNTER.fetch_add(1, Ordering::SeqCst);
-
-        comp
+        }
     }
 
     /// Get a list of component names that are required by this component.
@@ -121,23 +117,33 @@ pub(crate) fn all_components_from_installation(
     let installed_tools: HashSet<&str> = record.installed_tools().collect();
 
     for comp in &mut full_components {
-        if comp.kind.is_from_toolchain() {
-            if let Some((tc, opt_comps)) = installed_toolchain {
-                comp.version = Some(tc.into());
-                comp.installed = opt_comps.iter().any(|c| c == &comp.name);
+        match comp.kind {
+            ComponentType::ToolchainComponent => {
+                if let Some((tc, opt_comps)) = installed_toolchain {
+                    comp.version = Some(tc.into());
+                    comp.installed = opt_comps.iter().any(|c| c == &comp.name);
+                }
             }
-            continue;
-        }
-        // third-party tools
-        if installed_tools.contains(comp.name.as_str()) {
-            comp.installed = true;
-            if let Some(ver) = record.get_tool_version(&comp.name) {
-                comp.version = Some(ver.into());
+            ComponentType::ToolchainProfile => {
+                comp.installed = installed_toolchain.is_some();
+                comp.version = installed_toolchain.map(|(channel, _)| channel.to_string());
+            }
+            // third-party tools
+            ComponentType::Tool => {
+                if installed_tools.contains(comp.name.as_str()) {
+                    comp.installed = true;
+                    if let Some(ver) = record.get_tool_version(&comp.name) {
+                        comp.version = Some(ver.into());
+                    }
+                }
             }
         }
     }
 
-    Ok(full_components)
+    Ok(full_components
+        .into_iter()
+        .filter(|c| c.installed)
+        .collect())
 }
 
 pub fn component_list_to_tool_map(list: Vec<&Component>) -> ToolMap {

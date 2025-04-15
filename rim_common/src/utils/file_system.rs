@@ -338,7 +338,6 @@ pub fn extension_str(path: &Path) -> Option<&str> {
 mod tests {
     use super::*;
 
-    // TODO: Move this test to `utils`
     #[test]
     fn path_ambiguity() {
         let with_dots = PathBuf::from("/path/to/home/./my_app/../my_app");

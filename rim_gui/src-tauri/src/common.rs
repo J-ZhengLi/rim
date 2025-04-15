@@ -61,9 +61,11 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<
                     log::error!("GUI runtime error: {e}");
                     emit(&window, ON_FAILED_EVENT, e.to_string());
                 }
-                // resume update check when all tasks are finished
                 if pool.is_empty() {
+                    // resume update check when all tasks are finished
                     UpdateCheckBlocker::unblock();
+                    // make sure to show the exit button
+                    emit(&window, BLOCK_EXIT_EVENT, false);
                 }
             } else {
                 // if a thread is finished, it will be removed,
@@ -78,7 +80,6 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<
         if let Ok(msg) = msg_recv.recv() {
             if msg.starts_with("error:") {
                 emit(&window, ON_FAILED_EVENT, msg);
-                break;
             } else {
                 emit(&window, MESSAGE_UPDATE_EVENT, msg);
             }
@@ -86,7 +87,7 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<
     });
 }
 
-fn emit(window: &tauri::Window, event: &str, msg: String) {
+fn emit<S: Serialize + Clone>(window: &tauri::Window, event: &str, msg: S) {
     window.emit(event, msg).unwrap_or_else(|e| {
         log::error!(
             "unexpected error occurred \
@@ -130,7 +131,6 @@ pub(crate) fn install_toolkit_in_new_thread(
 
         // 安装完成后，发送安装完成事件
         window.emit(ON_COMPLETE_EVENT, ())?;
-        window.emit(BLOCK_EXIT_EVENT, false)?;
 
         Ok(())
     });
@@ -160,7 +160,6 @@ pub(crate) fn uninstall_toolkit_in_new_thread(window: tauri::Window, remove_self
         config.uninstall(remove_self)?;
 
         window.emit(ON_COMPLETE_EVENT, ())?;
-        window.emit(BLOCK_EXIT_EVENT, false)?;
         Ok(())
     });
 
@@ -285,6 +284,10 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
     if let Err(e) = window_shadows::set_shadow(&window, true) {
         log::error!("unable to apply window effects: {e}");
     }
+
+    // enable dev console only on debug mode
+    #[cfg(debug_assertions)]
+    window.open_devtools();
 
     spawn_gui_update_thread(window.clone(), log_receiver);
     get_cli().execute(manager.handle())?;

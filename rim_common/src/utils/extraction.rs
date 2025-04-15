@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use xz2::read::XzDecoder;
 use zip::ZipArchive;
 
+use crate::setter;
 use crate::utils::progress_bar::Style;
 
 use super::file_system::{ensure_dir, ensure_parent_dir, walk_dir};
@@ -24,6 +25,7 @@ enum ExtractableKind {
 pub struct Extractable<'a> {
     path: &'a Path,
     kind: ExtractableKind,
+    quiet: bool,
 }
 
 impl<'a> Extractable<'a> {
@@ -75,8 +77,14 @@ impl<'a> Extractable<'a> {
             _ => bail!("'{ext}' is not a supported extractable file format"),
         };
 
-        Ok(Self { path, kind })
+        Ok(Self {
+            path,
+            kind,
+            quiet: false,
+        })
     }
+
+    setter!(quiet(self.quiet, bool));
 
     /// Extract current file into a specific directory.
     ///
@@ -85,7 +93,7 @@ impl<'a> Extractable<'a> {
         let helper = ExtractHelper {
             file_path: self.path,
             output_dir: root,
-            indicator: CliProgress::new(),
+            indicator: CliProgress::new(self.quiet),
         };
 
         match &mut self.kind {

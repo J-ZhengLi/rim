@@ -114,10 +114,7 @@ function handleSelectAll() {
 function handleNextClick() {
   updateInstallConf();
 
-  const comps = installConf.getCheckedComponents();
-  console.log(comps);
-
-  invokeCommand('get_restricted_components', { components: comps }).then((res) => {
+  invokeCommand('get_restricted_components', { components: installConf.getCheckedComponents() }).then((res) => {
     const restricted = res as RestrictedComponent[];
     if (restricted.length > 0) {
       installConf.setRestrictedComponents(restricted);

@@ -18,7 +18,7 @@ use crate::core::{custom_instructions, GlobalOpts};
 use super::AppInfo;
 
 /// Extension trait for [`ToolkitManifest`],
-/// offering more control in terms of installation/uninstallation.
+/// offering extra functionalities for installation/uninstallation.
 pub trait ToolkitManifestExt
 where
     Self: TomlParser + Sized + DeserializeOwned,

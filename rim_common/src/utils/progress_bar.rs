@@ -100,9 +100,8 @@ impl Style {
 impl CliProgress<CliProgressBar> {
     /// Create a new progress bar for CLI to indicate download progress.
     ///
-    /// `progress_for`: used for displaying what the progress is for.
-    /// i.e.: ("downloading", "download"), ("extracting", "extraction"), etc.
-    pub fn new() -> Self {
+    /// When `hidden` is set to `true`, no progress bar will be shown.
+    pub fn new(hidden: bool) -> Self {
         fn start(msg: String, style: Style) -> Result<CliProgressBar> {
             let apply_custom_style = |pb: &CliProgressBar, pattern: &str| -> Result<()> {
                 pb.set_style(
@@ -143,26 +142,25 @@ impl CliProgress<CliProgressBar> {
             pb.finish_with_message(msg);
         }
 
-        CliProgress {
-            start,
-            update,
-            stop,
-        }
-    }
-
-    /// Create a hidden progress bar that does not render anything.
-    pub fn hidden() -> Self {
-        CliProgress {
-            start: |_: String, _: Style| Ok(CliProgressBar::hidden()),
-            update: |_: &CliProgressBar, _: Option<u64>| {},
-            stop: |_: &CliProgressBar, _: String| {},
+        if hidden {
+            CliProgress {
+                start: |_: String, _: Style| Ok(CliProgressBar::hidden()),
+                update: |_: &CliProgressBar, _: Option<u64>| {},
+                stop: |_: &CliProgressBar, _: String| {},
+            }
+        } else {
+            CliProgress {
+                start,
+                update,
+                stop,
+            }
         }
     }
 }
 
 impl Default for CliProgress<CliProgressBar> {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 

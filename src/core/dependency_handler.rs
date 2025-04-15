@@ -16,7 +16,6 @@ pub trait DependencyHandler<T> {
     /// with least dependencies at the end.
     ///
     /// [kahn]: https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
-    /// [toolmap]: rim_common::types::ToolMap
     fn topological_sorted(&self) -> Vec<T>;
 
     /// Perform basic sorting for dependency handling, then return the result in a new `Vec`.
@@ -24,7 +23,7 @@ pub trait DependencyHandler<T> {
     /// For example, sorting the package installation order by its type.
     /// This should be used as a fallback to `topological_sorted`.
     ///
-    /// Note: The default implementation is just a wrapper of
+    /// Note: Unless overwritten, the default behavior is the same as
     /// [`topological_sorted`](DependencyHandler::topological_sorted).
     fn sorted(&self) -> Vec<T> {
         self.topological_sorted()

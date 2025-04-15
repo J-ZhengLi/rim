@@ -119,7 +119,7 @@ impl ToolchainInstaller {
 
     // Rustup self uninstall all the components and toolchains.
     pub(crate) fn remove_self(&self, config: &UninstallConfiguration) -> Result<()> {
-        let progress = utils::CliProgress::new();
+        let progress = utils::CliProgress::new(GlobalOpts::get().quiet);
         let spinner = (progress.start)(
             t!("uninstalling_rust_toolchain").to_string(),
             utils::Style::Spinner {
