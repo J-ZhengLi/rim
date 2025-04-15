@@ -15,6 +15,7 @@ use crate::core::os::add_to_path;
 use anyhow::{anyhow, bail, Context, Result};
 use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest};
 use rim_common::{build_config, utils};
+use std::collections::HashSet;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -117,6 +118,7 @@ impl<'a> InstallConfiguration<'a> {
 
     pub fn install(mut self, components: Vec<Component>) -> Result<()> {
         let (tc_components, tools) = split_components(components);
+        reject_conflicting_tools(&tools)?;
 
         self.setup()?;
         self.config_env_vars()?;
@@ -403,8 +405,10 @@ impl<'a> InstallConfiguration<'a> {
     /// If `maybe_file` is a path to compressed file, this will try to extract it to `dest`;
     /// otherwise this will copy that file into dest.
     fn extract_or_copy_to(&self, maybe_file: &Path, dest: &Path) -> Result<PathBuf> {
-        if let Ok(mut extractable) = utils::Extractable::load(maybe_file, None) {
-            extractable.extract_then_skip_solo_dir(dest, Some("bin"))
+        if let Ok(extractable) = utils::Extractable::load(maybe_file, None) {
+            extractable
+                .quiet(GlobalOpts::get().quiet)
+                .extract_then_skip_solo_dir(dest, Some("bin"))
         } else {
             utils::copy_into(maybe_file, dest)
         }
@@ -479,6 +483,42 @@ impl InstallConfiguration<'_> {
     }
 }
 
+// TODO: Conflict resolve should take place during user interaction, not here,
+// but it's kind hard to do with how we handle CLI interaction now, figure out a way.
+fn reject_conflicting_tools(tools: &ToolMap) -> Result<()> {
+    // use a HashSet to collect conflicting pairs to remove duplicates.
+    let mut conflicts = HashSet::new();
+
+    for (name, info) in tools {
+        for conflicted_name in info.conflicts() {
+            // ignore the tools that are not presented in the map
+            if !tools.contains_key(conflicted_name) {
+                continue;
+            }
+
+            // sort the conflicting pairs, so that (A, B) and (B, A) will both
+            // resulting to (A, B), thus became unique in the set
+            let pair = if name < conflicted_name.as_str() {
+                (name, conflicted_name.as_str())
+            } else {
+                (conflicted_name.as_str(), name)
+            };
+            conflicts.insert(pair);
+        }
+    }
+
+    if !conflicts.is_empty() {
+        let conflict_list = conflicts
+            .into_iter()
+            .map(|(a, b)| format!("\t{a} ({})", t!("conflicts_with", name = b)))
+            .collect::<Vec<_>>()
+            .join("\n");
+        bail!("{}:\n{conflict_list}", t!("conflict_detected"));
+    }
+
+    Ok(())
+}
+
 /// Get the default installation directory,
 /// which is a directory under [`home_dir`](utils::home_dir).
 pub fn default_install_dir() -> PathBuf {
@@ -535,5 +575,21 @@ mod tests {
             .path()
             .join(InstallationRecord::FILENAME)
             .is_file());
+    }
+
+    #[test]
+    fn detect_package_conflicts() {
+        let raw = r#"
+a = { version = "0.1.0", conflicts = ["b"] }
+b = { version = "0.1.0", conflicts = ["a"] }
+c = { version = "0.1.0", conflicts = ["d", "a"] }
+"#;
+        let map: ToolMap = toml::from_str(raw).unwrap();
+        let conflicts = reject_conflicting_tools(&map);
+
+        assert!(conflicts.is_err());
+
+        let error = conflicts.expect_err("has conflicts");
+        println!("{error}");
     }
 }

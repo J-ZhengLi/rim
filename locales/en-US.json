@@ -66,6 +66,8 @@
     "components_to_install": "the component(s) below will get installed",
     "components_to_remove": "the component(s) below will get removed",
     "replaced_by": "replaced by '%{name}'",
+    "conflict_detected": "unable to install because of the following package conflicts",
+    "conflicts_with": "conflict with '%{name}'",
 
     "uninstall_confirmation": "Are you sure you want to uninstall the following components: \n\n%{list}\n",
     "uninstall_all_confirmation": "Are you sure you want to uninstall %{vendor}-manager and the following components: \n\n%{list}\n",

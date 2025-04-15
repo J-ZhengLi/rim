@@ -61,6 +61,8 @@
     "components_to_install": "将安装以下组件",
     "components_to_remove": "将移除以下组件",
     "replaced_by": "替换为 '%{name}'",
+    "conflict_detected": "安装失败，以下软件包之间存在冲突",
+    "conflicts_with": "与 '%{name}' 冲突",
 
     "uninstall_confirmation": "是否确认卸载以下组件: \n\n%{list}\n",
     "uninstall_all_confirmation": "是否确认卸载 %{vendor}-manager 及以下组件: \n\n%{list}\n",

@@ -99,7 +99,7 @@ impl TryFrom<&ToolkitManifest> for Toolkit {
             name: value
                 .name
                 .clone()
-                .unwrap_or_else(|| t!("unknown_toolkit").into()),
+                .unwrap_or_else(|| "Unknown Toolkit".into()),
             version: value.version.clone().unwrap_or_else(|| "N/A".to_string()),
             desc: None,
             info: None,

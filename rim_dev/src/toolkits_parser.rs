@@ -125,52 +125,31 @@ pub(crate) struct Toolkit {
 }
 
 impl Toolkit {
-    pub(crate) fn manifest(&self) -> Result<&ToolkitManifest> {
-        Ok(&self.value)
-    }
-
-    pub(crate) fn manifest_mut(&mut self) -> Result<&mut ToolkitManifest> {
-        Ok(&mut self.value)
-    }
     /// Convert the value to toml string, which can be treated as `toolkit-manifest`.
     pub(crate) fn manifest_string(&self) -> Result<String> {
-        Ok(toml::to_string(self.manifest()?)?)
+        Ok(toml::to_string(&self.value)?)
     }
 
     /// Try getting the mutable `[tools.target]` map of the toolkit-manifest,
     /// return `None` if it can't be found, which means that this toolkit
     /// does not offer any third party tools.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
     pub(crate) fn targeted_tools_mut(&mut self) -> &mut HashMap<String, ToolMap> {
-        &mut self.manifest_mut().unwrap().tools.target
+        &mut self.value.tools.target
     }
 
     /// Try getting the mutable `[rust]` map of the toolkit-manifest.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
-    /// In addition, by the rules of toolkit manifest, missing a `[rust]` section
-    /// also considered as invalid format.
     pub(crate) fn rust_section_mut(&mut self) -> &mut RustToolchain {
-        &mut self.manifest_mut().unwrap().rust
+        &mut self.value.rust
     }
 
     /// Try getting the **toolkit's** version string.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
     pub(crate) fn version(&self) -> Option<&str> {
-        self.manifest().unwrap().version.as_deref()
+        self.value.version.as_deref()
     }
 
     /// Try getting the **toolkit's** actual name.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
     pub(crate) fn name(&self) -> Option<&str> {
-        self.manifest().unwrap().name.as_deref()
+        self.value.name.as_deref()
     }
 
     /// Get the full name of this toolkit, which is the combination of
@@ -184,14 +163,14 @@ impl Toolkit {
         .replace(' ', "-")
     }
 
-    /// Try getting the version of rust, which is specified as `[rust.version]`.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
-    /// In addition, by the rules of toolkit manifest, both `[rust]` and `[rust.version]`
-    /// are required fields, missing such values will also be considered as invalid.
+    /// Try getting the version of rust, which is specified as
+    /// ```toml
+    /// [rust]
+    /// version = "0.1.0"
+    /// #          -----
+    /// ```
     pub(crate) fn rust_version(&self) -> &str {
-        &self.manifest().unwrap().rust.channel
+        &self.value.rust.channel
     }
 
     /// Convenient method the get the toolkit's release date,

@@ -158,17 +158,10 @@ class ManagerConf {
   }
 
   async loadInstalledKit() {
-    const tauriInstalled = (await invokeCommand(
+    const installed = await invokeCommand(
       'get_installed_kit', { reload: true }
-    )) as KitItem | undefined;
-    if (tauriInstalled) {
-      const installed = {
-        ...tauriInstalled, components: tauriInstalled.components.filter((c) => c.installed).map((item) => {
-
-          item.version = item.version || 'no version';
-          return item as Component;
-        })
-      };
+    ) as KitItem | undefined;
+    if (installed) {
       this.setInstalled(installed);
       this.setCurrent(installed);
     }
