@@ -1,6 +1,14 @@
-mod build_config;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate rust_i18n;
 
-use build_config::BuildConfig;
+pub mod types;
+pub mod utils;
+
+use types::BuildConfig;
+
+i18n!("../locales", fallback = "en");
 
 /// Loads build configurations, such as the default URLs that this program needs.
 pub fn build_config() -> &'static BuildConfig {
@@ -10,7 +18,7 @@ pub fn build_config() -> &'static BuildConfig {
 #[macro_export]
 macro_rules! cfg_locale {
     ($lang:expr, $key:expr) => {
-        rim_common::build_config()
+        $crate::build_config()
             .locale
             .get($lang)
             .and_then(|_m_| _m_.get($key))

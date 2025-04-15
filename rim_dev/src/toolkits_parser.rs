@@ -1,13 +1,13 @@
 //! Types for deserializing `toolkits.toml` under resources.
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+use rim_common::types::{RustToolchain, ToolMap, ToolkitManifest};
 use serde::Deserialize;
 use std::fs;
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
 };
-use toml::{map::Map, Value};
 use url::Url;
 
 use crate::common::resources_dir;
@@ -116,100 +116,40 @@ pub(crate) enum Component {
     },
 }
 
-/// Basically a `ToolkitManifest` with configuration.
-///
-/// However, instead of re-writing `ToolkitManifest` in the main crate,
-/// this struct only uses a raw toml table ([`toml::Value`]) to represent it.
+/// Basically a [`ToolkitManifest`] with additional configuration.
 #[derive(Debug, Deserialize)]
 pub(crate) struct Toolkit {
     pub(crate) config: ToolkitConfig,
     /// store `ToolkitManifest` as raw value
-    #[serde(flatten)]
-    pub(crate) value: Value,
+    value: ToolkitManifest,
 }
 
 impl Toolkit {
-    pub(crate) fn manifest(&self) -> Result<&Map<String, Value>> {
-        // The manifest value is behind a `value` key, we need to extract that.
-        let inner_table = self
-            .value
-            .as_table()
-            .and_then(|map| map.get("value"))
-            .and_then(|m| m.as_table())
-            .ok_or_else(|| anyhow!("invalid toolkit manifest"))?;
-        Ok(inner_table)
-    }
-
-    pub(crate) fn manifest_mut(&mut self) -> Result<&mut Map<String, Value>> {
-        // The manifest value is behind a `value` key, we need to extract that.
-        let inner_table = self
-            .value
-            .as_table_mut()
-            .and_then(|map| map.get_mut("value"))
-            .and_then(|m| m.as_table_mut())
-            .ok_or_else(|| anyhow!("invalid toolkit manifest"))?;
-        Ok(inner_table)
-    }
     /// Convert the value to toml string, which can be treated as `toolkit-manifest`.
     pub(crate) fn manifest_string(&self) -> Result<String> {
-        Ok(toml::to_string(self.manifest()?)?)
+        Ok(toml::to_string(&self.value)?)
     }
 
     /// Try getting the mutable `[tools.target]` map of the toolkit-manifest,
     /// return `None` if it can't be found, which means that this toolkit
     /// does not offer any third party tools.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
-    pub(crate) fn targeted_tools_mut(&mut self) -> Option<&mut Map<String, Value>> {
-        self.manifest_mut()
-            .unwrap()
-            .get_mut("tools")?
-            .get_mut("target")?
-            .as_table_mut()
+    pub(crate) fn targeted_tools_mut(&mut self) -> &mut HashMap<String, ToolMap> {
+        &mut self.value.tools.target
     }
 
     /// Try getting the mutable `[rust]` map of the toolkit-manifest.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
-    /// In addition, by the rules of toolkit manifest, missing a `[rust]` section
-    /// also considered as invalid format.
-    pub(crate) fn rust_section_mut(&mut self) -> &mut Map<String, Value> {
-        self.manifest_mut()
-            .unwrap()
-            .get_mut("rust")
-            .expect("invalid toolkit manifest: missing `[rust]` section")
-            .as_table_mut()
-            .expect("invalid `[rust]` section format")
+    pub(crate) fn rust_section_mut(&mut self) -> &mut RustToolchain {
+        &mut self.value.rust
     }
 
     /// Try getting the **toolkit's** version string.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
     pub(crate) fn version(&self) -> Option<&str> {
-        let ver = self
-            .manifest()
-            .unwrap()
-            .get("version")?
-            .as_str()
-            .expect("invalid version format");
-        Some(ver)
+        self.value.version.as_deref()
     }
 
     /// Try getting the **toolkit's** actual name.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
     pub(crate) fn name(&self) -> Option<&str> {
-        let ver = self
-            .manifest()
-            .unwrap()
-            .get("name")?
-            .as_str()
-            .expect("invalid version format");
-        Some(ver)
+        self.value.name.as_deref()
     }
 
     /// Get the full name of this toolkit, which is the combination of
@@ -223,22 +163,14 @@ impl Toolkit {
         .replace(' ', "-")
     }
 
-    /// Try getting the version of rust, which is specified as `[rust.version]`.
-    ///
-    /// # Panic
-    /// Panic when this toolkit manifest is invalid.
-    /// In addition, by the rules of toolkit manifest, both `[rust]` and `[rust.version]`
-    /// are required fields, missing such values will also be considered as invalid.
+    /// Try getting the version of rust, which is specified as
+    /// ```toml
+    /// [rust]
+    /// version = "0.1.0"
+    /// #          -----
+    /// ```
     pub(crate) fn rust_version(&self) -> &str {
-        let rust = self
-            .manifest()
-            .unwrap()
-            .get("rust")
-            .and_then(|v| v.as_table())
-            .expect("invalid toolkit manifest: missing `[rust]` section");
-        rust["version"]
-            .as_str()
-            .expect("rust toolchain version must be `str` object")
+        &self.value.rust.channel
     }
 
     /// Convenient method the get the toolkit's release date,

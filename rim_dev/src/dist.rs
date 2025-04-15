@@ -1,5 +1,6 @@
 use env::consts::EXE_SUFFIX;
 use rim_common::build_config;
+use rim_common::utils::{copy_as, copy_file, ensure_dir};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs};
@@ -160,7 +161,7 @@ impl<'a> DistWorker<'a> {
             let src = release_dir(self.build_target).join(self.source_binary_name());
             // copy and rename the binary with vendor name
             let to = dest_dir.join(self.dest_binary_name(noweb));
-            copy(src, to)?;
+            copy_file(src, to)?;
         } else {
             bail!("build failed with code: {}", status.code().unwrap_or(-1));
         }

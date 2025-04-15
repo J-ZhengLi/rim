@@ -1,13 +1,11 @@
 use std::path::{Path, PathBuf};
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use cc::windows_registry;
+use rim_common::utils;
 use crate::core::directories::RimDir;
 use crate::core::install::InstallConfiguration;
 
 pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
-    use crate::utils;
-    use anyhow::anyhow;
-
     let mut args = vec![
         "--wait",
         "--nocache",
@@ -35,12 +33,11 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     // Step 2: Make a copy of this installer to the `tools` directory,
     // which is later used for uninstallation.
     let installer_dir = config.tools_dir().join("buildtools");
-    utils::ensure_dir(&installer_dir)?;
-    utils::copy_file_to(&buildtools_exe, &installer_dir)?;
+    utils::copy_file(&buildtools_exe, &installer_dir)?;
 
     // Step 3: Invoke the install command.
     info!("{}", t!("installing_msvc_info"));
-    let mut cmd = utils::cmd!(buildtools_exe);
+    let mut cmd = cmd!(buildtools_exe);
     cmd.args(args);
     let exit_code: VSExitCode = utils::execute_for_ret_code(cmd)?.into();
     match exit_code {
@@ -57,7 +54,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     Ok(vec![installer_dir])
 }
 
-pub(super) fn uninstall(_config: &crate::core::uninstall::UninstallConfiguration) -> Result<()> {
+pub(super) fn uninstall<T: RimDir>(_config: T) -> Result<()> {
     // TODO: Navigate to the vs_buildtools exe that we copied when installing, then execute it with:
     // .\vs_BuildTools.exe uninstall --productId Microsoft.VisualStudio.Product.BuildTools --channelId VisualStudio.17.Release --wait
     // But we need to ask the user if they want to uninstall this or not.

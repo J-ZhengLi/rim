@@ -4,20 +4,20 @@ use std::{env, path::Path};
 use crate::core::install::{EnvConfig, InstallConfiguration};
 use crate::core::uninstall::{UninstallConfiguration, Uninstallation};
 use crate::core::GlobalOpts;
-use crate::utils;
 use anyhow::{Context, Result};
 use indexmap::IndexSet;
+use rim_common::utils;
 
 impl EnvConfig for InstallConfiguration<'_> {
     // On linux, persistent env vars needs to be written in `.profile`, `.bash_profile`, etc.
-    // Rustup already did all the dirty work by writting an entry in those files
+    // Rustup already did all the dirty work by writing an entry in those files
     // to invoke `$CARGO_HOME/env.{sh|fish}`. Sadly we'll have to re-implement a similar procedure here,
     // because rustup will not write those file if a user has choose to pass `--no-modify-path`.
     // Which is not ideal for env vars such as `RUSTUP_DIST_SERVER`.
     fn config_env_vars(&self) -> Result<()> {
         let vars_raw = self.env_vars()?;
 
-        if !GlobalOpts::get().no_modify_env {
+        if !GlobalOpts::get().no_modify_env() {
             info!("{}", t!("install_env_config"));
 
             let backup_dir = self.install_dir.join("backup");
@@ -247,9 +247,9 @@ fn rc_content_with_env_vars(
 ///
 /// - If there was no config section, create one with `export PATH="{path_str};$PATH"`.
 /// - If there was a config section but no `export PATH` line,
-///     insert `export PATH="{path_str};$PATH"` at the end of the config section.
+///   insert `export PATH="{path_str};$PATH"` at the end of the config section.
 /// - If there was a config section and an `export PATH` line with it,
-///     push the `path_str` at the start of the `PATH` value, such as `export PATH="{path_str};/old/value;$PATH"`
+///   push the `path_str` at the start of the `PATH` value, such as `export PATH="{path_str};/old/value;$PATH"`
 fn rc_content_with_path(
     sh: &dyn shell::UnixShell,
     path_str: &str,
@@ -313,7 +313,7 @@ mod shell {
     // Suggestion of this lint looks worse and doesn't have any improvement.
     #![allow(clippy::collapsible_else_if)]
 
-    use crate::utils;
+    use super::utils;
     use anyhow::{bail, Result};
     use std::{env, path::PathBuf};
 
@@ -544,7 +544,6 @@ mod shell {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils;
     use std::path::PathBuf;
 
     use super::{
@@ -611,23 +610,6 @@ export RUSTUP_HOME='/home/.rustup'
 alias autoremove='sudo pacman -Rcns $(pacman -Qdtq)'
 . "$HOME/.cargo/env""#
         );
-    }
-
-    // TODO: Move this test to `utils`
-    #[test]
-    fn path_ambiguity() {
-        let with_dots = PathBuf::from("/path/to/home/./my_app/../my_app");
-        let without_dots = PathBuf::from("/path/to/home/my_app");
-        assert_ne!(with_dots, without_dots);
-
-        let with_dots_comps: PathBuf = with_dots.components().collect();
-        let without_dots_comps: PathBuf = without_dots.components().collect();
-        // Components take `..` accountable in case of symlink.
-        assert_ne!(with_dots_comps, without_dots_comps);
-
-        let with_dots_normalized = utils::to_nomalized_abspath(&with_dots, None).unwrap();
-        let without_dots_normalized = utils::to_nomalized_abspath(&without_dots, None).unwrap();
-        assert_eq!(with_dots_normalized, without_dots_normalized);
     }
 
     #[test]

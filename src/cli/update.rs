@@ -6,9 +6,8 @@ use url::Url;
 use crate::components::Component;
 use crate::core::toolkit::Toolkit;
 use crate::core::update::UpdateOpt;
+use crate::core::{get_toolkit_manifest, ToolkitManifestExt};
 use crate::toolkit::latest_installable_toolkit;
-use crate::toolset_manifest::get_toolset_manifest;
-use crate::utils::blocking;
 use crate::InstallConfiguration;
 
 use super::common::{
@@ -72,7 +71,7 @@ async fn update_toolkit_(
             must contains a valid `manifest_url`"
             )
         })?;
-    let manifest = get_toolset_manifest(Some(manifest_url), insecure).await?;
+    let manifest = get_toolkit_manifest(Some(manifest_url), insecure).await?;
     let new_components = manifest.current_target_components(false)?;
 
     // notify user that we will install the latest update to replace their current installation
@@ -194,7 +193,7 @@ impl<'c> ComponentsUpdater<'c> {
             .decorate(ComponentDecoration::VersionDiff(&self.version_diff))
             .show_desc(true)
             .build();
-        let defult_choices = orig
+        let default_choices = orig
             .keys()
             .map(|idx| (idx + 1).to_string())
             .collect::<Vec<_>>()
@@ -202,7 +201,7 @@ impl<'c> ComponentsUpdater<'c> {
         let input = common::question_multi_choices(
             t!("select_components_to_update"),
             &choices,
-            defult_choices,
+            default_choices,
         )?;
 
         // convert input vec to set for faster lookup

@@ -8,8 +8,6 @@ use std::{
 use anyhow::Result;
 use indicatif::{ProgressBar as CliProgressBar, ProgressState, ProgressStyle};
 
-use crate::core::GlobalOpts;
-
 struct ProgressPos(Mutex<f32>);
 
 impl ProgressPos {
@@ -63,7 +61,7 @@ impl<'a> Progress<'a> {
     }
 }
 
-/// Convinent struct with methods that are useful to indicate various progress.
+/// Convenient struct with methods that are useful to indicate various progress.
 #[derive(Debug, Clone, Copy)]
 pub struct CliProgress<T: Sized> {
     /// A start/initializing function which will be called to setup progress bar.
@@ -102,9 +100,8 @@ impl Style {
 impl CliProgress<CliProgressBar> {
     /// Create a new progress bar for CLI to indicate download progress.
     ///
-    /// `progress_for`: used for displaying what the progress is for.
-    /// i.e.: ("downloading", "download"), ("extracting", "extraction"), etc.
-    pub fn new() -> Self {
+    /// When `hidden` is set to `true`, no progress bar will be shown.
+    pub fn new(hidden: bool) -> Self {
         fn start(msg: String, style: Style) -> Result<CliProgressBar> {
             let apply_custom_style = |pb: &CliProgressBar, pattern: &str| -> Result<()> {
                 pb.set_style(
@@ -145,8 +142,12 @@ impl CliProgress<CliProgressBar> {
             pb.finish_with_message(msg);
         }
 
-        if GlobalOpts::get().quiet {
-            Self::hidden()
+        if hidden {
+            CliProgress {
+                start: |_: String, _: Style| Ok(CliProgressBar::hidden()),
+                update: |_: &CliProgressBar, _: Option<u64>| {},
+                stop: |_: &CliProgressBar, _: String| {},
+            }
         } else {
             CliProgress {
                 start,
@@ -155,20 +156,11 @@ impl CliProgress<CliProgressBar> {
             }
         }
     }
-
-    /// Create a hidden progress bar that does not render anything.
-    pub fn hidden() -> Self {
-        CliProgress {
-            start: |_: String, _: Style| Ok(CliProgressBar::hidden()),
-            update: |_: &CliProgressBar, _: Option<u64>| {},
-            stop: |_: &CliProgressBar, _: String| {},
-        }
-    }
 }
 
 impl Default for CliProgress<CliProgressBar> {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 

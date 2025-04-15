@@ -1,28 +1,94 @@
 import { CheckItem } from "./CheckBoxGroup";
 
+export class ComponentHelper {
+  component: Component;
+
+  constructor(component: Component) {
+    this.component = component;
+  }
+
+  getToolInfo(): ToolInfoDetails | undefined {
+    if (this.component.toolInstaller && typeof this.component.toolInstaller !== 'string') {
+      return this.component.toolInstaller
+    }
+  }
+
+  requires(): string[] {
+    const req = this.getToolInfo()?.requires;
+    return req ?? [];
+  }
+
+  obsoletes(): string[] {
+    const obs = this.getToolInfo()?.obsoletes;
+    return obs ?? [];
+  }
+}
+
+// Reflecting the `Component` type in `src/core/components.rs`
 export interface Component {
   id: number;
+  groupName?: string;
   name: string;
   displayName: string;
   version?: string;
+  desc?: string;
   required: boolean;
   optional: boolean;
-  installed: boolean;
-  desc: string;
-  groupName: string | null;
+  toolInstaller?: string | ToolInfoDetails;
   kind: ComponentType;
-  toolInstaller?: {
-    required: boolean;
-    optional: boolean;
-    path?: string;
-  };
+  installed: boolean;
+}
+
+export type ToolInfoDetails =
+  | RestrictedTool
+  | GitTool
+  | UrlTool
+  | PathTool
+  | VersionTool
+
+// Reflecting the `ToolInfoDetails` type in `rim_common/src/types/tool_info.rs`
+export interface BaseToolInfoDetails {
+  required: boolean;
+  optional: boolean;
+  requires?: string[];
+  obsoletes?: string[];
+  conflicts?: string[];
+}
+
+export interface RestrictedTool extends BaseToolInfoDetails {
+  restricted: boolean;
+  default?: string;
+  source?: string;
+  version?: string;
+}
+
+export interface GitTool extends BaseToolInfoDetails {
+  git: string;
+  branch?: string;
+  tag?: string;
+  rev?: string;
+}
+
+export interface UrlTool extends BaseToolInfoDetails {
+  version?: string;
+  url: string;
+  filename?: string;
+}
+
+export interface PathTool extends BaseToolInfoDetails {
+  version?: string;
+  path: string;
+}
+
+export interface VersionTool extends BaseToolInfoDetails {
+  version: string,
 }
 
 export interface RestrictedComponent {
-  name: string,
-  label: string,
-  source?: string,
-  default?: string,
+  name: string;
+  label: string;
+  source?: string;
+  default?: string;
 }
 
 export enum ComponentType {
