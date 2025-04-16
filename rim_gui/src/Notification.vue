@@ -23,9 +23,9 @@ function onAction(command: RustFunction) {
     args ? invokeCommand(func, Object.fromEntries(args)) : invokeCommand(func);
   } catch (err) {
     if (err instanceof SyntaxError && args) {
-      message("无效的 JSON 语法: " + args, { type: 'error' });
+      message("无效的 JSON 语法: " + args, { kind: 'error' });
     } else {
-      message('调用 tauri 命令时发生错误: ' + err, { type: 'error' });
+      message('调用 tauri 命令时发生错误: ' + err, { kind: 'error' });
     }
   }
 }

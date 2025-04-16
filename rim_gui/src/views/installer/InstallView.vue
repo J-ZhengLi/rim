@@ -53,7 +53,7 @@ onMounted(() => {
     if (typeof event.payload === 'string') {
       output.value.push(event.payload);
       toBottom();
-      message(event.payload, { title: '错误', type: 'error' }).then(() =>
+      message(event.payload, { title: '错误', kind: 'error' }).then(() =>
         invokeCommand('close_window')
       );
     }

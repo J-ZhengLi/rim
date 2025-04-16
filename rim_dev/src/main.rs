@@ -22,8 +22,8 @@ Options:
 
 Commands:
     dist, d         Generate release binaries
-    run-manager     Run with manager mode
-    vendor          Download packages that are specified in `resource/packages.txt`
+    run-manager     Run in manager mode
+    vendor          Download packages for offline package build
     mock-rustup-server
                     Generate a mocked rustup dist server
 "#;

@@ -1,6 +1,6 @@
 //! Module to create a fake installation root, useful to test the `manager` utilities.
 
-use crate::common;
+use crate::common::{self, pnpm_cmd};
 
 use super::TOOLKIT_NAME;
 use anyhow::{bail, Result};
@@ -36,36 +36,39 @@ paths = ['{0}/tools/mingw64']
     }
 
     fn generate_manager_bin(&mut self, no_gui: bool) -> Result<()> {
-        let cargo_args = if no_gui {
-            ["build"].to_vec()
-        } else {
-            ["tauri", "build", "--debug", "-b", "none"].to_vec()
-        };
+        let (mut cmd, src_bin, dest_bin) = if no_gui {
+            // use cargo build
+            let mut cmd = Command::new("cargo");
+            cmd.arg("build");
 
-        if !no_gui {
-            common::install_gui_deps();
-        }
-
-        // build rim
-        let build_status = Command::new("cargo").args(cargo_args).status()?;
-        if !build_status.success() {
-            bail!("failed to build manager binary");
-        }
-
-        // make a copy of rim as manager binary to the fake installation root
-        let (src_bin, dest_bin) = if no_gui {
             (
+                cmd,
                 format!("rim-cli{EXE_SUFFIX}"),
                 format!("manager-cli{EXE_SUFFIX}"),
             )
         } else {
+            common::install_gui_deps();
+
+            // use tauri-cli under rim_gui dir
+            let mut cmd = pnpm_cmd();
+            cmd.args(["run", "tauri", "build", "-d", "--no-bundle"]);
+
             (
+                cmd,
                 format!("rim-gui{EXE_SUFFIX}"),
                 format!("manager{EXE_SUFFIX}"),
             )
         };
+
+        // build rim
+        let build_status = cmd.status()?;
+        if !build_status.success() {
+            bail!("failed to build manager binary");
+        }
+
         let build_artifact = super::debug_dir().join(src_bin);
         let dest_path = super::install_dir().join(dest_bin);
+        // make a copy of rim as manager binary to the fake installation root
         fs::copy(build_artifact, &dest_path)?;
 
         self.manager_bin = Some(dest_path);
