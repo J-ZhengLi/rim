@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { useCustomRouter } from '@/router/index';
-import { message } from '@tauri-apps/api/dialog';
+import { message } from '@tauri-apps/plugin-dialog';
 import { installConf, invokeCommand, invokeLabelList } from '@/utils/index';
 
 const { routerPush } = useCustomRouter();

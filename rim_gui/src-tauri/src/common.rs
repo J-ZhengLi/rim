@@ -16,19 +16,13 @@ use rim::{
 };
 use rim_common::{types::ToolkitManifest, utils};
 use serde::Serialize;
-use tauri::api::cli::{Matches, SubcommandMatches};
-use tauri::{App, AppHandle, Manager, Window};
+use tauri::{App, AppHandle, Emitter, WebviewWindow};
+use tauri_plugin_cli::{CliExt, Matches, SubcommandMatches};
 
 #[allow(clippy::type_complexity)]
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
     LazyLock::new(|| Mutex::new(vec![]));
 static CLI_OPT: OnceLock<CliOpt> = OnceLock::new();
-
-#[derive(Clone, serde::Serialize)]
-pub(crate) struct SingleInstancePayload {
-    pub(crate) argv: Vec<String>,
-    pub(crate) cmd: String,
-}
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs across threads.
@@ -47,7 +41,7 @@ pub(crate) fn setup_logger() -> Receiver<String> {
     msg_recvr
 }
 
-pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<String>) {
+pub(crate) fn spawn_gui_update_thread(window: tauri::WebviewWindow, msg_recv: Receiver<String>) {
     thread::spawn(move || loop {
         // wait for all other thread to finish and report errors
         let mut pool = THREAD_POOL
@@ -87,7 +81,7 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::Window, msg_recv: Receiver<
     });
 }
 
-fn emit<S: Serialize + Clone>(window: &tauri::Window, event: &str, msg: S) {
+fn emit<S: Serialize + Clone>(window: &tauri::WebviewWindow, event: &str, msg: S) {
     window.emit(event, msg).unwrap_or_else(|e| {
         log::error!(
             "unexpected error occurred \
@@ -218,7 +212,7 @@ pub(crate) fn app_info() -> AppInfo {
 
 /// Close the given window in a separated thread.
 #[tauri::command]
-pub(crate) fn close_window(win: Window) {
+pub(crate) fn close_window(win: WebviewWindow) {
     let label = win.label().to_owned();
     thread::spawn(move || win.close())
         .join()
@@ -258,7 +252,10 @@ impl FrontendFunctionPayload {
 }
 
 /// Build the main window with shared configuration.
-pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String>) -> Result<()> {
+pub(crate) fn setup_main_window(
+    manager: &mut App,
+    log_receiver: Receiver<String>,
+) -> Result<WebviewWindow> {
     let mut visible = true;
     let (label, url) = if AppInfo::is_manager() {
         let opt = handle_cli_args(manager);
@@ -271,7 +268,7 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
         (INSTALLER_WINDOW_LABEL, "index.html/#/installer".into())
     };
 
-    let window = tauri::WindowBuilder::new(manager, label, tauri::WindowUrl::App(url))
+    let window = tauri::WebviewWindowBuilder::new(manager, label, tauri::WebviewUrl::App(url))
         .inner_size(800.0, 600.0)
         .min_inner_size(640.0, 480.0)
         .decorations(false)
@@ -280,8 +277,8 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
         .visible(visible)
         .build()?;
 
-    #[cfg(not(target_os = "linux"))]
-    if let Err(e) = window_shadows::set_shadow(&window, true) {
+    #[cfg(windows)]
+    if let Err(e) = window.set_shadow(true) {
         log::error!("unable to apply window effects: {e}");
     }
 
@@ -290,8 +287,8 @@ pub(crate) fn setup_main_window(manager: &mut App, log_receiver: Receiver<String
     window.open_devtools();
 
     spawn_gui_update_thread(window.clone(), log_receiver);
-    get_cli().execute(manager.handle())?;
-    Ok(())
+    get_cli().execute(manager.handle().clone())?;
+    Ok(window)
 }
 
 macro_rules! cli_value {
@@ -325,7 +322,7 @@ impl CliOpt {
                 }
                 thread::spawn(move || {
                     thread::sleep(Duration::from_millis(1500));
-                    _ = app.emit_all(
+                    _ = app.emit(
                         "change-view",
                         CliPayload {
                             path: "/manager/uninstall".into(),
@@ -406,7 +403,7 @@ impl TryFrom<&[String]> for CliOpt {
 }
 
 fn handle_cli_args(app: &mut App) -> &'static CliOpt {
-    let Ok(matches) = app.get_cli_matches() else {
+    let Ok(matches) = app.cli().matches() else {
         return get_cli();
     };
     // log raw args

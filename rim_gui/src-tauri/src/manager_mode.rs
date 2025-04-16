@@ -9,7 +9,7 @@ use crate::{
     consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT},
 };
 use crate::{
-    common::{self, FrontendFunctionPayload, SingleInstancePayload},
+    common::{self, FrontendFunctionPayload},
     error::Result,
     notification::{self, Notification, NotificationAction},
 };
@@ -25,8 +25,10 @@ use rim::{
 };
 use rim_common::{types::ToolkitManifest, utils};
 use tauri::{
-    async_runtime, AppHandle, CustomMenuItem, GlobalWindowEvent, Manager, SystemTray,
-    SystemTrayEvent, SystemTrayMenu, Window, WindowEvent,
+    async_runtime,
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, Manager, WebviewWindow, WindowEvent,
 };
 use url::Url;
 
@@ -43,16 +45,14 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolkitManifest>> {
 
 pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
+        .plugin(tauri_plugin_cli::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cmd| {
             show_manager_window_if_possible(app);
             if let Ok(cli) = CliOpt::try_from(argv.as_slice()) {
                 _ = cli.execute(app.clone());
             }
-            _ = app.emit_all("single-instance", SingleInstancePayload { argv, cmd });
         }))
-        .system_tray(system_tray())
-        .on_system_tray_event(system_tray_event_handler)
-        .on_window_event(window_event_handler)
         .invoke_handler(tauri::generate_handler![
             close_window,
             get_installed_kit,
@@ -74,7 +74,9 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             common::get_build_cfg_locale_str,
         ])
         .setup(|app| {
-            common::setup_main_window(app, msg_recv)?;
+            let window = common::setup_main_window(app, msg_recv)?;
+            handle_window_event(window);
+            setup_system_tray(app)?;
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -89,7 +91,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
 // Unless this function was called with an exit code, which indicates that
 // we should exit the program completely.
 #[tauri::command]
-fn close_window(window: tauri::Window, code: Option<i32>) {
+fn close_window(window: tauri::WebviewWindow, code: Option<i32>) {
     if let Some(code) = code {
         window.app_handle().exit(code);
         return;
@@ -240,7 +242,7 @@ async fn do_self_update(app: &AppHandle) -> Result<()> {
     // as we can still do self update without a window.
     show_manager_window_if_possible(app);
 
-    let window = app.get_window(MANAGER_WINDOW_LABEL);
+    let window = app.get_webview_window(MANAGER_WINDOW_LABEL);
     // block UI interaction, and show loading toast
     if let Some(win) = &window {
         win.emit(LOADING_TEXT, t!("self_update_in_progress"))?;
@@ -264,8 +266,6 @@ async fn do_self_update(app: &AppHandle) -> Result<()> {
 
     // restart app
     app.restart();
-
-    Ok(())
 }
 
 async fn show_update_notification_popup<C: Display, S: Display>(
@@ -363,16 +363,16 @@ fn skip_version(app: AppHandle, target: UpdateTarget, version: String) -> Result
 }
 
 enum WindowState {
-    Normal(Window),
-    Hidden(Window),
-    Minimized(Window),
+    Normal(WebviewWindow),
+    Hidden(WebviewWindow),
+    Minimized(WebviewWindow),
     Closed,
 }
 
 impl WindowState {
     /// Detects the state of main manager window.
     fn detect(app: &AppHandle) -> Result<Self> {
-        let Some(win) = app.get_window(MANAGER_WINDOW_LABEL) else {
+        let Some(win) = app.get_webview_window(MANAGER_WINDOW_LABEL) else {
             return Ok(Self::Closed);
         };
         let state = if win.is_visible()? {
@@ -407,31 +407,43 @@ impl WindowState {
     }
 }
 
-fn system_tray() -> SystemTray {
-    let tray_menu = SystemTrayMenu::new()
-        .add_item(CustomMenuItem::new("show", t!("show_ui")))
-        .add_native_item(tauri::SystemTrayMenuItem::Separator)
-        .add_item(CustomMenuItem::new("quit", t!("quit")));
-    SystemTray::new().with_menu(tray_menu)
-}
-
-fn system_tray_event_handler(app: &AppHandle, event: SystemTrayEvent) {
-    match event {
-        SystemTrayEvent::DoubleClick { .. } => show_manager_window_if_possible(app),
-        SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
-            "show" => show_manager_window_if_possible(app),
-            "quit" => app.exit(0),
+fn setup_system_tray(app: &tauri::App) -> Result<()> {
+    let menu = Menu::with_items(
+        app,
+        &[
+            &MenuItem::with_id(app, "show", t!("show_ui"), true, None::<&str>)?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(app, "quit", t!("quit"), true, None::<&str>)?,
+        ],
+    )?;
+    TrayIconBuilder::new()
+        .menu(&menu)
+        .show_menu_on_left_click(true)
+        .on_tray_icon_event(|icon, event| {
+            if let TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            } = event
+            {
+                show_manager_window_if_possible(icon.app_handle())
+            }
+        })
+        .on_menu_event(|handle, event| match event.id.as_ref() {
+            "show" => show_manager_window_if_possible(handle),
+            "quit" => handle.exit(0),
             _ => {}
-        },
-        _ => {}
-    }
+        })
+        .build(app)?;
+    Ok(())
 }
 
-fn window_event_handler(event: GlobalWindowEvent) {
-    if let WindowEvent::CloseRequested { api, .. } = event.event() {
-        api.prevent_close();
-        close_window(event.window().clone(), None);
-    }
+fn handle_window_event(window: WebviewWindow) {
+    window.clone().on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            api.prevent_close();
+            close_window(window.clone(), None);
+        }
+    });
 }
 
 fn show_manager_window_if_possible(app: &AppHandle) {
