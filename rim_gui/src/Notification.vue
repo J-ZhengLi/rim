@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { onMounted, Ref, ref } from 'vue';
 import { Notification, NotificationAction, RustFunction } from './utils/types/Notification'
-import { appWindow } from '@tauri-apps/api/window';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { invokeCommand, managerConf } from './utils';
-import { message } from '@tauri-apps/api/dialog';
+import { message } from '@tauri-apps/plugin-dialog';
+const appWindow = getCurrentWebviewWindow()
 
 const appName = ref('');
 const appIcon = "/128x128.png";

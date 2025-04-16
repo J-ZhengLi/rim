@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
 import { event } from '@tauri-apps/api';
-import { message } from '@tauri-apps/api/dialog';
+import { message } from '@tauri-apps/plugin-dialog';
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useCustomRouter } from '@/router/index';
 import { invokeCommand, progressFormat } from '@/utils/index';

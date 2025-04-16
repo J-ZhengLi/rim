@@ -3,7 +3,7 @@ import { event } from '@tauri-apps/api';
 import { computed, nextTick, onMounted, Ref, ref } from 'vue';
 import { managerConf, progressFormat } from '@/utils';
 import { useCustomRouter } from '@/router';
-import { message } from '@tauri-apps/api/dialog';
+import { message } from '@tauri-apps/plugin-dialog';
 
 const { routerPush, routerPushAndClearCache } = useCustomRouter();
 
@@ -50,7 +50,7 @@ onMounted(() => {
 
   event.listen('on-failed', (event) => {
     if (typeof event.payload === 'string') {
-      message(event.payload, { title: '错误', type: 'error' }).then(() =>
+      message(event.payload, { title: '错误', kind: 'error' }).then(() =>
         routerPush('/manager')
       );
     }
