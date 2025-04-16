@@ -9,7 +9,7 @@ import type {
 } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
 import CheckBoxGroup from '@/components/CheckBoxGroup.vue';
-import { message } from '@tauri-apps/api/dialog';
+import { message } from '@tauri-apps/plugin-dialog';
 
 const { routerPush, routerBack } = useCustomRouter();
 const selectComponentId = ref(0);
@@ -118,7 +118,7 @@ function handleClickNext() {
     item.items.every((i) => !i.checked)
   );
   if (noSelection) {
-    message('请选择至少一个组件', { type: 'error' });
+    message('请选择至少一个组件', { kind: 'error' });
     return;
   }
   updateTargetComponents();

@@ -110,37 +110,39 @@ impl<'a> DistWorker<'a> {
         )
     }
 
-    fn build_args(&self, noweb: bool) -> Vec<&'a str> {
+    fn command(&self, noweb: bool) -> Command {
         if self.is_cli {
-            let mut base = vec![
+            let mut cmd = Command::new("cargo");
+            cmd.args([
                 "build",
                 "--release",
                 "--locked",
                 "--target",
                 self.build_target,
-            ];
+            ]);
             if noweb {
-                base.extend(["--features", "no-web"]);
+                cmd.args(["--features", "no-web"]);
             }
-            base
+            cmd
         } else {
-            let mut base = vec![
+            let mut cmd = pnpm_cmd();
+            cmd.args([
+                "run",
                 "tauri",
                 "build",
-                "-b",
-                "none",
+                "--no-bundle",
                 "--target",
                 self.build_target,
-            ];
+            ]);
             if noweb {
-                base.extend(["--features", "no-web"]);
+                cmd.args(["--features", "no-web"]);
             }
-            base.extend(["--", "--locked"]);
-            base
+            cmd.args(["--", "--locked"]);
+            cmd
         }
     }
 
-    /// Run build command, move the built binary into a spefic location,
+    /// Run build command, move the built binary into a specific location,
     /// then return the path to that location.
     fn build_binary(&self, noweb: bool) -> Result<PathBuf> {
         let mut dest_dir = dist_dir()?;
@@ -149,14 +151,13 @@ impl<'a> DistWorker<'a> {
             ensure_dir(&dest_dir)?;
         }
 
-        let mut cmd = Command::new("cargo");
+        let mut cmd = self.command(noweb);
         cmd.env("HOST_TRIPLE", self.dist_target);
         cmd.env("EDITION", self.edition);
-        cmd.args(self.build_args(noweb));
 
         let status = cmd.status()?;
         if status.success() {
-            // when not using cross comilation, we are not running `cargo build` with
+            // when not using cross compilation, we are not running `cargo build` with
             // `--target` option, therefore the release dir's path will not have a target in it.
             let src = release_dir(self.build_target).join(self.source_binary_name());
             // copy and rename the binary with vendor name
@@ -187,7 +188,7 @@ impl<'a> DistWorker<'a> {
         // copy the vendored packages to dist folder
         if !src_pkg_dir.exists() {
             bail!(
-                "missing vendered packages in '{}', \
+                "missing vendored packages in '{}', \
             perhaps you forgot to run `cargo dev vendor` first?",
                 src_pkg_dir.display()
             );
