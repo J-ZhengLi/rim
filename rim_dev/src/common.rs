@@ -3,10 +3,30 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Result};
 use rim_common::utils::{copy_as, walk_dir};
+
+fn rim_gui_dir() -> &'static Path {
+    static RIM_GUI_DIR: OnceLock<PathBuf> = OnceLock::new();
+    RIM_GUI_DIR.get_or_init(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("rim_gui"))
+}
+
+/// Return the base command to run `pnpm`.
+pub fn pnpm_cmd() -> Command {
+    cfg_if::cfg_if! {
+        if #[cfg(windows)] {
+            let mut cmd = Command::new("cmd.exe");
+            cmd.current_dir(rim_gui_dir()).args(["/C", "pnpm"]);
+        } else {
+            let mut cmd = Command::new("pnpm");
+            cmd.current_dir(rim_gui_dir());
+        }
+    }
+    cmd
+}
 
 pub fn install_gui_deps() {
     println!("running `pnpm i`");
@@ -16,21 +36,14 @@ pub fn install_gui_deps() {
     let gui_crate_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("rim_gui");
     assert!(gui_crate_dir.exists());
 
-    cfg_if::cfg_if! {
-        if #[cfg(windows)] {
-            let mut status = Command::new("cmd.exe");
-            status.args(["/C", "pnpm", "i"]);
-        } else {
-            let mut status = Command::new("pnpm");
-            status.arg("i");
-        }
-    }
-    status
+    let status = pnpm_cmd()
+        .arg("i")
         .current_dir(gui_crate_dir)
         .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit());
+        .stderr(Stdio::inherit())
+        .status();
 
-    let Ok(st) = status.status() else {
+    let Ok(st) = status else {
         println!("{fail_msg}");
         return;
     };

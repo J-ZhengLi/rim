@@ -35,21 +35,13 @@ jobs:
           node-version: lts/*
 
       - name: install Rust
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
-        run: |
-          sudo apt-get update
-          sudo apt-get install libwebkit2gtk-4.0-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libssl-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev
+        run: bash ci/scripts/install-tauri-deps.sh
 
       - name: run clippy
         run: cargo clippy --no-deps -p rim-gui -- -D warnings

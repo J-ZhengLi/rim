@@ -43,31 +43,67 @@ After env setup, it will guide you through installing Rust `toolkit`.
 
 ### Prerequisite
 
-To build the GUI version, you'll need `NodeJs` and `pnpm` installed.
-You also need to install the `tauri-cli` (v1) binary, which you can install by:
+1. Install [Rust](https://rustup.rs/)
 
-- run `cargo install tauri-cli --version '^1'`
-- download the built binary from their [github release](https://github.com/tauri-apps/tauri/releases/tag/tauri-cli-v1.6.3), then extract and put it into your `<CARGO_HOME>/bin` folder
+    > If you only need the CLI binary, you don't need any dependencies other than `Rust`, so you can skip ahead.
+    > But If you need the GUI binary, you'll have to install additional packages such as `NodeJS`.
 
-> Note: `tauri-cli v2` does not work, it is incompatible with `tauri v1` project structure, which this program uses.
+2. Install [`NodeJs`](https://nodejs.org/en/download)
+3. Install [`pnpm`](https://pnpm.io/installation), you can install by using `npm` after installing `NodeJS` using the following command:
+
+    ```bash
+    npm install -g pnpm@latest
+    ```
+4. (Linux Only) Install additional dev packages using:
+    ```bash
+    bash ./ci/scripts/install-tauri-deps.sh
+    ```
+
+### Debug
+
+- Debug `installer` mode:
+  - Commandline interface
+  ```bash
+  cargo run
+  ```
+  - Graphical interface
+  ```bash
+  cd rim_gui
+  pnpm run tauri dev
+  ```
+- Debug `manager` mode:
+  > Running `manager` is not as straight forward as running in `Installer` mode.
+  Because `manager` binary need to be put alongside with some configuration files or such,
+  otherwise it will panic. Luckily there's a helper command to help you creating a mocked environment,
+  so you can test `manager`'s functionalities easier.
+
+  ```bash
+  cargo dev run-manager
+  ```
 
 ### Release
 
-It is recommanded to use `cargo dev dist` command for:
+1. Before creating releases, you should know which edition to build for,
+the release editions can be found in [`toolkit` configuration file](./resources/toolkits.toml), and the default edition is `Basic` for testing purpose.
+If you need to release for other editions (such as `community`), specify it with `EDITION` env arg just like:
 
-- GUI release: `cargo dev dist --gui`
-- CLI release: `cargo dev dist --cli`
-- Both above: `cargo dev dist`
+    ```bash
+    export EDITION='community'
+    ```
 
-The built artifacts will be stored inside of `./dist/`.
+2. If you need the offline package releases, you also need to vendor the packages
+   used for offline installation, it can be done using:
+   ```bash
+   cargo dev vendor --download-only
+   ```
 
-> `dev dist` works by building and renaming the release binary. Then collect the local packages under `resources/packages` folder, which can be gathered from Web using *`cargo dev vendor`, then use the packages to create an offline installer. 
+3. Then you can finally run the command to create released package(s) using specific command in the below table, and the result will be stored under `dist/` directory.
 
-*(check [`rim-dev's readme`](./rim_dev/README.md) for more details).
-
-But if you just want to try the app or you only need the , just use:
-- `cargo build --release` to build the CLI version (binary name: rim-cli)
-- `cargo tauri build -b none` to build the GUI version (binary name: rim-gui)
+    |          | Net Installer | Net Installer & Offline Package |
+    | -------- | ------------- | ------------------------------- |
+    | **CLI**  | `cargo dev dist -b --cli` | `cargo dev dist --cli` |
+    | **GUI**  | `cargo dev dist -b --gui` | `cargo dev dist --gui` |
+    | **Both** | `cargo dev dist -b` | `cargo dev dist` |
 
 ## Usage
 

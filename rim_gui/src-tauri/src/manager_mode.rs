@@ -417,8 +417,8 @@ fn setup_system_tray(app: &tauri::App) -> Result<()> {
         ],
     )?;
     TrayIconBuilder::new()
+        .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .show_menu_on_left_click(true)
         .on_tray_icon_event(|icon, event| {
             if let TrayIconEvent::DoubleClick {
                 button: MouseButton::Left,
