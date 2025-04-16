@@ -1,16 +1,32 @@
-# RIM-Dev
+# `RIM-dev`: Helper crate for RIM development
 
-Helper commands for development
+A development utility crate to simplify debugging & releasing procedures.
 
-## How to use
+## Usage
 
-### Debug with manager mode (GUI)
+Overview:
+
+```console
+Usage: cargo dev [OPTIONS] [COMMAND]
+
+Options:
+    -h, -help       Print this help message
+
+Commands:
+    dist, d         Generate release binaries
+    run-manager     Run in manager mode
+    vendor          Download packages for offline package build
+    mock-rustup-server
+                    Generate a mocked rustup dist server
+```
+
+### Debug manager (GUI)
 
 ```bash
 cargo dev run-manager
 ```
 
-### Debug with manager mode (CLI)
+### Debug manager (CLI)
 
 ```bash
 cargo dev run-manager --cli

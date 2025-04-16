@@ -5,7 +5,6 @@ use std::sync::OnceLock;
 use anyhow::{anyhow, Context};
 use rim_common::build_config;
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
 use tokio::sync::Mutex;
 
 use super::{common, INSTALL_DIR};
@@ -19,12 +18,9 @@ static TOOLSET_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
 
 pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, argv, cmd| {
-            _ = app.emit_all(
-                "single-instance",
-                common::SingleInstancePayload { argv, cmd },
-            );
-        }))
+        .plugin(tauri_plugin_cli::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cmd| {}))
         .invoke_handler(tauri::generate_handler![
             close_window,
             default_install_dir,
@@ -53,7 +49,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
 }
 
 #[tauri::command]
-fn close_window(window: tauri::Window) {
+fn close_window(window: tauri::WebviewWindow) {
     common::close_window(window);
 }
 

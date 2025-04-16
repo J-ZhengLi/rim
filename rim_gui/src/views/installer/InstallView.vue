@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
 import { event } from '@tauri-apps/api';
-import { message } from '@tauri-apps/api/dialog';
+import { message } from '@tauri-apps/plugin-dialog';
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useCustomRouter } from '@/router/index';
 import { invokeCommand, progressFormat } from '@/utils/index';
@@ -53,7 +53,7 @@ onMounted(() => {
     if (typeof event.payload === 'string') {
       output.value.push(event.payload);
       toBottom();
-      message(event.payload, { title: '错误', type: 'error' }).then(() =>
+      message(event.payload, { title: '错误', kind: 'error' }).then(() =>
         invokeCommand('close_window')
       );
     }

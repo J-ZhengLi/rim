@@ -42,18 +42,8 @@ jobs:
       - name: install dependencies (Linux)
         if: matrix.os != 'windows-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libssl-dev \
-            libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            musl-tools
+          bash ci/scripts/install-tauri-deps.sh
+          sudo apt-get install -y musl-tools
 
       - name: setup NodeJS
         uses: actions/setup-node@v4
@@ -64,12 +54,9 @@ jobs:
         run: npm i -g pnpm
 
       - name: install Rust
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.build-target }}
-
-      - name: install tauri-cli
-        run: bash ci/scripts/install-tauri-cli.sh
 
       - name: download packages for offline build
         run: cargo dev vendor --for ${{ matrix.dist-targets }}

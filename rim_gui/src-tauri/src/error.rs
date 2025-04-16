@@ -1,17 +1,17 @@
 pub type Result<T> = core::result::Result<T, InstallerError>;
 
 macro_rules! installer_error {
-    ($($varient:ident ( $error_ty:ty )),+) => {
+    ($($variant:ident ( $error_ty:ty )),+) => {
         pub enum InstallerError {
             $(
-                $varient($error_ty),
+                $variant($error_ty),
             )*
         }
         impl std::fmt::Debug for InstallerError {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(
-                        Self::$varient(e) => write!(f, "{e:?}"),
+                        Self::$variant(e) => write!(f, "{e:?}"),
                     )*
                 }
             }
@@ -20,7 +20,7 @@ macro_rules! installer_error {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(
-                        Self::$varient(e) => write!(f, "{e}"),
+                        Self::$variant(e) => write!(f, "{e}"),
                     )*
                 }
             }
@@ -28,7 +28,7 @@ macro_rules! installer_error {
         $(
             impl From<$error_ty> for InstallerError {
                 fn from(value: $error_ty) -> Self {
-                    Self::$varient(value)
+                    Self::$variant(value)
                 }
             }
         )*
@@ -51,9 +51,9 @@ impl std::error::Error for InstallerError {
     }
 }
 
-impl From<InstallerError> for tauri::InvokeError {
+impl From<InstallerError> for tauri::ipc::InvokeError {
     fn from(value: InstallerError) -> Self {
         let anyhow_error: anyhow::Error = value.into();
-        tauri::InvokeError::from_anyhow(anyhow_error)
+        tauri::ipc::InvokeError::from_anyhow(anyhow_error)
     }
 }
