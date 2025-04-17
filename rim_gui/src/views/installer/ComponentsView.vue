@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
 import ScrollBox from '@/components/ScrollBox.vue';
-import { ComponentHelper, installConf, invokeCommand } from '@/utils/index';
+import { componentUtils, installConf, invokeCommand } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -84,8 +84,7 @@ function handleComponentsChange(items: CheckGroupItem<Component>[]) {
       const findItem = items.find((i) => i.value.id === item.value.id);
       if (findItem) {
         item.checked = findItem.checked;
-        const helper = new ComponentHelper(item.value);
-        dependencies = dependencies.concat(helper.requires().map(name => [name, findItem.checked]));
+        dependencies = dependencies.concat(componentUtils(item.value).requires().map(name => [name, findItem.checked]));
       }
     });
   });
