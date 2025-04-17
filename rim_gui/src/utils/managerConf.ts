@@ -1,6 +1,6 @@
 import { ref, Ref, shallowRef } from 'vue';
 import { KitItem } from './types/KitItem';
-import { Component } from './types/Component';
+import { Component, ComponentType } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
@@ -55,14 +55,33 @@ class ManagerConf {
   public getGroups(): CheckGroup<Component>[] {
     const checkItems: CheckGroupItem<Component>[] =
       this._current.value?.components.map((item) => {
-        const installedItem = this._installedKit.value?.components.find(
-          (c) => c.name === item.name
-        );
-        let installedVersion = installedItem?.version;
-        let isVerDifferent = installedVersion !== undefined && installedVersion !== item.version;
-        let isRequiredButNotInstalled = item.required && installedItem === undefined;
+        const installedComps = this._installedKit.value?.components;
 
-        let versionStr = isVerDifferent ? `(${installedVersion} -> ${item.version})` : ` (${item.version})`;
+        // Note (J-ZhengLi): There was a bug where the `display-name`, which is what used to
+        // represent rust toolchain got changed in a new toolkit, causing the app failed to
+        // recognize the version of installed rust toolchain because the name not matches anymore.
+        // Therefore here I directly use the installed toolchainVersion for `oldVer` if current
+        // component item is the rust toolchain.
+        const installedInfo = (() => {
+          if (item.kind === ComponentType.ToolchainProfile) {
+            const installedToolchain = installedComps?.find((c) => c.kind === ComponentType.ToolchainProfile);
+            return {
+              installed: installedToolchain !== undefined,
+              version: installedToolchain?.version,
+            };
+          } else {
+            const installedTool = installedComps?.find((c) => c.name === item.name);
+            return {
+              installed: installedTool !== undefined,
+              version: installedTool?.version,
+            };
+          }
+        })();
+
+        let isVerDifferent = installedInfo.version && installedInfo.version !== item.version;
+        let isRequiredButNotInstalled = item.required && !installedInfo.installed;
+
+        let versionStr = isVerDifferent ? `(${installedInfo.version} -> ${item.version})` : ` (${item.version})`;
 
         return {
           label: `${item.displayName}${versionStr}`,
@@ -75,7 +94,7 @@ class ManagerConf {
           labelComponent: shallowRef(LabelComponent),
           labelComponentProps: {
             label: item.displayName,
-            oldVer: installedVersion,
+            oldVer: installedInfo.version,
             newVer: item.version,
           },
         };

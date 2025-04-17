@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { invokeCommand, managerConf, Component, ComponentType, invokeLabelList, ComponentHelper } from '@/utils';
+import { invokeCommand, managerConf, Component, ComponentType, invokeLabelList, componentUtils } from '@/utils';
 import { computed, onMounted, ref } from 'vue';
 import ComponentLabel from './components/Label.vue';
 
@@ -10,10 +10,11 @@ const components = computed(() => managerConf.getTargetComponents());
 
 const labels = computed(() => {
   const installed = managerConf.getInstalled();
+  const installedToolchainVersion = installed?.components.find((c) => c.kind === ComponentType.ToolchainProfile)?.version;
   return components.value.map((item) => {
     const installedComponent = installed?.components.find((i) => i.name === item.name);
     let isFromToolchain = item.kind === ComponentType.ToolchainComponent || item.kind === ComponentType.ToolchainProfile;
-    let installedVersion = isFromToolchain ? installed?.version : installedComponent?.version;
+    let installedVersion = isFromToolchain ? installedToolchainVersion : installedComponent?.version;
     return {
       label: item.displayName,
       originVer: installedVersion,
@@ -26,8 +27,7 @@ const obsoletedComponents = computed(() => {
   const installedComponents = managerConf.getInstalled()?.components.map((comp) => comp.name);
   if (installedComponents) {
     return components.value.map((comp) => {
-      const component = new ComponentHelper(comp);
-      return component.obsoletes().filter((name) => installedComponents.includes(name));
+      return componentUtils(comp).obsoletes().filter((name) => installedComponents.includes(name));
     }).flat();
   }
 
