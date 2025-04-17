@@ -384,7 +384,8 @@ impl TryFrom<&[String]> for CliOpt {
         let mut rustup_dist_server = None;
         let mut subcommand = None;
 
-        let mut iter = value.iter();
+        // skip the first arg, which is the path of this binary
+        let mut iter = value.iter().skip(1);
         while let Some(v) = iter.next() {
             match v.as_str() {
                 "-s" | "--silent" => silent = true,
