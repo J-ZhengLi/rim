@@ -1,13 +1,13 @@
 import { ref, Ref, shallowRef } from 'vue';
 import { KitItem } from './types/KitItem';
-import { Component } from './types/Component';
+import { Component, ComponentType, componentUtils } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
 import { AppInfo } from './types/AppInfo';
 
 type Target = {
-  operation: 'update' | 'uninstall';
+  operation: ManagerOperation;
   components: Component[];
 };
 
@@ -17,8 +17,7 @@ class ManagerConf {
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
-  private _target: Ref<Target> = ref({ operation: 'update', components: [] });
-  private _isUninstallManager: Ref<boolean> = ref(false);
+  private _target: Ref<Target> = ref({ operation: ManagerOperation.Update, components: [] });
 
   constructor() { }
 
@@ -40,10 +39,6 @@ class ManagerConf {
     return info.version ? info.name + ' ' + info.version : info.name;
   }
 
-  public getUninstallManager() {
-    return this._isUninstallManager.value;
-  }
-
   public getKits(): KitItem[] {
     return this._availableKits.value;
   }
@@ -52,34 +47,55 @@ class ManagerConf {
     return this._installedKit.value;
   }
 
-  public getGroups(): CheckGroup<Component>[] {
+  public componentsToUpdate(): CheckGroup<Component>[] {
     const checkItems: CheckGroupItem<Component>[] =
-      this._current.value?.components.map((item) => {
-        const installedItem = this._installedKit.value?.components.find(
-          (c) => c.name === item.name
-        );
-        let installedVersion = installedItem?.version;
-        let isVerDifferent = installedVersion !== undefined && installedVersion !== item.version;
-        let isRequiredButNotInstalled = item.required && installedItem === undefined;
+      this._current.value?.components
+        .filter((item) => !componentUtils(item).isRestricted()) // ignore restricted components for now
+        .map((item) => {
+          const installedComps = this._installedKit.value?.components;
 
-        let versionStr = isVerDifferent ? `(${installedVersion} -> ${item.version})` : ` (${item.version})`;
+          // Note (J-ZhengLi): There was a bug where the `display-name`, which is what used to
+          // represent rust toolchain got changed in a new toolkit, causing the app failed to
+          // recognize the version of installed rust toolchain because the name not matches anymore.
+          // Therefore here I directly use the installed toolchainVersion for `oldVer` if current
+          // component item is the rust toolchain.
+          const installedInfo = (() => {
+            if (item.kind === ComponentType.ToolchainProfile) {
+              const installedToolchain = installedComps?.find((c) => c.kind === ComponentType.ToolchainProfile);
+              return {
+                installed: installedToolchain !== undefined,
+                version: installedToolchain?.version,
+              };
+            } else {
+              const installedTool = installedComps?.find((c) => c.name === item.name);
+              return {
+                installed: installedTool !== undefined,
+                version: installedTool?.version,
+              };
+            }
+          })();
 
-        return {
-          label: `${item.displayName}${versionStr}`,
-          checked: isVerDifferent || isRequiredButNotInstalled,
-          required: item.required,
-          disabled: false,
+          let isVerDifferent = installedInfo.version && installedInfo.version !== item.version;
+          let isRequiredButNotInstalled = item.required && !installedInfo.installed;
 
-          focused: false,
-          value: item,
-          labelComponent: shallowRef(LabelComponent),
-          labelComponentProps: {
-            label: item.displayName,
-            oldVer: installedVersion,
-            newVer: item.version,
-          },
-        };
-      }) || [];
+          let versionStr = isVerDifferent ? `(${installedInfo.version} -> ${item.version})` : ` (${item.version})`;
+
+          return {
+            label: `${item.displayName}${versionStr}`,
+            checked: isVerDifferent || isRequiredButNotInstalled,
+            required: item.required,
+            disabled: false,
+
+            focused: false,
+            value: item,
+            labelComponent: shallowRef(LabelComponent),
+            labelComponentProps: {
+              label: item.displayName,
+              oldVer: installedInfo.version,
+              newVer: item.version,
+            },
+          };
+        }) || [];
 
     const groups = checkItems.reduce(
       (acc, item) => {
@@ -108,12 +124,15 @@ class ManagerConf {
     return this._target.value.operation;
   }
 
-  public getTargetComponents() {
-    return this._target.value.components;
+  /**
+   * @returns `true` if the current operation was marked as uninstalling.
+   */
+  public isUninstalling(): boolean {
+    return [ManagerOperation.UninstallAll, ManagerOperation.UninstallToolkit].includes(this._target.value.operation);
   }
 
-  public setUninstallManager(value: boolean) {
-    this._isUninstallManager.value = value;
+  public getTargetComponents() {
+    return this._target.value.components;
   }
 
   public setKits(kits: KitItem[]): void {
@@ -179,6 +198,12 @@ class ManagerConf {
     await this.loadInstalledKit()
     await this.loadAvailableKits()
   }
+}
+
+export enum ManagerOperation {
+  Update,
+  UninstallAll,
+  UninstallToolkit,
 }
 
 export const managerConf = new ManagerConf();
