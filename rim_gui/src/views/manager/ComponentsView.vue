@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUpdated, Ref, ref, watch, nextTick } from 'vue';
 import ScrollBox from '@/components/ScrollBox.vue';
-import { componentUtils, managerConf } from '@/utils/index';
+import { componentUtils, managerConf, ManagerOperation } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -121,7 +121,7 @@ function handleClickNext() {
     return;
   }
   updateTargetComponents();
-  managerConf.setOperation('update');
+  managerConf.setOperation(ManagerOperation.Update);
   routerPush('/manager/confirm');
 }
 

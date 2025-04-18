@@ -7,7 +7,7 @@ import { invokeCommand } from './invokeCommand';
 import { AppInfo } from './types/AppInfo';
 
 type Target = {
-  operation: 'update' | 'uninstall';
+  operation: ManagerOperation;
   components: Component[];
 };
 
@@ -17,8 +17,7 @@ class ManagerConf {
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
-  private _target: Ref<Target> = ref({ operation: 'update', components: [] });
-  private _isUninstallManager: Ref<boolean> = ref(false);
+  private _target: Ref<Target> = ref({ operation: ManagerOperation.Update, components: [] });
 
   constructor() { }
 
@@ -40,10 +39,6 @@ class ManagerConf {
     return info.version ? info.name + ' ' + info.version : info.name;
   }
 
-  public getUninstallManager() {
-    return this._isUninstallManager.value;
-  }
-
   public getKits(): KitItem[] {
     return this._availableKits.value;
   }
@@ -53,8 +48,6 @@ class ManagerConf {
   }
 
   public componentsToUpdate(): CheckGroup<Component>[] {
-    console.log("Installed components: ", this._installedKit.value?.components);
-    console.log("Current components: ", this._current.value?.components);
     const checkItems: CheckGroupItem<Component>[] =
       this._current.value?.components
         .filter((item) => !componentUtils(item).isRestricted()) // ignore restricted components for now
@@ -131,12 +124,15 @@ class ManagerConf {
     return this._target.value.operation;
   }
 
-  public getTargetComponents() {
-    return this._target.value.components;
+  /**
+   * @returns `true` if the current operation was marked as uninstalling.
+   */
+  public isUninstalling(): boolean {
+    return [ManagerOperation.UninstallAll, ManagerOperation.UninstallToolkit].includes(this._target.value.operation);
   }
 
-  public setUninstallManager(value: boolean) {
-    this._isUninstallManager.value = value;
+  public getTargetComponents() {
+    return this._target.value.components;
   }
 
   public setKits(kits: KitItem[]): void {
@@ -202,6 +198,12 @@ class ManagerConf {
     await this.loadInstalledKit()
     await this.loadAvailableKits()
   }
+}
+
+export enum ManagerOperation {
+  Update,
+  UninstallAll,
+  UninstallToolkit,
 }
 
 export const managerConf = new ManagerConf();

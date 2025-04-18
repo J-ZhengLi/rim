@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router/index';
-import { invokeCommand, managerConf } from '@/utils';
+import { invokeCommand, managerConf, ManagerOperation } from '@/utils';
 import { computed, ref, watch } from 'vue';
 import Label from './components/Label.vue';
 const { routerBack, routerPush } = useCustomRouter();
@@ -9,7 +9,11 @@ const isUninstallManger = ref(false);
 const installDir = computed(() => managerConf.path);
 
 watch(isUninstallManger, (val: boolean) => {
-  managerConf.setUninstallManager(val);
+  if (val) {
+    managerConf.setOperation(ManagerOperation.UninstallAll);
+  } else {
+    managerConf.setOperation(ManagerOperation.UninstallToolkit);
+  }
 });
 
 const installed = computed(() => managerConf.getInstalled());

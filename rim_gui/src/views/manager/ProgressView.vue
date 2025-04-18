@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { event } from '@tauri-apps/api';
 import { computed, nextTick, onMounted, Ref, ref } from 'vue';
-import { managerConf, progressFormat } from '@/utils';
+import { managerConf, ManagerOperation, progressFormat } from '@/utils';
 import { useCustomRouter } from '@/router';
 import { message } from '@tauri-apps/plugin-dialog';
 
@@ -9,11 +9,11 @@ const { routerPush, routerPushAndClearCache } = useCustomRouter();
 
 const progress = ref(0);
 const output: Ref<string[]> = ref([]);
-const isUninstall = computed(() => managerConf.getOperation() === 'uninstall');
+const isUninstall = computed(() => managerConf.isUninstalling());
 const scrollBox = ref(null);
 
 function complete() {
-  if (isUninstall.value) {
+  if (managerConf.getOperation() === ManagerOperation.UninstallAll) {
     routerPush('/manager/complete');
   } else {
     message('完成更改', { title: '提示' }).then(() => {
