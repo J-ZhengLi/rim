@@ -243,14 +243,14 @@ mod tests {
             ToolInfo::Basic($version.into())
         };
         ($url_str:literal, $version:expr) => {
-            complex_tool(ToolInfoDetails::new(ToolSource::Url {
+            complex_tool(ToolInfoDetails::new().with_source(ToolSource::Url {
                 version: $version.map(ToString::to_string),
                 url: $url_str.parse().unwrap(),
                 filename: None,
             }))
         };
         ($git:literal, $branch:expr, $tag:expr, $rev:expr) => {
-            complex_tool(ToolInfoDetails::new(ToolSource::Git {
+            complex_tool(ToolInfoDetails::new().with_source(ToolSource::Git {
                 git: $git.parse().unwrap(),
                 branch: $branch.map(ToString::to_string),
                 tag: $tag.map(ToString::to_string),
@@ -258,7 +258,7 @@ mod tests {
             }))
         };
         ($path:expr, $version:expr) => {
-            complex_tool(ToolInfoDetails::new(ToolSource::Path {
+            complex_tool(ToolInfoDetails::new().with_source(ToolSource::Path {
                 path: $path,
                 version: $version.map(ToString::to_string),
             }))
@@ -511,9 +511,9 @@ t3 = { ver = "0.3.0", optional = true } # use cargo install
         assert_eq!(
             tools.get("t2"),
             Some(&complex_tool(ToolInfoDetails {
-                source: ToolSource::Version {
+                source: Some(ToolSource::Version {
                     version: "0.2.0".into(),
-                },
+                }),
                 required: true,
                 ..Default::default()
             }))
@@ -521,9 +521,9 @@ t3 = { ver = "0.3.0", optional = true } # use cargo install
         assert_eq!(
             tools.get("t3"),
             Some(&complex_tool(ToolInfoDetails {
-                source: ToolSource::Version {
+                source: Some(ToolSource::Version {
                     version: "0.3.0".into(),
-                },
+                }),
                 optional: true,
                 ..Default::default()
             }))
@@ -685,23 +685,23 @@ tool_b = { default = "https://example.com/installer.exe", restricted = true }
         assert_eq!(name, "tool_a");
         assert_eq!(
             info.details().unwrap().source,
-            ToolSource::Restricted {
+            Some(ToolSource::Restricted {
                 restricted: true,
                 default: None,
                 source: None,
                 version: Some("0.1.0".to_string())
-            }
+            })
         );
         let (name, info) = tools.next().unwrap();
         assert_eq!(name, "tool_b");
         assert_eq!(
             info.details().unwrap().source,
-            ToolSource::Restricted {
+            Some(ToolSource::Restricted {
                 restricted: true,
                 default: Some("https://example.com/installer.exe".into()),
                 source: None,
                 version: None
-            }
+            })
         );
     }
 

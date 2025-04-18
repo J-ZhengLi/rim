@@ -145,11 +145,11 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
                 let ToolInfo::Complex(details) = info_table else {
                     continue;
                 };
-                if let ToolSource::Url {
+                if let Some(ToolSource::Url {
                     version: _,
                     url,
                     filename,
-                } = &details.source
+                }) = &details.source
                 {
                     let filename = if let Some(name) = filename {
                         name

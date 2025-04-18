@@ -17,6 +17,14 @@ export function componentUtils(component: Component) {
       const obs = this.getToolInfo()?.obsoletes;
       return obs ?? [];
     },
+
+    isRestricted(): boolean {
+      const info = this.getToolInfo();
+      if (info && 'restricted' in info) {
+        return info.restricted;
+      }
+      return false;
+    }
   }
 }
 

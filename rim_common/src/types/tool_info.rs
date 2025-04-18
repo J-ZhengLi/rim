@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use url::Url;
 
+use crate::setter;
+
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(untagged)]
 pub enum ToolInfo {
@@ -31,7 +33,7 @@ impl ToolInfo {
     /// check [`ToolSource::Path`] for more info.
     pub fn path_mut(&mut self) -> Option<&mut PathBuf> {
         if let Self::Complex(details) = self {
-            if let ToolSource::Path { path, .. } = &mut details.source {
+            if let Some(ToolSource::Path { path, .. }) = &mut details.source {
                 return Some(path);
             }
         }
@@ -42,7 +44,7 @@ impl ToolInfo {
     /// check [`ToolSource::Url`] for more info.
     pub fn url_mut(&mut self) -> Option<&mut Url> {
         if let Self::Complex(details) = self {
-            if let ToolSource::Url { url, .. } = &mut details.source {
+            if let Some(ToolSource::Url { url, .. }) = &mut details.source {
                 return Some(url);
             }
         }
@@ -54,19 +56,19 @@ impl ToolInfo {
     /// Do nothing if current tool's source is not a `Url` type.
     pub fn url_to_path<P: Into<PathBuf>>(&mut self, path: P) {
         if let Self::Complex(details) = self {
-            let ToolSource::Url {
+            let Some(ToolSource::Url {
                 version,
                 url: _,
                 filename: _,
-            } = &details.source
+            }) = &details.source
             else {
                 return;
             };
 
-            details.source = ToolSource::Path {
+            details.source = Some(ToolSource::Path {
                 version: version.clone(),
                 path: path.into(),
-            };
+            });
         }
     }
 
@@ -74,7 +76,7 @@ impl ToolInfo {
     /// check [`ToolSource::Restricted`] for more info.
     pub fn restricted_source_mut(&mut self) -> Option<&mut Option<String>> {
         if let Self::Complex(details) = self {
-            if let ToolSource::Restricted { source, .. } = &mut details.source {
+            if let Some(ToolSource::Restricted { source, .. }) = &mut details.source {
                 return Some(source);
             }
         }
@@ -107,13 +109,18 @@ impl ToolInfo {
     pub fn version(&self) -> Option<&str> {
         match self {
             Self::Basic(ver) => Some(ver),
-            Self::Complex(details) => match &details.source {
-                ToolSource::Git { tag, .. } => tag.as_deref(),
-                ToolSource::Version { version } => Some(version),
-                ToolSource::Path { version, .. }
-                | ToolSource::Url { version, .. }
-                | ToolSource::Restricted { version, .. } => version.as_deref(),
-            },
+            Self::Complex(details) => {
+                let Some(source) = &details.source else {
+                    return None;
+                };
+                match source {
+                    ToolSource::Git { tag, .. } => tag.as_deref(),
+                    ToolSource::Version { version } => Some(version),
+                    ToolSource::Path { version, .. }
+                    | ToolSource::Url { version, .. }
+                    | ToolSource::Restricted { version, .. } => version.as_deref(),
+                }
+            }
         }
     }
 
@@ -128,7 +135,7 @@ impl ToolInfo {
             ToolInfo::Basic(_) => true,
             ToolInfo::Complex(details) => matches!(
                 &details.source,
-                ToolSource::Git { .. } | ToolSource::Version { .. }
+                Some(ToolSource::Git { .. } | ToolSource::Version { .. })
             ),
         }
     }
@@ -164,7 +171,7 @@ impl ToolInfo {
         matches!(
             self.details(),
             Some(ToolInfoDetails {
-                source: ToolSource::Restricted { .. },
+                source: Some(ToolSource::Restricted { .. }),
                 ..
             })
         )
@@ -194,7 +201,7 @@ impl ToolInfo {
     /// Get a designated filename for `Url` source.
     pub fn filename(&self) -> Option<&str> {
         if let Some(det) = self.details() {
-            if let ToolSource::Url { filename, .. } = &det.source {
+            if let Some(ToolSource::Url { filename, .. }) = &det.source {
                 return filename.as_deref();
             }
         }
@@ -211,7 +218,7 @@ pub struct ToolInfoDetails {
     pub optional: bool,
     pub identifier: Option<String>,
     #[serde(flatten)]
-    pub source: ToolSource,
+    pub source: Option<ToolSource>,
     /// Pre-determined kind.
     /// If not provided, this will be automatically assumed when loading a tool using
     /// [`Tool::from_path`](crate::core::tools::Tool::from_path).
@@ -230,12 +237,11 @@ pub struct ToolInfoDetails {
 }
 
 impl ToolInfoDetails {
-    pub fn new(source: ToolSource) -> Self {
-        Self {
-            source,
-            ..Default::default()
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
+
+    setter!(with_source(self.source, source: ToolSource) { Some(source) });
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
