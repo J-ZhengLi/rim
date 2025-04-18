@@ -133,7 +133,7 @@ impl TryFrom<(&str, &ToolInfo)> for RestrictedComponent {
     fn try_from(value: (&str, &ToolInfo)) -> Result<Self> {
         if let Some(ToolSource::Restricted {
             default, source, ..
-        }) = value.1.details().map(|d| &d.source)
+        }) = value.1.details().and_then(|d| d.source.as_ref())
         {
             let display_name = value.1.display_name().unwrap_or(value.0);
             return Ok(Self {

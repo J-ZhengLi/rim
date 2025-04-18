@@ -142,7 +142,7 @@ impl ToolkitManifestExt for ToolkitManifest {
         let mut components = vec![Component::new(profile_name)
             .with_description(self.rust.description())
             .with_group(self.rust.group.as_deref())
-            .set_kind(ComponentType::ToolchainProfile)
+            .with_type(ComponentType::ToolchainProfile)
             .required(true)
             .with_version(Some(tc_channel))];
 
@@ -152,7 +152,7 @@ impl ToolkitManifestExt for ToolkitManifest {
                     .with_description(self.get_tool_description(component))
                     .with_group(self.rust.group.as_deref())
                     .optional(true)
-                    .set_kind(ComponentType::ToolchainComponent)
+                    .with_type(ComponentType::ToolchainComponent)
                     // toolchain component's version are unified
                     .with_version(Some(tc_channel)),
             );

@@ -126,7 +126,7 @@ function handleClickNext() {
 }
 
 function refreshComponents() {
-  groupComponents.value = managerConf.getGroups();
+  groupComponents.value = managerConf.componentsToUpdate();
   updateTargetComponents();
 }
 
@@ -137,7 +137,7 @@ onUpdated(() => {
   // user have clicked "back" but then select the same toolkit again,
   // but it might not be that important to keep the same selections.
   if (backClicked) {
-    groupComponents.value = managerConf.getGroups();
+    groupComponents.value = managerConf.componentsToUpdate();
     backClicked = false;
   }
 });

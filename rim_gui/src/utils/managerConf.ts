@@ -1,6 +1,6 @@
 import { ref, Ref, shallowRef } from 'vue';
 import { KitItem } from './types/KitItem';
-import { Component, ComponentType } from './types/Component';
+import { Component, ComponentType, componentUtils } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
@@ -52,53 +52,57 @@ class ManagerConf {
     return this._installedKit.value;
   }
 
-  public getGroups(): CheckGroup<Component>[] {
+  public componentsToUpdate(): CheckGroup<Component>[] {
+    console.log("Installed components: ", this._installedKit.value?.components);
+    console.log("Current components: ", this._current.value?.components);
     const checkItems: CheckGroupItem<Component>[] =
-      this._current.value?.components.map((item) => {
-        const installedComps = this._installedKit.value?.components;
+      this._current.value?.components
+        .filter((item) => !componentUtils(item).isRestricted()) // ignore restricted components for now
+        .map((item) => {
+          const installedComps = this._installedKit.value?.components;
 
-        // Note (J-ZhengLi): There was a bug where the `display-name`, which is what used to
-        // represent rust toolchain got changed in a new toolkit, causing the app failed to
-        // recognize the version of installed rust toolchain because the name not matches anymore.
-        // Therefore here I directly use the installed toolchainVersion for `oldVer` if current
-        // component item is the rust toolchain.
-        const installedInfo = (() => {
-          if (item.kind === ComponentType.ToolchainProfile) {
-            const installedToolchain = installedComps?.find((c) => c.kind === ComponentType.ToolchainProfile);
-            return {
-              installed: installedToolchain !== undefined,
-              version: installedToolchain?.version,
-            };
-          } else {
-            const installedTool = installedComps?.find((c) => c.name === item.name);
-            return {
-              installed: installedTool !== undefined,
-              version: installedTool?.version,
-            };
-          }
-        })();
+          // Note (J-ZhengLi): There was a bug where the `display-name`, which is what used to
+          // represent rust toolchain got changed in a new toolkit, causing the app failed to
+          // recognize the version of installed rust toolchain because the name not matches anymore.
+          // Therefore here I directly use the installed toolchainVersion for `oldVer` if current
+          // component item is the rust toolchain.
+          const installedInfo = (() => {
+            if (item.kind === ComponentType.ToolchainProfile) {
+              const installedToolchain = installedComps?.find((c) => c.kind === ComponentType.ToolchainProfile);
+              return {
+                installed: installedToolchain !== undefined,
+                version: installedToolchain?.version,
+              };
+            } else {
+              const installedTool = installedComps?.find((c) => c.name === item.name);
+              return {
+                installed: installedTool !== undefined,
+                version: installedTool?.version,
+              };
+            }
+          })();
 
-        let isVerDifferent = installedInfo.version && installedInfo.version !== item.version;
-        let isRequiredButNotInstalled = item.required && !installedInfo.installed;
+          let isVerDifferent = installedInfo.version && installedInfo.version !== item.version;
+          let isRequiredButNotInstalled = item.required && !installedInfo.installed;
 
-        let versionStr = isVerDifferent ? `(${installedInfo.version} -> ${item.version})` : ` (${item.version})`;
+          let versionStr = isVerDifferent ? `(${installedInfo.version} -> ${item.version})` : ` (${item.version})`;
 
-        return {
-          label: `${item.displayName}${versionStr}`,
-          checked: isVerDifferent || isRequiredButNotInstalled,
-          required: item.required,
-          disabled: false,
+          return {
+            label: `${item.displayName}${versionStr}`,
+            checked: isVerDifferent || isRequiredButNotInstalled,
+            required: item.required,
+            disabled: false,
 
-          focused: false,
-          value: item,
-          labelComponent: shallowRef(LabelComponent),
-          labelComponentProps: {
-            label: item.displayName,
-            oldVer: installedInfo.version,
-            newVer: item.version,
-          },
-        };
-      }) || [];
+            focused: false,
+            value: item,
+            labelComponent: shallowRef(LabelComponent),
+            labelComponentProps: {
+              label: item.displayName,
+              oldVer: installedInfo.version,
+              newVer: item.version,
+            },
+          };
+        }) || [];
 
     const groups = checkItems.reduce(
       (acc, item) => {
