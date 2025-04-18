@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { invokeCommand, KitItem, managerConf } from '@/utils';
+import { invokeCommand, KitItem, managerConf, ManagerOperation } from '@/utils';
 import KitCard from './components/KitCard.vue';
 import { computed, onMounted, ref } from 'vue';
 import Pagination from '@/components/Pagination.vue';
@@ -36,14 +36,14 @@ onMounted(() => {
   event.listen('toolkit-update', (event) => {
     let kit = event.payload as KitItem;
     managerConf.setCurrent(kit);
-    managerConf.setOperation('update');
+    managerConf.setOperation(ManagerOperation.Update);
     routerPush('/manager/change');
   });
 
   event.listen('change-view', (event) => {
     let payload = event.payload as CliPayload;
     if (payload.command === 'Uninstall') {
-      managerConf.setOperation('uninstall');
+      managerConf.setOperation(ManagerOperation.UninstallToolkit);
     }
     routerPush(payload.path);
   });
