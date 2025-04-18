@@ -1,26 +1,30 @@
 import { CheckItem } from "./CheckBoxGroup";
 
-export class ComponentHelper {
-  component: Component;
+export function componentUtils(component: Component) {
+  return {
+    getToolInfo(): ToolInfoDetails | undefined {
+      if (component.toolInstaller && typeof component.toolInstaller !== 'string') {
+        return component.toolInstaller
+      }
+    },
+  
+    requires(): string[] {
+      const req = this.getToolInfo()?.requires;
+      return req ?? [];
+    },
+  
+    obsoletes(): string[] {
+      const obs = this.getToolInfo()?.obsoletes;
+      return obs ?? [];
+    },
 
-  constructor(component: Component) {
-    this.component = component;
-  }
-
-  getToolInfo(): ToolInfoDetails | undefined {
-    if (this.component.toolInstaller && typeof this.component.toolInstaller !== 'string') {
-      return this.component.toolInstaller
+    isRestricted(): boolean {
+      const info = this.getToolInfo();
+      if (info && 'restricted' in info) {
+        return info.restricted;
+      }
+      return false;
     }
-  }
-
-  requires(): string[] {
-    const req = this.getToolInfo()?.requires;
-    return req ?? [];
-  }
-
-  obsoletes(): string[] {
-    const obs = this.getToolInfo()?.obsoletes;
-    return obs ?? [];
   }
 }
 

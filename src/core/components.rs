@@ -1,12 +1,9 @@
 use super::ToolkitManifestExt;
 use crate::fingerprint::InstallationRecord;
 use anyhow::Result;
-use rim_common::types::{ToolInfo, ToolMap, ToolkitManifest};
+use rim_common::types::{ToolInfo, ToolInfoDetails, ToolKind, ToolMap, ToolkitManifest};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashSet,
-    sync::atomic::{AtomicU32, Ordering},
-};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 static COMPONENTS_COUNTER: AtomicU32 = AtomicU32::new(0);
 
@@ -72,7 +69,7 @@ impl Component {
     setter!(required(self.required, bool));
     setter!(optional(self.optional, bool));
     setter!(installed(self.installed, bool));
-    setter!(set_kind(self.kind, ComponentType));
+    setter!(with_type(self.kind, ComponentType));
     setter!(with_group(self.group_name, group: Option<&str>) { group.map(ToOwned::to_owned) });
     setter!(with_tool_installer(self.tool_installer, installer: &ToolInfo) { Some(installer.clone()) });
     setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });
@@ -114,7 +111,7 @@ pub(crate) fn all_components_from_installation(
 
     // components that are installed by rim previously.
     let installed_toolchain = record.installed_toolchain();
-    let installed_tools: HashSet<&str> = record.installed_tools().collect();
+    let mut installed_tools = record.installed_tools().clone();
 
     for comp in &mut full_components {
         match comp.kind {
@@ -130,7 +127,7 @@ pub(crate) fn all_components_from_installation(
             }
             // third-party tools
             ComponentType::Tool => {
-                if installed_tools.contains(comp.name.as_str()) {
+                if installed_tools.remove(&comp.name).is_some() {
                     comp.installed = true;
                     if let Some(ver) = record.get_tool_version(&comp.name) {
                         comp.version = Some(ver.into());
@@ -138,6 +135,24 @@ pub(crate) fn all_components_from_installation(
                 }
             }
         }
+    }
+
+    // we might still have some tool name's left from `installed_tools` that
+    // are previously installed from another toolkit, we need to create a component base of it.
+    for (key, val) in installed_tools {
+        let mut comp = Component::new(&key)
+            .installed(true)
+            .with_type(ComponentType::Tool)
+            .with_version(val.version());
+        if !matches!(val.tool_kind(), ToolKind::CargoTool) {
+            let tool_info = ToolInfo::Complex(Box::new(ToolInfoDetails {
+                kind: Some(val.tool_kind()),
+                requires: val.dependencies,
+                ..Default::default()
+            }));
+            comp.tool_installer = Some(tool_info);
+        }
+        full_components.push(comp);
     }
 
     Ok(full_components

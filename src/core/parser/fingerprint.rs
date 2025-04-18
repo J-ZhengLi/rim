@@ -131,8 +131,8 @@ impl InstallationRecord {
     }
 
     /// Return an iterator of installed tools' names.
-    pub fn installed_tools(&self) -> impl Iterator<Item = &str> {
-        self.tools.keys().map(|k| k.as_str())
+    pub fn installed_tools(&self) -> &HashMap<String, ToolRecord> {
+        &self.tools
     }
 
     /// Returns the rust toolchain channel name (such as `stable`, `nightly`, `1.80.1`, etc.),
@@ -178,7 +178,7 @@ impl RustRecord {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ToolRecord {
     #[deprecated(since = "0.3.1", note = "use `.tool_kind()` instead")]
@@ -215,6 +215,10 @@ impl ToolRecord {
     pub(crate) fn tool_kind(&self) -> ToolKind {
         #[allow(deprecated)]
         self.use_cargo.unwrap_or(self.kind)
+    }
+
+    pub(crate) fn version(&self) -> Option<&str> {
+        self.version.as_deref()
     }
 
     setter!(with_paths(self.paths, Vec<PathBuf>));

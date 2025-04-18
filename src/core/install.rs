@@ -262,7 +262,9 @@ impl<'a> InstallConfiguration<'a> {
                 Tool::cargo_tool(name, Some(vec![name, "--version", version]))
                     .install(self, tool)?
             }
-            ToolInfo::Complex(details) => match &details.source {
+            ToolInfo::Complex(details) => match details.source.as_ref().with_context(|| {
+                format!("tool '{name}' cannot be installed because it's lacking a package source")
+            })? {
                 ToolSource::Version { version } => {
                     Tool::cargo_tool(name, Some(vec![name, "--version", version]))
                         .install(self, tool)?

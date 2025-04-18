@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { invokeCommand, managerConf } from '@/utils';
+import { invokeCommand, managerConf, ManagerOperation } from '@/utils';
 import { computed } from 'vue';
 
 const { routerPush } = useCustomRouter();
-const isUninstallManger = computed(() => managerConf.getUninstallManager());
+const isUninstallManger = computed(() => managerConf.getOperation() === ManagerOperation.UninstallAll);
 
 function closeOrReturn() {
   if (isUninstallManger.value) {
