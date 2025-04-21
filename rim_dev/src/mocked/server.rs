@@ -11,10 +11,10 @@ use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 /// The version list of rust toolchain
-static VERSIONS: &[&str] = &["1.80.1", "1.81.0", "1.82.0", "1.85.0"];
+static VERSIONS: &[&str] = &["1.80.1", "1.81.0", "1.82.0", "1.86.0"];
 /// The date of each rust toolchain to be distributed,
 /// make sure the length matches [`VERSIONS`].
-static DATES: &[&str] = &["2024-08-08", "2024-09-05", "2024-10-17", "2025-02-20"];
+static DATES: &[&str] = &["2024-08-08", "2024-09-05", "2024-10-17", "2025-04-03"];
 // TARGETS and COMPONENTS are needed to generate mocked component packages
 static TARGETS: &[&str] = &[
     "aarch64-unknown-linux-gnu",

@@ -49,9 +49,11 @@ macro_rules! cmd {
     ($program:expr) => {
         std::process::Command::new($program)
     };
-    ($program:expr $(, $arg:expr )* $(,)?) => {
-        $crate::cmd!([] $program $(, $arg)*)
-    };
+    ($program:expr $(, $arg:expr )* $(,)?) => {{
+        let mut cmd__ = std::process::Command::new($program);
+        $(cmd__.arg($arg);)*
+        cmd__
+    }};
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
         let mut cmd__ = std::process::Command::new($program);
         $(cmd__.arg($arg);)*

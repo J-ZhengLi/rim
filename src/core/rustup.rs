@@ -44,21 +44,24 @@ impl ToolchainInstaller {
         &self,
         rustup: &Path,
         manifest: &ToolkitManifest,
-        components: Vec<&str>,
+        components: &[ToolchainComponent],
+        use_offline_server: bool,
     ) -> Result<()> {
-        // TODO: check local manifest.
         let version = &manifest.rust.channel;
-        let mut args = vec!["toolchain", "install", version, "--no-self-update"];
-        let comps_arg = components.join(",");
+        let comps_arg = components_to_install(manifest, components);
+
+        let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update");
         if let Some(profile) = manifest.rust.profile() {
-            args.extend(["--profile", profile]);
+            cmd.args(["--profile", profile]);
         }
-        if !components.is_empty() {
-            args.push("--component");
-            args.push(&comps_arg);
+        if !comps_arg.is_empty() {
+            cmd.args(["--component", &comps_arg]);
         }
-        let mut cmd = if let Some(local_server) = manifest.offline_dist_server()? {
-            cmd!([RUSTUP_DIST_SERVER=local_server.as_str()] rustup)
+        if use_offline_server && manifest.rust.offline_dist_server.is_some() {
+            let local_server = manifest
+                .offline_dist_server()?
+                .unwrap_or_else(|| unreachable!("already checked in if condition"));
+            cmd.env(RUSTUP_DIST_SERVER, local_server.as_str());
         } else if let Ok(dist_server) = std::env::var(RUSTUP_DIST_SERVER) {
             let mut server: Url = dist_server.parse()?;
             if server.scheme() == "https" && self.insecure {
@@ -67,12 +70,13 @@ impl ToolchainInstaller {
                 // is guaranteed to be `Ok`.
                 server.set_scheme("http").unwrap();
             }
-            cmd!([RUSTUP_DIST_SERVER=server.as_str()] rustup)
-        } else {
-            cmd!(rustup)
-        };
-        cmd.args(args);
-        utils::execute(cmd)
+            cmd.env(RUSTUP_DIST_SERVER, server.as_str());
+        }
+
+        // install the toolchain
+        utils::execute(cmd)?;
+        // set it as default
+        run!(&rustup, "default", version)
     }
 
     /// Install rust toolchain & components via rustup.
@@ -83,18 +87,7 @@ impl ToolchainInstaller {
         components: &[ToolchainComponent],
     ) -> Result<()> {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
-
-        let extra_comps = components
-            .iter()
-            .filter_map(|c| (!c.is_profile).then_some(&c.name));
-        let all_components = manifest
-            .rust
-            .components
-            .iter()
-            .chain(extra_comps)
-            .map(|s| s.as_str())
-            .collect();
-        self.install_toolchain_via_rustup(&rustup, manifest, all_components)?;
+        self.install_toolchain_via_rustup(&rustup, manifest, components, true)?;
 
         // Remove the `rustup` uninstall entry on windows, because we don't want users to
         // accidentally uninstall `rustup` thus removing the tools installed by this program.
@@ -106,15 +99,15 @@ impl ToolchainInstaller {
         Ok(())
     }
 
-    /// Update rust toolchain by invoking `rustup toolchain add`, then `rustup default`
+    /// Update rust toolchain by invoking `rustup toolchain add`, then `rustup default`.
     pub(crate) fn update(
         &self,
         config: &InstallConfiguration,
         manifest: &ToolkitManifest,
+        components: &[ToolchainComponent],
     ) -> Result<()> {
         let rustup = ensure_rustup(config, manifest, self.insecure)?;
-        let tc_ver = &manifest.rust.channel;
-        run!(&rustup, "toolchain", "add", tc_ver, "--no-self-update")
+        self.install_toolchain_via_rustup(&rustup, manifest, components, false)
     }
 
     // Rustup self uninstall all the components and toolchains.
@@ -141,6 +134,25 @@ impl ToolchainInstaller {
         (progress.stop)(&spinner, t!("rust_toolchain_uninstalled").to_string());
         Ok(())
     }
+}
+
+/// Join user selected toolchain components and the base components together into a
+/// comma separated string.
+fn components_to_install(
+    manifest: &ToolkitManifest,
+    selected_components: &[ToolchainComponent],
+) -> String {
+    let extra_comps = selected_components
+        .iter()
+        .filter_map(|c| (!c.is_profile).then_some(&c.name));
+    let all_components = manifest
+        .rust
+        .components
+        .iter()
+        .chain(extra_comps)
+        .map(|s| s.as_str())
+        .collect::<Vec<_>>();
+    all_components.join(",")
 }
 
 fn ensure_rustup(

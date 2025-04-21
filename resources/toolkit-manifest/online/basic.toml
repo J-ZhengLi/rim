@@ -2,24 +2,24 @@
 # This file was automatically generated.
 # 此文件是自动生成的.
 name = "XuanWu Rust Development Kit"
-version = "stable v1.81.0"
+version = "stable v1.86.0"
 
 [rust]
-channel = "1.81.0"
+channel = "1.86.0"
 profile = "minimal"
 display-name = "Basic"
 description = "Basic set of tools to use Rust properly"
 components = ["clippy", "rustfmt", "rust-src"]
-optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
+optional-components = ["llvm-tools", "rust-docs"]
 group = "Rust"
 
 [rust.rustup]
 
 [tools.descriptions]
+rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser using the `rustup doc` command"
+rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
 mingw64 = "(windows only) Requirement for Windows GNU toolchain"
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
-rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
-rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser using the `rustup doc` command"
 
 [tools.group]
 Prerequisites = ["mingw64"]
