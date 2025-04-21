@@ -28,7 +28,7 @@ components = [
     "rust-std",
     { name = "rust-docs", excluded-targets = [ "aarch64-unknown-linux-musl" ] },
     "rustc",
-    "rustc-dev",
+    # "rustc-dev",
     "rustfmt",
     "llvm-tools",
     { name = "rust-mingw", target = "x86_64-pc-windows-gnu" },
@@ -38,20 +38,20 @@ components = [
 
 # ========================= Manifest For Basic (test) Toolkit START =========================
 [toolkit.basic.config]
-date = "2024-09-05"
+date = "2025-04-03"
 
 [toolkit.basic.value]
 name = "XuanWu Rust Development Kit"
-version = "stable v1.81.0"
+version = "stable v1.86.0"
 
 [toolkit.basic.value.rust]
 display-name = "Basic"
 description = "Basic set of tools to use Rust properly"
 profile = "minimal"
-version = "1.81.0"
+version = "1.86.0"
 group = "Rust"
 components = ["clippy", "rustfmt", "rust-src"]
-optional-components = ["llvm-tools", "rustc-dev", "rust-docs"]
+optional-components = ["llvm-tools", "rust-docs"]
 
 [toolkit.basic.value.tools.descriptions]
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
@@ -68,22 +68,22 @@ mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust
 
 # ========================= Manifest For Community Toolkit START =========================
 [toolkit.community.config]
-date = "2025-02-20"
+date = "2025-04-03"
 # These tools does not allow re-distribution
 web-only = [ "buildtools", "vscode" ]
 
 [toolkit.community.value]
 name = "Rust 中国社区一站式开发套件"
-version = "stable v1.85.0"
+version = "stable v1.86.0"
 
 [toolkit.community.value.rust]
 display-name = "Rust 官方工具"
 description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
 profile = "minimal"
-version = "1.85.0"
+version = "1.86.0"
 group = "Rust 基础工具集"
 components = ["clippy", "rustfmt", "rust-src"]
-optional-components = ["llvm-tools", "rustc-dev", "rust-docs", "rust-analyzer"]
+optional-components = ["llvm-tools", "rust-docs", "rust-analyzer"]
 
 [toolkit.community.value.tools.descriptions]
 llvm-tools = "包含 LLVM 工具的集合"
@@ -105,26 +105,26 @@ buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构
 "Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
-mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev1", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev1/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev1.7z" }
+mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev2", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z" }
 codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
-cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip" }
-typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }
+cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip" }
+typos = { optional = true, version = "1.31.1", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
 buildtools = { required = true, display-name = "Visual Studio Build Tools", restricted = true, default = "https://aka.ms/vs/17/release/vs_BuildTools.exe" }
 codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
-cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-pc-windows-msvc.zip" }
-typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-pc-windows-msvc.zip" }
+cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip" }
+typos = { optional = true, version = "1.31.1", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
-vscodium = { display-name = "VSCodium", version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-x64-1.97.2.25045.tar.gz" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-x64.vsix" }
-cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-x86_64-unknown-linux-gnu.tar.gz" }
-typos = { optional = true, version = "1.29.7", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/typos-v1.29.7-x86_64-unknown-linux-musl.tar.gz" }
+vscodium = { display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz" }
+vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2379", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-x64.vsix" }
+cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz" }
+typos = { optional = true, version = "1.31.1", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-unknown-linux-musl.tar.gz" }
 
 [toolkit.community.value.tools.target.aarch64-unknown-linux-gnu]
-vscodium = { display-name = "VSCodium", version = "1.97.2.25045", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/VSCodium-linux-arm64-1.97.2.25045.tar.gz" }
-vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2299", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2299/rust-analyzer-linux-arm64.vsix" }
-cargo-nextest = { optional = true, version = "0.9.91", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/cargo-nextest-0.9.91-aarch64-unknown-linux-gnu.tar.gz" }
-typos = { optional = true, ver = "1.29.7", identifier = "typos-cli" }
+vscodium = { display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-arm64-1.99.32562.tar.gz" }
+vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2379", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-arm64.vsix" }
+cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-aarch64-unknown-linux-gnu.tar.gz" }
+typos = { optional = true, ver = "1.31.1", identifier = "typos-cli" }
 # ========================= Manifest For Community Toolkit END =========================

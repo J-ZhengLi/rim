@@ -12,8 +12,8 @@ pub trait DependencyHandler<T> {
     /// Perform topological sorting using [`Kahn's algorithm`][kahn],
     /// and return the sorted result in a `Vec`.
     ///
-    /// This will place the item that have most dependencies at front, and the item
-    /// with least dependencies at the end.
+    /// This will place the item with least dependencies at front, and the item
+    /// that have most dependencies at the end.
     ///
     /// [kahn]: https://en.wikipedia.org/wiki/Topological_sorting#Kahn's_algorithm
     fn topological_sorted(&self) -> Vec<T>;
@@ -123,14 +123,14 @@ impl<'a> DependencyHandler<Tool<'a>> for Vec<ToolWithDeps<'a>> {
 
     fn sorted(&self) -> Vec<Tool<'a>> {
         let mut tools = self.iter().map(|t| t.tool.clone()).collect::<Vec<_>>();
-        tools.sort_by(|a, b| a.kind.cmp(&b.kind));
+        tools.sort_by(|a, b| b.kind.cmp(&a.kind));
         tools
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use rim_common::types::ToolInfoDetails;
+    use rim_common::types::{ToolInfoDetails, ToolKind};
 
     use super::*;
 
@@ -175,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn no_dependencies_sorting() {
+    fn tool_info_with_no_dependencies_sorting() {
         let tools: Vec<(&str, ToolInfo)> = vec![
             ("a", ToolInfo::Complex(Box::new(ToolInfoDetails::default()))),
             ("c", ToolInfo::Complex(Box::new(ToolInfoDetails::default()))),
@@ -194,5 +194,79 @@ mod tests {
         assert_eq!(iter.next().unwrap().0, "c");
         assert_eq!(iter.next().unwrap().0, "b");
         assert_eq!(iter.next().unwrap().0, "d");
+    }
+
+    #[test]
+    fn tool_with_no_dependencies_sorting() {
+        let plugin_a = Tool::new("tool-plugin-a".into(), ToolKind::Plugin);
+        let extendable_tool = Tool::new("tool".into(), ToolKind::Custom);
+        let plugin_b = Tool::new("tool-plugin-b".into(), ToolKind::Plugin);
+        let irrelevant_tool = Tool::new("some-exe".into(), ToolKind::Executables);
+
+        let tools: Vec<ToolWithDeps> = vec![
+            ToolWithDeps {
+                tool: plugin_a,
+                dependencies: &[],
+            },
+            ToolWithDeps {
+                tool: extendable_tool,
+                dependencies: &[],
+            },
+            ToolWithDeps {
+                tool: plugin_b,
+                dependencies: &[],
+            },
+            ToolWithDeps {
+                tool: irrelevant_tool,
+                dependencies: &[],
+            },
+        ];
+
+        let sorted = tools.sorted();
+        let mut iter = sorted.iter();
+        assert_eq!(iter.next().unwrap().name(), "tool-plugin-a");
+        assert_eq!(iter.next().unwrap().name(), "tool-plugin-b");
+        assert_eq!(iter.next().unwrap().name(), "tool");
+        assert_eq!(iter.next().unwrap().name(), "some-exe");
+    }
+
+    #[test]
+    fn extension_sorting() {
+        let tools: Vec<(&str, ToolInfo)> = vec![
+            (
+                "vscode-rust-analyzer",
+                ToolInfo::Complex(Box::new(ToolInfoDetails {
+                    requires: vec!["vscode".to_string()],
+                    kind: Some(rim_common::types::ToolKind::Custom),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "vscode",
+                ToolInfo::Complex(Box::new(ToolInfoDetails {
+                    kind: Some(rim_common::types::ToolKind::Plugin),
+                    ..Default::default()
+                })),
+            ),
+            (
+                "vscode-codelldb",
+                ToolInfo::Complex(Box::new(ToolInfoDetails {
+                    requires: vec!["vscode".to_string()],
+                    kind: Some(rim_common::types::ToolKind::Custom),
+                    ..Default::default()
+                })),
+            ),
+        ];
+
+        let sorted = tools
+            .iter()
+            .map(|(name, info)| (*name, info))
+            .collect::<Vec<_>>()
+            .topological_sorted();
+
+        let mut iter = sorted.iter();
+        assert_eq!(iter.next().unwrap().0, "vscode-rust-analyzer");
+        assert_eq!(iter.next().unwrap().0, "vscode-codelldb");
+        assert_eq!(iter.next().unwrap().0, "vscode");
     }
 }
