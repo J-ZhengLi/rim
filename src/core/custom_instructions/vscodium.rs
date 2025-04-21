@@ -12,7 +12,10 @@ const VSCODE: VSCodeInstaller = VSCodeInstaller {
     cmd: "codium",
     tool_name: "vscodium",
     shortcut_name: "VSCodium",
-    binary_name: "VSCodium"
+    #[cfg(windows)]
+    binary_name: "VSCodium",
+    #[cfg(not(windows))]
+    binary_name: "codium",
 };
 
 pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {

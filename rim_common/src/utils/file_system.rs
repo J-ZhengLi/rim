@@ -178,7 +178,7 @@ where
     Q: AsRef<Path>,
 {
     fn copy_dir_(src: &Path, dest: &Path) -> Result<()> {
-        fs::create_dir(dest)?;
+        ensure_dir(dest)?;
         for maybe_entry in src.read_dir()? {
             let entry = maybe_entry?;
             let src = entry.path();
