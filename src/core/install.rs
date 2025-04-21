@@ -445,7 +445,7 @@ impl InstallConfiguration<'_> {
 
         ToolchainInstaller::init()
             .insecure(self.insecure)
-            .update(self, manifest)?;
+            .update(self, manifest, components)?;
 
         let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
