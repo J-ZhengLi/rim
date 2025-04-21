@@ -16,10 +16,10 @@ group = "Rust"
 [rust.rustup]
 
 [tools.descriptions]
-rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser using the `rustup doc` command"
-rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
-mingw64 = "(windows only) Requirement for Windows GNU toolchain"
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
+rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser using the `rustup doc` command"
+mingw64 = "(windows only) Requirement for Windows GNU toolchain"
+rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
 
 [tools.group]
 Prerequisites = ["mingw64"]

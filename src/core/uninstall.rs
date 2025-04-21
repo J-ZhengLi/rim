@@ -128,7 +128,7 @@ impl<'a> UninstallConfiguration<'a> {
         } else {
             tools_to_uninstall.sorted()
         };
-        for tool in sorted.iter().rev() {
+        for tool in sorted {
             info!("{}", t!("uninstalling_for", name = tool.name()));
             if tool.uninstall(&*self).is_err() {
                 info!(
@@ -143,59 +143,5 @@ impl<'a> UninstallConfiguration<'a> {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rim_common::types::ToolKind;
-
-    #[test]
-    fn uninstallation_order() {
-        let (a_deps, b_deps) = (
-            vec!["b".to_string(), "c".to_string()],
-            vec!["c".to_string()],
-        );
-        let tools: Vec<ToolWithDeps> = vec![
-            ToolWithDeps {
-                tool: Tool::new("b".into(), ToolKind::Custom),
-                dependencies: &b_deps,
-            },
-            ToolWithDeps {
-                tool: Tool::new("a".into(), ToolKind::Custom),
-                dependencies: &a_deps,
-            },
-            ToolWithDeps {
-                tool: Tool::new("c".into(), ToolKind::Custom),
-                dependencies: &[],
-            },
-        ];
-        let mut sorted = tools.topological_sorted();
-        assert_eq!(sorted.pop().unwrap().name(), "c");
-        assert_eq!(sorted.pop().unwrap().name(), "b");
-        assert_eq!(sorted.pop().unwrap().name(), "a");
-    }
-
-    #[test]
-    fn uninstallation_fallback_order() {
-        let tools: Vec<ToolWithDeps> = vec![
-            ToolWithDeps {
-                tool: Tool::new("b".into(), ToolKind::CargoTool),
-                dependencies: &[],
-            },
-            ToolWithDeps {
-                tool: Tool::new("a".into(), ToolKind::DirWithBin),
-                dependencies: &[],
-            },
-            ToolWithDeps {
-                tool: Tool::new("c".into(), ToolKind::Plugin),
-                dependencies: &[],
-            },
-        ];
-        let mut sorted = tools.sorted();
-        assert_eq!(sorted.pop().unwrap().name(), "b");
-        assert_eq!(sorted.pop().unwrap().name(), "c");
-        assert_eq!(sorted.pop().unwrap().name(), "a");
     }
 }

@@ -20,11 +20,7 @@ pub(crate) struct VSCodeInstaller<'a> {
     /// The name of the desktop shortcut.
     pub(crate) shortcut_name: &'a str,
     /// The name of the main binary, which is located under the extracted folder,
-    /// this is where the shortcut pointed to on Windows.
-    /// 
-    /// Note: On Unix, shortcuts works by executing certain command, so this
-    /// field is basically useless on those systems.
-    #[allow(dead_code)]
+    /// this is where the shortcut pointed to
     pub(crate) binary_name: &'a str,
 }
 
@@ -37,6 +33,13 @@ impl VSCodeInstaller<'_> {
         // Step 2: Add the `bin/` folder to path
         let bin_dir = vscode_dir.join("bin");
         add_to_path(&bin_dir)?;
+
+        // Step 2.5: Make sure the executables have execute permission
+        // (depending on the build, sometimes they don't...)
+        let exec_script = bin_dir.join(self.cmd);
+        utils::set_exec_permission(&exec_script)?;
+        let actual_bin = vscode_dir.join(self.binary_name);
+        utils::set_exec_permission(&actual_bin)?;
 
         // Step 3: Create a shortcuts
         // Shortcuts are not important, make sure it won't throw error even if it fails.
@@ -86,7 +89,7 @@ Keywords=vscode;
 ",
                 env!("CARGO_PKG_NAME"),
                 self.shortcut_name,
-                cmd = self.cmd,
+                cmd = utils::path_to_str(&actual_bin)?,
             );
 
             let Some(mut path_to_write)  = dirs::data_local_dir().map(|d| d.join("applications")) else {
@@ -152,7 +155,10 @@ const VSCODE: VSCodeInstaller = VSCodeInstaller {
     cmd: "code",
     tool_name: "vscode",
     shortcut_name: "Visual Studio Code",
-    binary_name: "Code"
+    #[cfg(windows)]
+    binary_name: "Code",
+    #[cfg(not(windows))]
+    binary_name: "code",
 };
 
 pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {

@@ -72,11 +72,7 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::WebviewWindow, msg_recv: Re
 
         // Note: `recv()` will block, therefore it's important to check thread execution at first
         if let Ok(msg) = msg_recv.recv() {
-            if msg.starts_with("error:") {
-                emit(&window, ON_FAILED_EVENT, msg);
-            } else {
-                emit(&window, MESSAGE_UPDATE_EVENT, msg);
-            }
+            emit(&window, MESSAGE_UPDATE_EVENT, msg);
         }
     });
 }

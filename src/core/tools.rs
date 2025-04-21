@@ -346,34 +346,36 @@ impl Plugin {
         match ty {
             Plugin::Vsix => {
                 for program in VSCODE_FAMILY.as_slice() {
-                    if utils::cmd_exist(program) {
-                        let op = if uninstall { "uninstall" } else { "install" };
-                        let arg_opt = format!("--{op}-extension");
-                        info!(
-                            "{}",
-                            t!(
-                                "handling_extension_info",
-                                op = t!(op),
-                                ext = plugin_path.display(),
-                                program = program
-                            )
-                        );
-                        match run!(program, arg_opt, plugin_path) {
-                            Ok(()) => continue,
-                            // Ignore error when uninstalling.
-                            Err(_) if uninstall => {
-                                info!(
-                                    "{}",
-                                    t!(
-                                        "skip_extension_uninstall_warn",
-                                        ext = plugin_path.display(),
-                                        program = program
-                                    )
-                                );
-                                continue;
-                            }
-                            Err(e) => return Err(e),
+                    if !utils::cmd_exist(program) {
+                        continue;
+                    }
+
+                    let op = if uninstall { "uninstall" } else { "install" };
+                    let arg_opt = format!("--{op}-extension");
+                    info!(
+                        "{}",
+                        t!(
+                            "handling_extension_info",
+                            op = t!(op),
+                            ext = plugin_path.display(),
+                            program = program
+                        )
+                    );
+                    match run!(program, arg_opt, plugin_path) {
+                        Ok(()) => continue,
+                        // Ignore error when uninstalling.
+                        Err(_) if uninstall => {
+                            info!(
+                                "{}",
+                                t!(
+                                    "skip_extension_uninstall_warn",
+                                    ext = plugin_path.display(),
+                                    program = program
+                                )
+                            );
+                            continue;
                         }
+                        Err(e) => return Err(e),
                     }
                 }
 
