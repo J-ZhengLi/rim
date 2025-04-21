@@ -200,6 +200,9 @@ impl<'a> InstallConfiguration<'a> {
 
         if !use_cargo {
             to_install = to_install.topological_sorted();
+            // topological sort place the tool with more dependencies at the back,
+            // which is what we need to install first, therefore we need to reverse it.
+            to_install.reverse();
         }
 
         for (name, tool) in to_install {
@@ -288,7 +291,9 @@ impl<'a> InstallConfiguration<'a> {
 
                     Tool::cargo_tool(name, Some(args)).install(self, tool)?
                 }
-                ToolSource::Path { path, .. } => self.try_install_from_path(name, path, tool)?,
+                ToolSource::Path { path, .. } => {
+                    self.try_install_from_path(name, path, tool, None)?
+                }
                 ToolSource::Url { url, .. } => self.download_and_try_install(name, url, tool)?,
                 ToolSource::Restricted { source, .. } => {
                     // the source should be filled before installation, if not, then it means
@@ -298,7 +303,7 @@ impl<'a> InstallConfiguration<'a> {
                         .with_context(|| t!("missing_restricted_source", name = name))?;
                     let maybe_path = PathBuf::from(real_source);
                     if maybe_path.exists() {
-                        self.try_install_from_path(name, &maybe_path, tool)?
+                        self.try_install_from_path(name, &maybe_path, tool, None)?
                     } else {
                         self.download_and_try_install(
                             name,
@@ -339,7 +344,7 @@ impl<'a> InstallConfiguration<'a> {
             .with_proxy(self.manifest.proxy.clone())
             .blocking_download(url, &dest)?;
 
-        self.try_install_from_path(name, &dest, info)
+        self.try_install_from_path(name, &dest, info, Some(temp_dir))
     }
 
     fn try_install_from_path(
@@ -347,15 +352,20 @@ impl<'a> InstallConfiguration<'a> {
         name: &str,
         path: &Path,
         info: &ToolInfo,
+        dl_temp: Option<TempDir>,
     ) -> Result<ToolRecord> {
-        let (tool_installer_path, _maybe_temp) = if path.is_dir() {
-            (path.to_path_buf(), None)
+        let mut maybe_temp = dl_temp;
+        let tool_installer_path = if path.is_dir() {
+            path.to_path_buf()
         } else if utils::Extractable::is_supported(path) {
-            let temp_dir = self.create_temp_dir(name)?;
-            let tool_installer_path = self.extract_or_copy_to(path, temp_dir.path())?;
-            (tool_installer_path, Some(temp_dir))
+            let extract_temp = self.create_temp_dir(name)?;
+            let tool_installer_path = self.extract_or_copy_to(path, extract_temp.path())?;
+            // we don't need the download temp dir anymore,
+            // we should keep the extraction temp dir alive instead.
+            maybe_temp = Some(extract_temp);
+            tool_installer_path
         } else if path.is_file() {
-            (path.to_path_buf(), None)
+            path.to_path_buf()
         } else {
             bail!(
                 "unable to install '{name}' because the path to it's installer '{}' does not exist.",
@@ -369,7 +379,10 @@ impl<'a> InstallConfiguration<'a> {
             Tool::from_path(name, &tool_installer_path)
                 .with_context(|| format!("no install method for tool '{name}'"))?
         };
-        tool_installer.install(self, info)
+
+        let res = tool_installer.install(self, info);
+        drop(maybe_temp);
+        res
     }
 
     /// Configuration options for `cargo`.

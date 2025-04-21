@@ -27,6 +27,7 @@ macro_rules! run {
     }};
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
         let cmd__ = $crate::cmd!([$($key=$val),*] $program $(,$arg)*);
+        log::debug!("running command: {cmd__:?}");
         $crate::utils::execute(cmd__)
     }};
 }
