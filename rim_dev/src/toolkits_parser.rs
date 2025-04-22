@@ -1,6 +1,7 @@
 //! Types for deserializing `toolkits.toml` under resources.
 
 use anyhow::Result;
+use indexmap::IndexMap;
 use rim_common::types::{RustToolchain, ToolMap, ToolkitManifest};
 use serde::Deserialize;
 use std::fs;
@@ -39,7 +40,7 @@ pub(crate) struct GlobalConfig {
     pub(crate) rustup_server: Url,
     /// the targets that we support
     pub(crate) targets: Vec<Target>,
-    /// the compoents that will be downloaded for offline packaging
+    /// the components that will be downloaded for offline packaging
     pub(crate) components: Vec<Component>,
     /// directory to download packages into
     #[serde(default = "default_package_dir")]
@@ -133,7 +134,7 @@ impl Toolkit {
     /// Try getting the mutable `[tools.target]` map of the toolkit-manifest,
     /// return `None` if it can't be found, which means that this toolkit
     /// does not offer any third party tools.
-    pub(crate) fn targeted_tools_mut(&mut self) -> &mut HashMap<String, ToolMap> {
+    pub(crate) fn targeted_tools_mut(&mut self) -> &mut IndexMap<String, ToolMap> {
         &mut self.value.tools.target
     }
 
