@@ -3,11 +3,12 @@ use crate::{
     toolkits_parser::{Component, GlobalConfig, Toolkits},
 };
 use anyhow::{anyhow, Result};
+use indexmap::IndexMap;
 use rim_common::{
     types::{ToolInfo, ToolSource},
     utils::{ensure_dir, ensure_parent_dir},
 };
-use std::{collections::HashMap, fs, path::Path};
+use std::{fs, path::Path};
 
 const TOOLS_DIRNAME: &str = "tools";
 const TOOLCHAIN_DIRNAME: &str = "toolchain";
@@ -176,7 +177,7 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
         let rust_section = toolkit.rust_section_mut();
         rust_section.offline_dist_server = Some(TOOLCHAIN_DIRNAME.into());
         // Make a `[rust.rustup]` map, download rustup-init if necessary
-        let mut rustup_sources = HashMap::new();
+        let mut rustup_sources = IndexMap::new();
         for target in &toolkits.config.targets {
             let triple = target.triple();
             let suffix = if triple.contains("windows") {
