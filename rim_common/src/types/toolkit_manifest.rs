@@ -77,7 +77,7 @@ pub struct RustToolchain {
     pub optional_components: Vec<String>,
     /// Optional category (group) name for the rust toolchain,
     /// so you can group the toolchain components `Rust Toolchain` or something else.
-    /// note that all optional components falls into this group as well.
+    /// note that all optional components belong to this group as well.
     pub group: Option<String>,
     /// File [`Url`] to install rust toolchain.
     pub offline_dist_server: Option<String>,

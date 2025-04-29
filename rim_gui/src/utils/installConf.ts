@@ -55,9 +55,7 @@ class InstallConf {
   getGroups(): CheckGroup<Component>[] {
     const groups = this.checkComponents.value.reduce(
       (acc, item) => {
-        const groupName = item.value.groupName
-          ? item.value.groupName
-          : 'Others'; // 确保 groupName 不为 null
+        const groupName = item.value.category;
 
         if (!acc[groupName]) {
           acc[groupName] = {
@@ -113,13 +111,6 @@ class InstallConf {
         }
         if (!a.required && b.required) {
           return 1;
-        }
-
-        if (a.groupName === null && b.groupName !== null) {
-          return 1;
-        }
-        if (a.groupName !== null && b.groupName === null) {
-          return -1;
         }
         // 名称排序
         return a.displayName.localeCompare(b.displayName);

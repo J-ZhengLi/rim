@@ -7,7 +7,7 @@
     "close": "Close",
     "agree": "I agree",
 
-    "install_init": "Initalizing & Creating directory '%{dir}'...",
+    "install_init": "Initializing & Creating directory '%{dir}'...",
     "install_env_config": "Configuring environment variables...",
     "install_cargo_config": "Writing cargo configuration...",
     "install_tools": "Installing dependencies & standalone tools...",
@@ -47,10 +47,11 @@
     "question_install_dir": "Installation path?",
     "select_components_to_install": "Choose what components to install: (separated multiple options by spaces, required tools are automatically selected)",
     "select_components_to_update": "Choose what components to update: (separated multiple options by spaces)",
+    "select_components_to_remove": "Choose what components to remove: (separated multiple options by spaces)",
     "question_try_demo": "Do you want to try Rust with a demo project?",
     "demo_project_exported": "The demo project was successfully exported to '%{dir}'",
 
-    "question_install_options": "Proceed with above installation options?",
+    "question_options": "Proceed with above options?",
     "pause_prompt": "press ENTER key to continue...",
     "confirm": "Confirm",
     "reenter": "Re-enter",
@@ -61,7 +62,7 @@
     "list_of_ids": "space separated integers less than %{bound}",
     "integers": "integers",
     "invalid_input": "Invalid input '%{actual}', expecting %{expect}, please try again",
-    "current_install_option": "Current installation options:",
+    "current_option": "Current options:",
     "install_dir": "installation path",
     "components_to_install": "the component(s) below will get installed",
     "components_to_remove": "the component(s) below will get removed",
@@ -79,8 +80,7 @@
     "rust_toolchain_uninstalled": "Rust toolchain uninstalled",
     "uninstall_env_config": "Removing environment variables...",
     "uninstall_self": "Removing self & wrapping up",
-    "uninstall_tool_skipped": "skipping uninstall for tool '%{tool}'",
-    "maybe_uninstalled_already": "maybe it was already uninstalled.",
+    "skip_non_exist_component_uninstallation": "the following components might not exist or removed already: %{tool}, skipping...",
     "path_to_installation_not_found": "path to the it's installation at '%{path}' cannot be found.",
 
     "linux_source_hint": "Please restart the current shell or run `%{cmd}` for the environment changes to take effect",
@@ -150,5 +150,13 @@
 
     "missing_restricted_source": "pacakge source of tool '%{name}' is restricted, which should be provided by user or has a default value, but none of those are presented",
     "remove_path_retry": "failed when removing '%{path}', retrying...",
-    "removing_obsolete_tool": "Removing obsoleted tool '%{name}'"
+    "removing_obsolete_tool": "Removing obsoleted tool '%{name}'",
+    "other": "Other",
+    "invalid_components": "invalid component(s): %{list}",
+    "install_toolchain_components": "the following toolchain components will be installed: %{list}",
+    "uninstall_toolchain_components": "the following toolchain components will be removed: %{list}",
+    "task_success": "task successfully completed!",
+    "no_installable_components": "no installable components",
+    "no_component_selected": "no component selected",
+    "modify_option": "Modify"
 }

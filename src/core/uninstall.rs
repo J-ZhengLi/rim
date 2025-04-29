@@ -3,6 +3,7 @@ use rim_common::utils::Progress;
 use std::{collections::HashMap, path::PathBuf};
 
 use super::{
+    components::ToolchainComponent,
     dependency_handler::DependencyHandler,
     directories::RimDir,
     parser::fingerprint::{installed_tools, InstallationRecord, ToolRecord},
@@ -68,7 +69,7 @@ impl<'a> UninstallConfiguration<'a> {
 
         // Remove rust toolchain via rustup.
         if self.install_record.rust.is_some() {
-            if let Err(e) = ToolchainInstaller::init().remove_self(&self) {
+            if let Err(e) = ToolchainInstaller::init(&self).remove_self(&self) {
                 // if user has manually uninstall rustup, this will fails,
                 // then we can assume it has been removed.
                 // TODO: add an error type to indicate `rustup` cannot be found
@@ -97,8 +98,22 @@ impl<'a> UninstallConfiguration<'a> {
         Ok(())
     }
 
-    /// Uninstall all tools
-    fn remove_tools(&mut self, tools: HashMap<String, ToolRecord>, weight: f32) -> Result<()> {
+    /// Uninstall a selection of toolchain components
+    pub fn remove_toolchain_components(
+        &mut self,
+        components: &[ToolchainComponent],
+        weight: f32,
+    ) -> Result<()> {
+        ToolchainInstaller::init(&*self).remove_components(self, components)?;
+
+        self.install_record.remove_component_record(components);
+        self.install_record.write()?;
+        self.inc_progress(weight)?;
+        Ok(())
+    }
+
+    /// Uninstall a selection of tools
+    pub fn remove_tools(&mut self, tools: HashMap<String, ToolRecord>, weight: f32) -> Result<()> {
         let mut tools_to_uninstall = vec![];
         for (name, tool_detail) in &tools {
             let Some(tool) = Tool::from_installed(name, tool_detail) else {
@@ -131,10 +146,12 @@ impl<'a> UninstallConfiguration<'a> {
         for tool in sorted {
             info!("{}", t!("uninstalling_for", name = tool.name()));
             if tool.uninstall(&*self).is_err() {
-                info!(
-                    "{}: {}",
-                    t!("uninstall_tool_skipped", tool = tool.name()),
-                    t!("maybe_uninstalled_already")
+                warn!(
+                    "{}",
+                    t!(
+                        "skip_non_exist_component_uninstallation",
+                        tool = tool.name()
+                    )
                 );
             }
             self.install_record.remove_tool_record(tool.name());

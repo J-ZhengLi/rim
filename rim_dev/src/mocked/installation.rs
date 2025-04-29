@@ -85,7 +85,8 @@ paths = ['{0}/tools/mingw64']
             fs::write(fingerprint_path, self.fingerprint_content("1.0.0"))?;
         }
         if !manifest_path.exists() {
-            let manifest = include_str!("../../../resources/toolkit-manifest/online/basic.toml");
+            let manifest =
+                include_str!("../../../resources/toolkit-manifest/online/community.toml");
             fs::write(manifest_path, manifest)?;
         }
 
