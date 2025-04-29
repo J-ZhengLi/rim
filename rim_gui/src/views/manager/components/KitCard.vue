@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const handleUpdate = () => {
-  managerConf.setOperation(ManagerOperation.Update);
+  managerConf.setOperation(ManagerOperation.Modify);
   routerPush('/manager/change');
 };
 
@@ -46,7 +46,7 @@ const handleInstall = () => {
       </div>
     </div>
     <div v-if="props.installed" flex="~ col justify-around">
-      <base-button p="y-2px x-24px" theme="primary" @click="handleUpdate" hidden>更改</base-button>
+      <base-button p="y-2px x-24px" theme="primary" @click="handleUpdate">更改</base-button>
       <base-button p="y-2px x-24px" @click="handleUninstall">卸载</base-button>
     </div>
     <div v-else flex="~ col justify-around">

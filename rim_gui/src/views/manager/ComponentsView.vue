@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUpdated, Ref, ref, watch, nextTick } from 'vue';
 import ScrollBox from '@/components/ScrollBox.vue';
-import { componentUtils, managerConf, ManagerOperation } from '@/utils/index';
+import { componentUtils, managerConf } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -121,23 +121,22 @@ function handleClickNext() {
     return;
   }
   updateTargetComponents();
-  managerConf.setOperation(ManagerOperation.Update);
   routerPush('/manager/confirm');
 }
 
 function refreshComponents() {
-  groupComponents.value = managerConf.componentsToUpdate();
+  groupComponents.value = managerConf.getCheckGroups();
   updateTargetComponents();
 }
 
-onMounted(() => { refreshComponents() });
+onMounted(() => refreshComponents());
 onUpdated(() => {
   // only update components list if "back" was clicked,
   // the only downside of this is it will refresh component selections once the
   // user have clicked "back" but then select the same toolkit again,
   // but it might not be that important to keep the same selections.
   if (backClicked) {
-    groupComponents.value = managerConf.componentsToUpdate();
+    groupComponents.value = managerConf.getCheckGroups();
     backClicked = false;
   }
 });

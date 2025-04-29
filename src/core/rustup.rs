@@ -33,29 +33,49 @@ pub struct ToolchainInstaller {
 }
 
 impl ToolchainInstaller {
-    pub(crate) fn init() -> Self {
+    pub(crate) fn init<T: RimDir>(config: T) -> Self {
+        let cargo_home = config.cargo_home().to_path_buf();
+        let rustup_home = config.rustup_home().to_path_buf();
+
+        std::env::set_var(CARGO_HOME, cargo_home);
+        std::env::set_var(RUSTUP_HOME, rustup_home);
+
+        // this env var interfering our installation, may causing incorrect version being installed
         std::env::remove_var("RUSTUP_TOOLCHAIN");
+        // skip path check, as it shows an `error: cannot install while Rust is installed`.
+        // Although it's not a big deal since we use `-y` when executing `rustup-init`,
+        // some user find this error message a bit concerning.
+        std::env::set_var("RUSTUP_INIT_SKIP_PATH_CHECK", "yes");
+
         Self { insecure: false }
     }
 
     setter!(insecure(self.insecure, bool));
 
-    fn install_toolchain_via_rustup(
+    /// Check and install rust toolchain if it does not exists yet.
+    ///
+    /// Return `true` if the toolchain was already installed.
+    fn ensure_toolchain(
         &self,
         rustup: &Path,
         manifest: &ToolkitManifest,
-        components: &[ToolchainComponent],
         use_offline_server: bool,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         let version = &manifest.rust.channel;
-        let comps_arg = components_to_install(manifest, components);
+        let mut toolchain_list_cmd = cmd!(rustup, "toolchain", "list");
+        let toolchain_list_output = String::from_utf8(toolchain_list_cmd.output()?.stdout)?;
+        if toolchain_list_output
+            .split('\n')
+            .any(|line| line.starts_with(version))
+        {
+            // no need to install toolchain as it already exists
+            run!(&rustup, "default", version)?;
+            return Ok(true);
+        }
 
         let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update");
         if let Some(profile) = manifest.rust.profile() {
             cmd.args(["--profile", profile]);
-        }
-        if !comps_arg.is_empty() {
-            cmd.args(["--component", &comps_arg]);
         }
         if use_offline_server && manifest.rust.offline_dist_server.is_some() {
             let local_server = manifest
@@ -76,38 +96,123 @@ impl ToolchainInstaller {
         // install the toolchain
         utils::execute(cmd)?;
         // set it as default
-        run!(&rustup, "default", version)
+        run!(&rustup, "default", version)?;
+
+        Ok(false)
+    }
+
+    /// Install toolchain including optional set of components.
+    ///
+    /// If `first_install` flag was set to `false`, meaning this is likely an
+    /// update operation, thus will not try to use offline dist server and
+    /// will not try to remove `rustup`'s uninstallation entry on Windows.
+    fn install_(
+        &self,
+        config: &InstallConfiguration,
+        components: &[ToolchainComponent],
+        first_install: bool,
+    ) -> Result<()> {
+        let rustup = ensure_rustup(config, self.insecure)?;
+        self.ensure_toolchain(&rustup, config.manifest, first_install)?;
+        self.add_components(config, components)?;
+
+        // Remove the `rustup` uninstall entry on windows, because we don't want users to
+        // accidentally uninstall `rustup` thus removing the tools installed by this program.
+        #[cfg(windows)]
+        if first_install {
+            _ = super::os::windows::do_remove_from_programs(
+                r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Rustup",
+            );
+        }
+
+        Ok(())
     }
 
     /// Install rust toolchain & components via rustup.
     pub(crate) fn install(
         &self,
         config: &InstallConfiguration,
-        manifest: &ToolkitManifest,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        let rustup = ensure_rustup(config, manifest, self.insecure)?;
-        self.install_toolchain_via_rustup(&rustup, manifest, components, true)?;
-
-        // Remove the `rustup` uninstall entry on windows, because we don't want users to
-        // accidentally uninstall `rustup` thus removing the tools installed by this program.
-        #[cfg(windows)]
-        super::os::windows::do_remove_from_programs(
-            r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Rustup",
-        )?;
-
-        Ok(())
+        self.install_(config, components, true)
     }
 
     /// Update rust toolchain by invoking `rustup toolchain add`, then `rustup default`.
     pub(crate) fn update(
         &self,
         config: &InstallConfiguration,
-        manifest: &ToolkitManifest,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        let rustup = ensure_rustup(config, manifest, self.insecure)?;
-        self.install_toolchain_via_rustup(&rustup, manifest, components, false)
+        self.install_(config, components, false)
+    }
+
+    /// Install components via rustup.
+    pub(crate) fn add_components(
+        &self,
+        config: &InstallConfiguration,
+        components: &[ToolchainComponent],
+    ) -> Result<()> {
+        let rustup = ensure_rustup(config, self.insecure)?;
+        let mut cmd = cmd!(&rustup, "component", "add");
+
+        let comp_args = components
+            .iter()
+            .filter_map(|c| (!c.is_profile).then_some(&c.name));
+
+        info!(
+            "{}",
+            t!(
+                "install_toolchain_components",
+                list = comp_args
+                    .clone()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
+        );
+
+        if self.ensure_toolchain(&rustup, config.manifest, false)? {
+            cmd.args(comp_args);
+        } else {
+            // include base components as well
+            let args = config.manifest.rust.components.iter().chain(comp_args);
+            cmd.args(args);
+        }
+
+        utils::execute(cmd)
+    }
+
+    pub(crate) fn remove_components(
+        &self,
+        config: &UninstallConfiguration,
+        components: &[ToolchainComponent],
+    ) -> Result<()> {
+        let rustup_bin = config.cargo_bin().join(RUSTUP);
+        if !rustup_bin.is_file() {
+            // rustup not installed, perhaps user already remove it manually?
+            // Therefore nothing needs to be done
+            return Ok(());
+        }
+
+        let comp_args = components
+            .iter()
+            .filter_map(|c| (!c.is_profile).then_some(&c.name));
+
+        info!(
+            "{}",
+            t!(
+                "uninstall_toolchain_components",
+                list = comp_args
+                    .clone()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
+        );
+
+        let mut cmd = cmd!(rustup_bin, "component", "remove");
+        cmd.args(comp_args);
+        utils::execute(cmd)
     }
 
     // Rustup self uninstall all the components and toolchains.
@@ -121,11 +226,7 @@ impl ToolchainInstaller {
         )?;
 
         let rustup = config.cargo_bin().join(RUSTUP);
-        let cargo_home = config.cargo_home().to_path_buf();
-        let rustup_home = config.rustup_home().to_path_buf();
-        let handle = thread::spawn(
-            move || run!([CARGO_HOME=cargo_home, RUSTUP_HOME=rustup_home] rustup, "self", "uninstall", "-y"),
-        );
+        let handle = thread::spawn(move || run!(rustup, "self", "uninstall", "-y"));
         while !handle.is_finished() {
             (progress.update)(&spinner, None);
         }
@@ -136,30 +237,7 @@ impl ToolchainInstaller {
     }
 }
 
-/// Join user selected toolchain components and the base components together into a
-/// comma separated string.
-fn components_to_install(
-    manifest: &ToolkitManifest,
-    selected_components: &[ToolchainComponent],
-) -> String {
-    let extra_comps = selected_components
-        .iter()
-        .filter_map(|c| (!c.is_profile).then_some(&c.name));
-    let all_components = manifest
-        .rust
-        .components
-        .iter()
-        .chain(extra_comps)
-        .map(|s| s.as_str())
-        .collect::<Vec<_>>();
-    all_components.join(",")
-}
-
-fn ensure_rustup(
-    config: &InstallConfiguration,
-    manifest: &ToolkitManifest,
-    insecure: bool,
-) -> Result<PathBuf> {
+fn ensure_rustup(config: &InstallConfiguration, insecure: bool) -> Result<PathBuf> {
     let rustup_bin = config.cargo_bin().join(RUSTUP);
     if rustup_bin.exists() {
         return Ok(rustup_bin);
@@ -170,7 +248,7 @@ fn ensure_rustup(
     // rustup-init, but in reality it might not exists, therefore we need to check if that file
     // exists and download it otherwise.
     let (rustup_init, maybe_temp_dir) =
-        if let Some(bundled_rustup) = &manifest.rustup_bin()?.filter(|p| p.is_file()) {
+        if let Some(bundled_rustup) = &config.manifest.rustup_bin()?.filter(|p| p.is_file()) {
             (bundled_rustup.to_path_buf(), None)
         } else {
             // We are putting the binary here so that it will be deleted automatically after done.
@@ -180,7 +258,7 @@ fn ensure_rustup(
             download_rustup_init(
                 &rustup_init,
                 &config.rustup_update_root,
-                manifest.proxy.as_ref(),
+                config.manifest.proxy.as_ref(),
                 insecure,
             )?;
             (rustup_init, Some(temp_dir))

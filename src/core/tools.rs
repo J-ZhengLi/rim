@@ -149,7 +149,7 @@ impl<'a> Tool<'a> {
                     Tool::new(name.into(), ToolKind::Executables)
                         .with_path(tool_record.paths.clone())
                 } else {
-                    info!("{}", t!("uninstall_unknown_tool_warn", tool = name));
+                    warn!("{}", t!("uninstall_unknown_tool_warn", tool = name));
                     return None;
                 }
             }

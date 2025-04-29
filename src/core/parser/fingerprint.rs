@@ -2,6 +2,7 @@ use anyhow::{anyhow, Context, Result};
 use rim_common::types::{TomlParser, ToolKind, ToolkitManifest};
 use rim_common::utils;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
+use std::collections::HashSet;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -114,29 +115,39 @@ impl InstallationRecord {
         self.rust = None;
     }
 
-    #[allow(unused)]
-    pub fn remove_component_record(&mut self, component: &str) {
+    /// Remove a list of toolchain components from record
+    pub fn remove_component_record(&mut self, components: &[ToolchainComponent]) {
         let Some(rust) = self.rust.as_mut() else {
             return;
         };
-        let Some(target_idx) = rust.components.iter().position(|c| c == component) else {
-            // Nothing to remove
+
+        let components_to_remove: HashSet<&String> =
+            HashSet::from_iter(components.iter().map(|c| &c.name));
+        if components_to_remove.is_empty() {
             return;
-        };
-        rust.components.swap_remove(target_idx);
+        }
+        let components_after_remove = rust
+            .components
+            .iter()
+            .filter_map(|c| (!components_to_remove.contains(c)).then_some(c.clone()))
+            .collect();
+
+        rust.components = components_after_remove;
     }
 
     pub fn remove_tool_record(&mut self, tool_name: &str) {
         self.tools.remove(tool_name);
     }
 
-    /// Return an iterator of installed tools' names.
-    pub fn installed_tools(&self) -> &HashMap<String, ToolRecord> {
-        &self.tools
+    /// Retrieve a list of installed toolchain components only
+    pub fn installed_toolchain_components(&self) -> Vec<ToolchainComponent> {
+        let Some(rr) = &self.rust else { return vec![] };
+
+        rr.components.iter().map(ToolchainComponent::new).collect()
     }
 
     /// Returns the rust toolchain channel name (such as `stable`, `nightly`, `1.80.1`, etc.),
-    /// and an iterator of installed components.
+    /// and a slice of installed components.
     pub fn installed_toolchain(&self) -> Option<(&str, &[String])> {
         self.rust
             .as_ref()

@@ -12,6 +12,7 @@ use anyhow::{anyhow, bail, Result};
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand, ValueHint};
 use common::handle_user_choice;
+use component::ComponentCommand;
 use rim_common::utils;
 use std::{
     path::{Path, PathBuf},
@@ -274,7 +275,6 @@ enum ManagerSubcommands {
         #[command(subcommand)]
         command: Option<list::ListCommand>,
     },
-    #[command(hide = true)]
     /// Install or uninstall components
     Component {
         #[command(subcommand)]
@@ -340,10 +340,12 @@ impl ManagerSubcommands {
                         continue;
                     }
                 }
-                _ => unimplemented!(
-                    "manager interaction currently only have `update` and `install` \
-                    options available"
-                ),
+                Self::Component { .. } => {
+                    if !manager_opt.question_component_option_()? {
+                        continue;
+                    }
+                }
+                _ => unimplemented!("manager interaction does not support this option yet"),
             }
 
             return Ok(manager_opt);
@@ -353,10 +355,13 @@ impl ManagerSubcommands {
     fn question_manager_option_() -> Result<Option<Self>> {
         // NOTE: If more option added, make sure to add the corresponding match pattern
         // to `from_interaction` function., otherwise it may cause `unimplemented` error.
+        // NOTE: Don't get confused by the options in `Self` variant being returned, they
+        // are dummy options, and will get replaced in further interaction.
         let maybe_cmd = handle_user_choice!(
-            t!("choose_an_option"), 4,
+            t!("choose_an_option"), 5,
             {
-                1 t!("update") => {
+                1 t!("modify_option") => { Some(Self::Component { command: ComponentCommand::Uninstall { components: vec![] } }) },
+                2 t!("update") => {
                     let insecure = handle_user_choice!(
                         t!("choose_an_option"), 1,
                         {
@@ -366,8 +371,8 @@ impl ManagerSubcommands {
                     );
                     Some(Self::Update { insecure, toolkit_only: false, manager_only: false, component: None })
                 },
-                2 t!("uninstall") => { Some(Self::Uninstall { keep_self: false }) },
-                3 t!("list_option") => {
+                3 t!("uninstall") => { Some(Self::Uninstall { keep_self: false }) },
+                4 t!("list_option") => {
                     let installed = handle_user_choice!(
                         t!("choose_an_option"), 1,
                         {
@@ -377,7 +382,7 @@ impl ManagerSubcommands {
                     );
                     Some(Self::List { installed, command: list::ask_list_command()? })
                 },
-                4 t!("cancel") => { None }
+                5 t!("cancel") => { None }
             }
         );
 
@@ -421,6 +426,35 @@ impl ManagerSubcommands {
             }
         );
 
+        Ok(true)
+    }
+
+    fn question_component_option_(&mut self) -> Result<bool> {
+        *self = handle_user_choice!(
+            t!("choose_an_option"), 1,
+            {
+                1 t!("add") => {
+                    let insecure = handle_user_choice!(
+                        t!("choose_an_option"), 1,
+                        {
+                            1 t!("default") => { false },
+                            2 t!("skip_ssl_check") => { true }
+                        }
+                    );
+                    let components = component::collect_components_to_add()?;
+                    if components.is_empty() {
+                        info!("{}", t!("no_component_selected"));
+                        return Ok(false);
+                    }
+                    Self::Component { command: ComponentCommand::Install { insecure, components } }
+                },
+                2 t!("remove") => {
+                    let components = component::collect_components_to_remove()?;
+                    Self::Component { command: ComponentCommand::Uninstall { components } }
+                },
+                3 t!("back") => { return Ok(false) }
+            }
+        );
         Ok(true)
     }
 }

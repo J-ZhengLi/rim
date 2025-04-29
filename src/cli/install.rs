@@ -168,9 +168,9 @@ impl CustomInstallOpt {
 
             let choices = read_component_selections(&all_components, user_selected_comps)?;
 
-            show_confirmation(&install_dir, &choices)?;
+            common::show_confirmation(Some(&install_dir), &choices, false)?;
 
-            match common::confirm_install()? {
+            match common::confirm_options()? {
                 Confirm::Yes => {
                     return Ok(Self {
                         prefix: install_dir.into(),
@@ -195,42 +195,6 @@ fn read_install_dir_input(default: &str) -> Result<Option<String>> {
     }
 }
 
-/// Create a collection of component choices base of a filtering condition.
-/// Also taking component constrains, such as `requires`, `conflicts` into account.
-// TODO: handle conflicts
-fn component_choices_with_constrains<F>(
-    all_components: &[Component],
-    condition_callback: F,
-) -> ComponentChoices<'_>
-where
-    F: Fn(usize, &Component) -> bool,
-{
-    // tracking dependency and conflicting component names.
-    // dependencies will be added, and conflicted tools will be removed later.
-    let mut dependencies = HashSet::new();
-
-    let mut selections = all_components
-        .iter()
-        .enumerate()
-        .filter(|(idx, c)| {
-            let selected = condition_callback(*idx, c);
-            if selected {
-                dependencies.extend(c.dependencies());
-            }
-            selected
-        })
-        .collect::<ComponentChoices>();
-
-    // iterate all components again to add dependencies
-    for (idx, comp) in all_components.iter().enumerate() {
-        if dependencies.contains(&comp.name) && !comp.installed {
-            selections.insert(idx, comp);
-        }
-    }
-
-    selections
-}
-
 fn default_component_choices<'a>(
     all_components: &'a [Component],
     user_selected_comps: Option<&[String]>,
@@ -238,12 +202,15 @@ fn default_component_choices<'a>(
     let selected_comps_set: HashSet<&String> =
         HashSet::from_iter(user_selected_comps.unwrap_or_default());
 
-    component_choices_with_constrains(all_components, |_idx, component: &Component| -> bool {
-        let not_optional_and_not_installed =
-            !component.installed && (component.required || !component.optional);
-        let user_selected = selected_comps_set.contains(&component.name);
-        user_selected || not_optional_and_not_installed
-    })
+    common::component_choices_with_constrains(
+        all_components,
+        |_idx, component: &Component| -> bool {
+            let not_optional_and_not_installed =
+                !component.installed && (component.required || !component.optional);
+            let user_selected = selected_comps_set.contains(&component.name);
+            user_selected || not_optional_and_not_installed
+        },
+    )
 }
 
 fn custom_component_choices<'a>(
@@ -270,7 +237,7 @@ fn custom_component_choices<'a>(
 
     // convert the input indexes to `ComponentChoices`,
     // also we need to add missing `required` tools even if the user didn't choose it.
-    Ok(component_choices_with_constrains(
+    Ok(common::component_choices_with_constrains(
         all_components,
         |idx, c| (c.required && !c.installed) || index_set.contains(&(idx + 1)),
     ))
@@ -307,46 +274,6 @@ fn read_component_selections<'a>(
     };
 
     Ok(selection)
-}
-
-fn show_confirmation(install_dir: &str, choices: &ComponentChoices<'_>) -> Result<()> {
-    let mut stdout = std::io::stdout();
-
-    writeln!(&mut stdout, "\n{}\n", t!("current_install_option"))?;
-    writeln!(&mut stdout, "{}:\n\t{install_dir}", t!("install_dir"))?;
-    writeln!(&mut stdout, "\n{}:", t!("components_to_install"))?;
-    let list_of_comp = ComponentListBuilder::new(choices.values().copied())
-        .decorate(ComponentDecoration::Confirmation)
-        .build();
-    for line in list_of_comp {
-        writeln!(&mut stdout, "\t{line}")?;
-    }
-
-    // list obsoleted components
-    let obsoletes_removal_list = choices
-        .iter()
-        .filter_map(|(_, comp)| {
-            if !comp.installed {
-                return None;
-            }
-            let mut line = String::new();
-            for obsolete in comp.obsoletes() {
-                line.push_str(&format!(
-                    "\t{obsolete} ({})",
-                    t!("replaced_by", name = &comp.name)
-                ));
-            }
-            (!line.is_empty()).then_some(line)
-        })
-        .collect::<Vec<_>>();
-    if !obsoletes_removal_list.is_empty() {
-        writeln!(&mut stdout, "\n{}:", t!("components_to_remove"))?;
-        for line in obsoletes_removal_list {
-            writeln!(&mut stdout, "\t{line}")?;
-        }
-    }
-
-    Ok(())
 }
 
 static SHOW_MISSING_PKG_SRC_ONCE: OnceLock<()> = OnceLock::new();

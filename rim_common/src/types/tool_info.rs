@@ -29,6 +29,11 @@ pub enum ToolInfo {
 }
 
 impl ToolInfo {
+    /// Create a new detailed tool info object.
+    pub fn new_detailed(details: ToolInfoDetails) -> Self {
+        Self::Complex(Box::new(details))
+    }
+
     /// Get a mutable reference of this tools' package source if it's from a local path,
     /// check [`ToolSource::Path`] for more info.
     pub fn path_mut(&mut self) -> Option<&mut PathBuf> {
@@ -242,6 +247,7 @@ impl ToolInfoDetails {
     }
 
     setter!(with_source(self.source, source: ToolSource) { Some(source) });
+    setter!(with_dependencies(self.requires, Vec<String>));
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]

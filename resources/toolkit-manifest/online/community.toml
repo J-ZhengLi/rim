@@ -16,23 +16,49 @@ group = "Rust 基础工具集"
 [rust.rustup]
 
 [tools.descriptions]
-codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 llvm-tools = "包含 LLVM 工具的集合"
 rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个; 仅当开发链接到编译器的工具时才需要它, 例如对 Clippy 进行修改"
-mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
-vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
-cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
+rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
+mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
+typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
+cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
 vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
+vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
+codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
-typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
-rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 
 [tools.group]
-"Rust 基础工具集" = ["mingw64", "buildtools"]
-"Rust 软件开发工具链" = ["codearts-rust", "vscode", "vscode-rust-analyzer", "vscodium"]
-"Rust 优选工具集" = ["typos", "cargo-nextest"]
+"Rust 基础工具集" = ["buildtools", "mingw64"]
+"Rust 优选工具集" = ["cargo-nextest", "typos"]
+"Rust 软件开发工具链" = ["vscodium", "vscode", "codearts-rust", "vscode-rust-analyzer"]
+
+[tools.target.x86_64-pc-windows-gnu.mingw64]
+required = true
+optional = false
+version = "14.2.0-rt_v12-rev2"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z"
+display-name = "MinGW-w64"
+
+[tools.target.x86_64-pc-windows-gnu.codearts-rust]
+required = false
+optional = false
+version = "3.2.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip"
+display-name = "CodeArts IDE"
+
+[tools.target.x86_64-pc-windows-gnu.cargo-nextest]
+required = false
+optional = true
+version = "0.9.94"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
+
+[tools.target.x86_64-pc-windows-gnu.typos]
+required = false
+optional = true
+version = "1.31.1"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip"
 
 [tools.target.x86_64-pc-windows-msvc.buildtools]
 required = true
@@ -113,29 +139,3 @@ required = false
 optional = true
 identifier = "typos-cli"
 version = "1.31.1"
-
-[tools.target.x86_64-pc-windows-gnu.mingw64]
-required = true
-optional = false
-version = "14.2.0-rt_v12-rev2"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z"
-display-name = "MinGW-w64"
-
-[tools.target.x86_64-pc-windows-gnu.codearts-rust]
-required = false
-optional = false
-version = "3.2.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip"
-display-name = "CodeArts IDE"
-
-[tools.target.x86_64-pc-windows-gnu.cargo-nextest]
-required = false
-optional = true
-version = "0.9.94"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
-
-[tools.target.x86_64-pc-windows-gnu.typos]
-required = false
-optional = true
-version = "1.31.1"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip"

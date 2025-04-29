@@ -5,7 +5,7 @@
 //!                         --- Walter White
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt::Display,
     io::{self, BufRead, Write},
 };
@@ -297,10 +297,10 @@ pub(crate) enum Confirm {
     Abort,
 }
 
-pub(crate) fn confirm_install() -> Result<Confirm> {
+pub(crate) fn confirm_options() -> Result<Confirm> {
     let mut stdout = io::stdout();
 
-    writeln!(&mut stdout, "\n{}\n", t!("question_install_options"))?;
+    writeln!(&mut stdout, "\n{}\n", t!("question_options"))?;
     writeln!(&mut stdout, "1) {} ({})", t!("confirm"), t!("default"))?;
     writeln!(&mut stdout, "2) {}", t!("reenter"))?;
     writeln!(&mut stdout, "3) {}", t!("cancel"))?;
@@ -316,6 +316,96 @@ pub(crate) fn confirm_install() -> Result<Confirm> {
 
     writeln!(&mut stdout)?;
     Ok(choice)
+}
+
+pub(crate) fn show_confirmation(
+    install_dir: Option<&str>,
+    choices: &ComponentChoices<'_>,
+    is_remove: bool,
+) -> Result<()> {
+    let mut stdout = std::io::stdout();
+
+    writeln!(&mut stdout, "\n{}\n", t!("current_option"))?;
+    if let Some(dir) = install_dir {
+        writeln!(&mut stdout, "{}:\n\t{dir}", t!("install_dir"))?;
+    }
+    writeln!(
+        &mut stdout,
+        "\n{}:",
+        if is_remove {
+            t!("components_to_remove")
+        } else {
+            t!("components_to_install")
+        }
+    )?;
+    let list_of_comp = ComponentListBuilder::new(choices.values().copied())
+        .decorate(ComponentDecoration::Confirmation)
+        .build();
+    for line in list_of_comp {
+        writeln!(&mut stdout, "\t{line}")?;
+    }
+
+    // list obsoleted components
+    let obsoletes_removal_list = choices
+        .iter()
+        .filter_map(|(_, comp)| {
+            if !comp.installed {
+                return None;
+            }
+            let mut line = String::new();
+            for obsolete in comp.obsoletes() {
+                line.push_str(&format!(
+                    "\t{obsolete} ({})",
+                    t!("replaced_by", name = &comp.name)
+                ));
+            }
+            (!line.is_empty()).then_some(line)
+        })
+        .collect::<Vec<_>>();
+    if !obsoletes_removal_list.is_empty() {
+        writeln!(&mut stdout, "\n{}:", t!("components_to_remove"))?;
+        for line in obsoletes_removal_list {
+            writeln!(&mut stdout, "\t{line}")?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Create a collection of component choices base of a filtering condition.
+/// Also taking component constrains, such as `requires`, `conflicts` into account.
+// TODO: handle conflicts
+pub(crate) fn component_choices_with_constrains<F>(
+    all_components: &[Component],
+    condition_callback: F,
+) -> ComponentChoices<'_>
+where
+    F: Fn(usize, &Component) -> bool,
+{
+    // tracking dependency and conflicting component names.
+    // dependencies will be added, and conflicted tools will be removed later.
+    let mut dependencies = HashSet::new();
+
+    let mut selections = all_components
+        .iter()
+        .enumerate()
+        .filter(|(idx, c)| {
+            let selected = condition_callback(*idx, c);
+            if selected {
+                dependencies.extend(c.dependencies());
+            }
+            selected
+        })
+        .collect::<ComponentChoices>();
+
+    // iterate all components again to add dependencies
+    for (idx, comp) in all_components.iter().enumerate() {
+        if dependencies.contains(&comp.name) && !comp.installed {
+            selections.insert(idx, comp);
+        }
+    }
+
+    selections
 }
 
 #[cfg(windows)]
@@ -393,9 +483,9 @@ impl ComponentDecoration<'_> {
     }
 }
 
-/// A helper struct that takes a list of [`Component`], and convert it
-/// to a list of component strings.
-pub(crate) struct ComponentListBuilder<'c, I: IntoIterator<Item = &'c Component>> {
+/// A helper struct that convert [`Component`]s to
+/// a list of component names with certain decoration.
+pub(crate) struct ComponentListBuilder<'c, I> {
     components: I,
     show_desc: bool,
     decoration: ComponentDecoration<'c>,

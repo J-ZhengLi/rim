@@ -1,7 +1,8 @@
 use super::{TomlParser, ToolMap};
 use crate::utils;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use url::Url;
 
@@ -76,13 +77,13 @@ pub struct RustToolchain {
     pub optional_components: Vec<String>,
     /// Optional category (group) name for the rust toolchain,
     /// so you can group the toolchain components `Rust Toolchain` or something else.
-    /// note that all optional components falls into this group as well.
+    /// note that all optional components belong to this group as well.
     pub group: Option<String>,
     /// File [`Url`] to install rust toolchain.
     pub offline_dist_server: Option<String>,
     /// Contains target specific `rustup-init` binaries.
     #[serde(default)]
-    pub rustup: HashMap<String, String>,
+    pub rustup: IndexMap<String, String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
@@ -174,14 +175,14 @@ impl RustToolchain {
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
 pub struct Tools {
     #[serde(default)]
-    descriptions: HashMap<String, String>,
+    descriptions: IndexMap<String, String>,
     /// Containing groups of tools.
     ///
     /// Note that not all tools will have a group.
     #[serde(default)]
-    group: HashMap<String, HashSet<String>>,
+    group: IndexMap<String, HashSet<String>>,
     #[serde(default)]
-    pub target: HashMap<String, ToolMap>,
+    pub target: IndexMap<String, ToolMap>,
 }
 
 impl Tools {
@@ -190,9 +191,8 @@ impl Tools {
         I: IntoIterator<Item = (String, ToolMap)>,
     {
         Self {
-            descriptions: HashMap::default(),
-            group: HashMap::default(),
-            target: HashMap::from_iter(targeted_tools),
+            target: IndexMap::from_iter(targeted_tools),
+            ..Default::default()
         }
     }
 }
@@ -381,7 +381,7 @@ t3 = { url = "https://example.com/path/to/tool" }
 
         assert_eq!(
             expected.tools.descriptions,
-            HashMap::<String, String>::from_iter([
+            IndexMap::<String, String>::from_iter([
                 ("t1".to_string(), "desc for t1".to_string()),
                 ("t3".to_string(), "desc for t3".to_string()),
                 (
@@ -448,7 +448,7 @@ Others = [ "t3", "t4" ]
         let expected = ToolkitManifest::from_str(input).unwrap();
         assert_eq!(
             expected.tools.group,
-            HashMap::from_iter([
+            IndexMap::<String, HashSet<String>>::from_iter([
                 (
                     "Some Group".to_string(),
                     ["t1".to_string(), "t2".to_string()].into_iter().collect()

@@ -44,9 +44,10 @@
     "question_install_dir": "安装路径？",
     "select_components_to_install": "请选择要安装的组件: (选择多个组件时请用空格键分隔；必要组件会自动添加，无需额外选择)",
     "select_components_to_update": "请选择要更新的组件: (选择多个组件时请用空格键分隔)",
+    "select_components_to_remove": "请选择要卸载的组件: (选择多个组件时请用空格键分隔)",
     "question_try_demo": "是否要通过一个示例项目尝试 Rust 编程？",
 
-    "question_install_options": "是否应用以上安装选项？",
+    "question_options": "是否应用以上选项？",
     "pause_prompt": "按回车键继续...",
     "confirm": "确认",
     "reenter": "重新输入",
@@ -56,7 +57,7 @@
     "space_separated_and": "使用空格分隔并且",
     "integers": "整数",
     "invalid_input": "无效的输入 '%{actual}'，正确格式应为%{expect}，请重试",
-    "current_install_option": "当前安装选项：",
+    "current_option": "当前选项：",
     "install_dir": "安装路径",
     "components_to_install": "将安装以下组件",
     "components_to_remove": "将移除以下组件",
@@ -66,7 +67,7 @@
 
     "uninstall_confirmation": "是否确认卸载以下组件: \n\n%{list}\n",
     "uninstall_all_confirmation": "是否确认卸载 %{vendor}-manager 及以下组件: \n\n%{list}\n",
-    "uninstall_unknown_tool_warn": "跳过卸载未知工具 '%{tool}'",
+    "uninstall_unknown_tool_warn": "跳过卸载未知工具: %{tool}",
     "uninstalling_third_party_tools": "正在卸载第三方工具",
     "uninstalling_for": "正在卸载 '%{name}'",
     "uninstalling_rust_toolchain": "正在卸载 Rust 工具链",
@@ -74,8 +75,7 @@
     "rust_toolchain_uninstalled": "Rust 工具链已卸载",
     "uninstall_env_config": "正在移除环境变量配置...",
     "uninstall_self": "正在清除此管理程序...",
-    "uninstall_tool_skipped": "跳过卸载工具 '%{tool}'",
-    "maybe_uninstalled_already": "该工具可能已被卸载。",
+    "skip_non_exist_component_uninstallation": "以下工具可能不存在或已被卸载: %{tool}, 即将跳过",
     "path_to_installation_not_found": "找不到工具安装路径 '%{path}'。",
 
     "linux_source_hint": "请重启当前终端窗口或执行 `%{cmd}` 以使环境变更生效",
@@ -145,5 +145,13 @@
 
     "missing_restricted_source": "工具 '%{name}' 的安装包来源受限制，必须由用户明确提供或应具有默认值，但目前既未提供来源，也未设置默认值。",
     "remove_path_retry": "移除路径 '%{path}' 失败, 正在重试...",
-    "removing_obsolete_tool": "正在移除已淘汰工具 '%{name}'"
+    "removing_obsolete_tool": "正在移除已淘汰工具 '%{name}'",
+    "other": "其它",
+    "invalid_components": "无效组件: %{list}",
+    "install_toolchain_components": "即将安装工具链组件: %{list}",
+    "uninstall_toolchain_components": "即将卸载工具链组件: %{list}",
+    "task_success": "操作成功!",
+    "no_installable_components": "无可安装组件",
+    "no_component_selected": "未选择任何组件",
+    "modify_option": "组件更改"
 }

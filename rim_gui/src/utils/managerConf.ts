@@ -47,7 +47,30 @@ class ManagerConf {
     return this._installedKit.value;
   }
 
-  public componentsToUpdate(): CheckGroup<Component>[] {
+  private componentsToModify(): CheckGroup<Component>[] {
+    const checkItems: CheckGroupItem<Component>[] =
+      this._installedKit.value?.components
+        .map((item) => {
+          return {
+            label: `${item.displayName} (${item.version})`,
+            checked: item.installed,
+            required: item.required,
+            disabled: false,
+
+            focused: false,
+            value: item,
+            labelComponent: shallowRef(LabelComponent),
+            labelComponentProps: {
+              label: item.displayName,
+              oldVer: item.version
+            },
+          };
+        }) || [];
+
+    return groupItemsToGroups(checkItems);
+  }
+
+  private componentsToUpdate(): CheckGroup<Component>[] {
     const checkItems: CheckGroupItem<Component>[] =
       this._current.value?.components
         .filter((item) => !componentUtils(item).isRestricted()) // ignore restricted components for now
@@ -97,31 +120,19 @@ class ManagerConf {
           };
         }) || [];
 
-    const groups = checkItems.reduce(
-      (acc, item) => {
-        const groupName = item.value.groupName
-          ? item.value.groupName
-          : 'Others'; // 确保 groupName 不为 null
-
-        if (!acc[groupName]) {
-          acc[groupName] = {
-            label: groupName,
-            items: [],
-          };
-        }
-
-        acc[groupName].items.push({ ...item });
-
-        return acc;
-      },
-      {} as Record<string, CheckGroup<Component>>
-    );
-
-    return Object.values(groups);
+    return groupItemsToGroups(checkItems);
   }
 
   public getOperation() {
     return this._target.value.operation;
+  }
+
+  public getCheckGroups(): CheckGroup<Component>[] {
+    if (this.getOperation() === ManagerOperation.Modify) {
+      return this.componentsToModify();
+    } else {
+      return this.componentsToUpdate();
+    }
   }
 
   /**
@@ -200,9 +211,35 @@ class ManagerConf {
   }
 }
 
+function groupItemsToGroups(items: CheckGroupItem<Component>[]): CheckGroup<Component>[] {
+  const groups = items.reduce(
+    (acc, item) => {
+      const groupName = item.value.category;
+
+      if (!acc[groupName]) {
+        acc[groupName] = {
+          label: groupName,
+          items: [],
+        };
+      }
+
+      acc[groupName].items.push({ ...item });
+
+      return acc;
+    },
+    {} as Record<string, CheckGroup<Component>>
+  );
+  return Object.values(groups);
+}
+
 export enum ManagerOperation {
+  /** Modify existing toolkit */
+  Modify,
+  /** Update to a new toolkit */
   Update,
+  /** Uninstall everything including self */
   UninstallAll,
+  /** Uninstall a certain toolkit */
   UninstallToolkit,
 }
 
