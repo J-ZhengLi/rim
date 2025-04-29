@@ -138,10 +138,12 @@ impl ToolkitManifestExt for ToolkitManifest {
         let tc_channel = &self.rust.channel;
 
         let profile_name = self.rust.name();
+        let default_cate_name = t!("other").to_string();
+        let tc_group = self.rust.group.as_deref().unwrap_or(&default_cate_name);
         // Add a component that represents rust toolchain
         let mut components = vec![Component::new(profile_name)
             .with_description(self.rust.description())
-            .with_group(self.rust.group.as_deref())
+            .with_category(tc_group)
             .with_type(ComponentType::ToolchainProfile)
             .required(true)
             .with_version(Some(tc_channel))];
@@ -150,7 +152,7 @@ impl ToolkitManifestExt for ToolkitManifest {
             components.push(
                 Component::new(component)
                     .with_description(self.get_tool_description(component))
-                    .with_group(self.rust.group.as_deref())
+                    .with_category(tc_group)
                     .optional(true)
                     .with_type(ComponentType::ToolchainComponent)
                     // toolchain component's version are unified
@@ -179,7 +181,7 @@ impl ToolkitManifestExt for ToolkitManifest {
                 components.push(
                     Component::new(tool_name)
                         .with_description(self.get_tool_description(tool_name))
-                        .with_group(self.group_name(tool_name))
+                        .with_category(self.group_name(tool_name).unwrap_or(&default_cate_name))
                         .with_tool_installer(tool_info)
                         .required(tool_info.is_required())
                         .optional(tool_info.is_optional())

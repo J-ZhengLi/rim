@@ -31,7 +31,7 @@ export function componentUtils(component: Component) {
 // Reflecting the `Component` type in `src/core/components.rs`
 export interface Component {
   id: number;
-  groupName?: string;
+  category: string;
   name: string;
   displayName: string;
   version?: string;
