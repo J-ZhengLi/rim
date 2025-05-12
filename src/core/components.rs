@@ -26,7 +26,7 @@ impl ComponentType {
 #[serde(rename_all = "camelCase")]
 pub struct Component {
     pub id: u32,
-    pub group_name: Option<String>,
+    pub category: String,
     pub name: String,
     /// A name that used for display purpose, defaulting to `name`.
     pub display_name: String,
@@ -70,7 +70,7 @@ impl Component {
     setter!(optional(self.optional, bool));
     setter!(installed(self.installed, bool));
     setter!(with_type(self.kind, ComponentType));
-    setter!(with_group(self.group_name, group: Option<&str>) { group.map(ToOwned::to_owned) });
+    setter!(with_category(self.category, name: impl ToString) { name.to_string() });
     setter!(with_tool_installer(self.tool_installer, installer: &ToolInfo) { Some(installer.clone()) });
     setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });
     setter!(with_display_name(self.display_name, name: impl ToString) { name.to_string() });
@@ -95,6 +95,16 @@ impl ToolchainComponent {
     setter!(is_profile(self.is_profile, bool));
 }
 
+impl<'c> From<&'c ToolchainComponent> for Component {
+    fn from(value: &'c ToolchainComponent) -> Self {
+        Component::new(&value.name).with_type(if value.is_profile {
+            ComponentType::ToolchainProfile
+        } else {
+            ComponentType::ToolchainComponent
+        })
+    }
+}
+
 /// Get a combined list of tools and toolchain components in Vec<[Component]> format,
 /// whether it's installed or not.
 ///
@@ -106,12 +116,12 @@ impl ToolchainComponent {
 pub(crate) fn all_components_from_installation(
     record: &InstallationRecord,
 ) -> Result<Vec<Component>> {
-    let mut full_components =
-        ToolkitManifest::load_from_install_dir()?.current_target_components(false)?;
+    let manifest = ToolkitManifest::load_from_install_dir()?;
+    let mut full_components = manifest.current_target_components(false)?;
 
     // components that are installed by rim previously.
     let installed_toolchain = record.installed_toolchain();
-    let mut installed_tools = record.installed_tools().clone();
+    let mut installed_tools = record.tools.clone();
 
     for comp in &mut full_components {
         match comp.kind {
@@ -143,7 +153,8 @@ pub(crate) fn all_components_from_installation(
         let mut comp = Component::new(&key)
             .installed(true)
             .with_type(ComponentType::Tool)
-            .with_version(val.version());
+            .with_version(val.version())
+            .with_category(manifest.group_name(&key).unwrap_or(&*t!("others")));
         if !matches!(val.tool_kind(), ToolKind::CargoTool) {
             let tool_info = ToolInfo::Complex(Box::new(ToolInfoDetails {
                 kind: Some(val.tool_kind()),
@@ -169,4 +180,31 @@ pub fn component_list_to_tool_map(list: Vec<&Component>) -> ToolMap {
                 .map(|tool_info| (c.name.clone(), tool_info.clone()))
         })
         .collect()
+}
+
+/// Split components list to `toolchain_components` and `toolset_components`,
+/// as we are running `rustup` to install toolchain components, but using other methods
+/// for toolset components.
+///
+/// Note: the splitted `toolchain_components` contains the base profile name
+/// such as `minimal` at first index.
+pub fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, ToolMap) {
+    let toolset_components = component_list_to_tool_map(
+        components
+            .iter()
+            .filter(|cm| !cm.kind.is_from_toolchain())
+            .collect(),
+    );
+    let toolchain_components: Vec<ToolchainComponent> = components
+        .into_iter()
+        .filter_map(|comp| match comp.kind {
+            ComponentType::ToolchainComponent => Some(ToolchainComponent::new(&comp.name)),
+            ComponentType::ToolchainProfile => {
+                Some(ToolchainComponent::new(&comp.name).is_profile(true))
+            }
+            _ => None,
+        })
+        .collect();
+
+    (toolchain_components, toolset_components)
 }
