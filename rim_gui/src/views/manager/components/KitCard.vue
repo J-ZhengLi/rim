@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const handleUpdate = () => {
-  managerConf.setOperation(ManagerOperation.Update);
+  managerConf.setOperation(ManagerOperation.Modify);
   routerPush('/manager/change');
 };
 

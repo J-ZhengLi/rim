@@ -1,7 +1,7 @@
-use super::components::ToolchainComponent;
+use super::components::{split_components, ToolchainComponent};
 use super::dependency_handler::DependencyHandler;
 use super::{
-    components::{component_list_to_tool_map, Component, ComponentType},
+    components::Component,
     directories::RimDir,
     parser::{
         cargo_config::CargoConfig,
@@ -51,7 +51,7 @@ pub struct InstallConfiguration<'a> {
     pub cargo_is_installed: bool,
     install_record: InstallationRecord,
     pub(crate) progress_indicator: Option<utils::Progress<'a>>,
-    manifest: &'a ToolkitManifest,
+    pub(crate) manifest: &'a ToolkitManifest,
     insecure: bool,
 }
 
@@ -238,9 +238,9 @@ impl<'a> InstallConfiguration<'a> {
 
         let manifest = self.manifest;
 
-        ToolchainInstaller::init()
+        ToolchainInstaller::init(&*self)
             .insecure(self.insecure)
-            .install(self, manifest, components)?;
+            .install(self, components)?;
         add_to_path(self.cargo_bin())?;
         self.cargo_is_installed = true;
 
@@ -255,6 +255,18 @@ impl<'a> InstallConfiguration<'a> {
         self.install_record.write()?;
 
         self.inc_progress(30.0)
+    }
+
+    pub fn install_toolchain_components(
+        &mut self,
+        components: &[ToolchainComponent],
+    ) -> Result<()> {
+        ToolchainInstaller::init(&*self).add_components(self, components)?;
+
+        self.install_record
+            .add_rust_record(&self.manifest.rust.channel, components);
+        self.install_record.write()?;
+        Ok(())
     }
 
     fn install_tool(&mut self, name: &str, tool: &ToolInfo) -> Result<()> {
@@ -454,17 +466,15 @@ impl InstallConfiguration<'_> {
     fn update_toolchain(&mut self, components: &[ToolchainComponent]) -> Result<()> {
         info!("{}", t!("update_toolchain"));
 
-        let manifest = self.manifest;
-
-        ToolchainInstaller::init()
+        ToolchainInstaller::init(&*self)
             .insecure(self.insecure)
-            .update(self, manifest, components)?;
+            .update(self, components)?;
 
         let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        record.add_rust_record(&manifest.rust.channel, components);
+        record.add_rust_record(&self.manifest.rust.channel, components);
         // record meta info
-        record.clone_toolkit_meta_from_manifest(manifest);
+        record.clone_toolkit_meta_from_manifest(self.manifest);
         // write changes
         record.write()?;
 
@@ -538,33 +548,6 @@ fn reject_conflicting_tools(tools: &ToolMap) -> Result<()> {
 /// which is a directory under [`home_dir`](utils::home_dir).
 pub fn default_install_dir() -> PathBuf {
     utils::home_dir().join(DEFAULT_FOLDER_NAME)
-}
-
-/// Split components list to `toolchain_components` and `toolset_components`,
-/// as we are running `rustup` to install toolchain components, but using other methods
-/// for toolset components.
-///
-/// Note: the splitted `toolchain_components` contains the base profile name
-/// such as `minimal` at first index.
-fn split_components(components: Vec<Component>) -> (Vec<ToolchainComponent>, ToolMap) {
-    let toolset_components = component_list_to_tool_map(
-        components
-            .iter()
-            .filter(|cm| !cm.kind.is_from_toolchain())
-            .collect(),
-    );
-    let toolchain_components: Vec<ToolchainComponent> = components
-        .into_iter()
-        .filter_map(|comp| match comp.kind {
-            ComponentType::ToolchainComponent => Some(ToolchainComponent::new(&comp.name)),
-            ComponentType::ToolchainProfile => {
-                Some(ToolchainComponent::new(&comp.name).is_profile(true))
-            }
-            _ => None,
-        })
-        .collect();
-
-    (toolchain_components, toolset_components)
 }
 
 #[cfg(test)]
