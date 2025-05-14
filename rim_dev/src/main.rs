@@ -84,6 +84,7 @@ impl DevCmd {
                 name,
             } => dist::dist(mode, binary_only, name, build_target, dist_targets)?,
             Self::RunManager { no_gui, args } => {
+                println!("running manager with args: {args:?}");
                 // a mocked server is needed to run most of function in manager
                 server::generate_rim_server_files()?;
 
@@ -193,20 +194,32 @@ fn main() -> Result<ExitCode> {
                 clear,
             }
         }
-        "run-manager" => match args.next().as_deref() {
-            Some("-h" | "--help") => {
-                writeln!(&mut stdout, "{MANAGER_MODE_HELP}")?;
-                return Ok(ExitCode::SUCCESS);
+        "run-manager" => {
+            let mut is_extra_arg = false;
+            let mut extra_args = vec![];
+            let mut no_gui = false;
+
+            while let Some(arg) = args.next().as_deref() {
+                match arg {
+                    "-h" | "--help" if !is_extra_arg => {
+                        writeln!(&mut stdout, "{MANAGER_MODE_HELP}")?;
+                        return Ok(ExitCode::SUCCESS);
+                    }
+                    "--cli" => no_gui = true,
+                    "--" if is_extra_arg == false => is_extra_arg = true,
+                    a => {
+                        if is_extra_arg {
+                            extra_args.push(a.into());
+                        }
+                    }
+                }
             }
-            Some("--cli") => DevCmd::RunManager {
-                no_gui: true,
-                args: args.collect(),
-            },
-            _ => DevCmd::RunManager {
-                no_gui: false,
-                args: args.collect(),
-            },
-        },
+
+            DevCmd::RunManager {
+                no_gui,
+                args: extra_args,
+            }
+        }
         "mock-rustup-server" => match args.next().as_deref() {
             Some("-r" | "--root") => DevCmd::Mock {
                 root: Some(args.next().expect("missing arg value for 'root'").into()),

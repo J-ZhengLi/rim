@@ -98,23 +98,27 @@ vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制�
 codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
+coding-guidelines-ruleset = "Rust 编程规范的代码检查规则集，提供了基于该规范要求或建议的全部自定义检查规则 (lint)。"
 
 [toolkit.community.value.tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
 "Rust 优选工具集" = ["typos", "cargo-nextest"]
 "Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
+"Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
 mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev2", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z" }
 codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
 cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.31.1", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip" }
+coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = "rust", kind = "rule-set", version = "0.1.0", url = "" }
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
 buildtools = { required = true, display-name = "Visual Studio Build Tools", restricted = true, default = "https://aka.ms/vs/17/release/vs_BuildTools.exe" }
 codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
 cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip" }
 typos = { optional = true, version = "1.31.1", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip" }
+coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = "rust", kind = "rule-set", version = "0.1.0", url = "" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
 vscodium = { display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz" }

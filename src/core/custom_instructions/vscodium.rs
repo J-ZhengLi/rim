@@ -26,6 +26,6 @@ pub(super) fn uninstall<T: RimDir>(config: T) -> Result<()> {
     VSCODE.uninstall(config)
 }
 
-pub(super) fn already_installed() -> bool {
-    VSCODE.already_installed()
+pub(super) fn is_installed() -> bool {
+    VSCODE.is_installed()
 }

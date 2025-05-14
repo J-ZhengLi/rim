@@ -47,8 +47,9 @@ pub struct InstallConfiguration<'a> {
     pub install_dir: PathBuf,
     pub rustup_dist_server: Url,
     pub rustup_update_root: Url,
-    /// Indicates whether `cargo` was already installed, useful when installing third-party tools.
-    pub cargo_is_installed: bool,
+    /// Indicates whether the rust toolchain was already installed,
+    /// useful when installing third-party tools.
+    pub toolchain_is_installed: bool,
     install_record: InstallationRecord,
     pub(crate) progress_indicator: Option<utils::Progress<'a>>,
     pub(crate) manifest: &'a ToolkitManifest,
@@ -77,7 +78,7 @@ impl<'a> InstallConfiguration<'a> {
             cargo_registry: Some((reg_name.into(), reg_url.into())),
             rustup_dist_server: super::default_rustup_dist_server().clone(),
             rustup_update_root: super::default_rustup_update_root().clone(),
-            cargo_is_installed: false,
+            toolchain_is_installed: false,
             progress_indicator: None,
             manifest,
             insecure: false,
@@ -126,8 +127,6 @@ impl<'a> InstallConfiguration<'a> {
         // This step taking cares of requirements, such as `MSVC`, also third-party app such as `VS Code`.
         self.install_tools(&tools)?;
         self.install_rust(&tc_components)?;
-        // install third-party tools via cargo that got installed by rustup
-        self.cargo_install(&tools)?;
         Ok(())
     }
 
@@ -181,15 +180,15 @@ impl<'a> InstallConfiguration<'a> {
         Ok(env_vars)
     }
 
-    fn install_tools_(&mut self, use_cargo: bool, tools: &ToolMap, weight: f32) -> Result<()> {
+    fn install_tools_(&mut self, use_rust: bool, tools: &ToolMap, weight: f32) -> Result<()> {
         let mut to_install = tools
             .iter()
             .filter(|(_, t)| {
-                if use_cargo {
-                    t.is_cargo_tool()
-                } else {
-                    !t.is_cargo_tool()
-                }
+                let requires_toolchain =
+                    t.is_cargo_tool() || t.dependencies().iter().any(|s| s == "rust");
+                // if we are using Rust toolchain to install,
+                // then we filter the tools that requires it
+                use_rust && requires_toolchain
             })
             .collect::<Vec<_>>();
 
@@ -198,20 +197,13 @@ impl<'a> InstallConfiguration<'a> {
         }
         let sub_progress_delta = weight / to_install.len() as f32;
 
-        if !use_cargo {
-            to_install = to_install.topological_sorted();
-            // topological sort place the tool with more dependencies at the back,
-            // which is what we need to install first, therefore we need to reverse it.
-            to_install.reverse();
-        }
+        to_install = to_install.topological_sorted();
+        // topological sort place the tool with more dependencies at the back,
+        // which is what we need to install first, therefore we need to reverse it.
+        to_install.reverse();
 
         for (name, tool) in to_install {
-            let info = if use_cargo {
-                t!("installing_via_cargo_info", name = name)
-            } else {
-                t!("installing_tool_info", name = name)
-            };
-            info!("{info}");
+            info!("{}", t!("installing_via_cargo_info", name = name));
 
             self.install_tool(name, tool)?;
 
@@ -228,7 +220,8 @@ impl<'a> InstallConfiguration<'a> {
         self.install_tools_(false, tools, 30.0)
     }
 
-    pub fn cargo_install(&mut self, tools: &ToolMap) -> Result<()> {
+    /// A step to include `cargo install`, and any tools that requires rust to be installed
+    pub fn install_tools_late(&mut self, tools: &ToolMap) -> Result<()> {
         info!("{}", t!("install_via_cargo"));
         self.install_tools_(true, tools, 30.0)
     }
@@ -242,7 +235,7 @@ impl<'a> InstallConfiguration<'a> {
             .insecure(self.insecure)
             .install(self, components)?;
         add_to_path(self.cargo_bin())?;
-        self.cargo_is_installed = true;
+        self.toolchain_is_installed = true;
 
         // Add the rust info to the fingerprint.
         self.install_record

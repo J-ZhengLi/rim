@@ -32,9 +32,6 @@ where
         Self::load(root.join(Self::FILENAME))
     }
 
-    /// Get a list of tool names that are already installed in current environment.
-    fn already_installed_tools(&self) -> Vec<&str>;
-
     /// Get the tools that are only available in current target.
     ///
     /// Return `None` if there are no available tools in the current target.
@@ -163,7 +160,12 @@ impl ToolkitManifestExt for ToolkitManifest {
         if let Some(tools) = self.current_target_tools() {
             let installed_in_env = if check_for_existence {
                 // components that are already installed in user's machine, such as vscode, or mingw.
-                self.already_installed_tools()
+                tools
+                    .keys()
+                    .filter_map(|name| {
+                        custom_instructions::is_installed(name).then_some(name.as_str())
+                    })
+                    .collect()
             } else {
                 vec![]
             };
@@ -193,15 +195,6 @@ impl ToolkitManifestExt for ToolkitManifest {
         }
 
         Ok(components)
-    }
-
-    fn already_installed_tools(&self) -> Vec<&str> {
-        let Some(map) = self.current_target_tools() else {
-            return vec![];
-        };
-        map.keys()
-            .filter_map(|name| custom_instructions::is_installed(name).then_some(name.as_str()))
-            .collect()
     }
 
     fn package_root(&self) -> Result<PathBuf> {

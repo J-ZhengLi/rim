@@ -16,7 +16,13 @@ use rim_common::utils;
 
 static TOOLSET_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
 
-pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
+pub(super) fn main(
+    msg_recv: Receiver<String>,
+    maybe_args: anyhow::Result<rim::cli::Installer>,
+) -> Result<()> {
+    if let Ok(args) = &maybe_args {
+        common::update_shared_configs(args);
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_dialog::init())
@@ -40,7 +46,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             common::get_build_cfg_locale_str,
         ])
         .setup(|app| {
-            common::setup_main_window(app, msg_recv)?;
+            common::setup_installer_window(app, msg_recv, maybe_args)?;
             Ok(())
         })
         .run(tauri::generate_context!())

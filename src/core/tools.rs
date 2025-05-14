@@ -14,7 +14,10 @@ use rim_common::{
 use super::{
     directories::RimDir, parser::fingerprint::ToolRecord, GlobalOpts, PathExt, CARGO_HOME,
 };
-use crate::{core::custom_instructions, InstallConfiguration};
+use crate::{
+    core::{check::RUNNER_TOOLCHAIN_NAME, custom_instructions},
+    InstallConfiguration,
+};
 
 /// All supported VS Code variants
 pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
@@ -40,6 +43,7 @@ pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
 #[derive(Debug, Clone)]
 pub(crate) struct Tool<'a> {
     name: String,
+    /// The install location of this tool
     path: PathExt<'a>,
     pub(crate) kind: ToolKind,
     /// Additional args to run installer, currently only used for `cargo install`.
@@ -165,7 +169,7 @@ impl<'a> Tool<'a> {
     ) -> Result<ToolRecord> {
         let paths = match self.kind {
             ToolKind::CargoTool => {
-                if !config.cargo_is_installed {
+                if !config.toolchain_is_installed {
                     bail!(
                         "trying to install '{}' using cargo, but cargo is not installed",
                         self.name()
@@ -213,6 +217,7 @@ impl<'a> Tool<'a> {
                 let backup = utils::copy_into(path, config.tools_dir())?;
                 vec![backup]
             }
+            ToolKind::RuleSet => install_rule_set(&self.path, config)?,
             // Just throw it under `tools` dir
             ToolKind::Unknown => {
                 vec![move_to_tools(config, self.name(), self.path.single()?)?]
@@ -225,6 +230,7 @@ impl<'a> Tool<'a> {
             .with_dependencies(info.dependencies().to_vec()))
     }
 
+    /// Remove a tool from user's machine.
     pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
         match self.kind {
             ToolKind::CargoTool => {
@@ -247,7 +253,7 @@ impl<'a> Tool<'a> {
                 // make a list of those and only execute it if it can be used for uninstallation
                 utils::remove(self.path.single()?)?;
             }
-            ToolKind::Unknown => utils::remove(self.path.single()?)?,
+            ToolKind::RuleSet | ToolKind::Unknown => utils::remove(self.path.single()?)?,
         }
         Ok(())
     }
@@ -290,6 +296,29 @@ fn install_dir_with_bin_(
     let bin_dir_after_move = dir.join("bin");
     super::os::add_to_path(&bin_dir_after_move)?;
     Ok(dir)
+}
+
+fn install_rule_set(path: &PathExt<'_>, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
+    let src_dir = path.single()?;
+
+    // make a directory to store it under `tools`
+    let dest_root = config.tools_dir().join("ruleset");
+    // make a runner directory to store the runner toolchain.
+    // (since we are using a dedicated toolchain with customized clippy, the runner
+    // should be the only directory under `ruleset`. If we use `cargo-dylint` in the future
+    // we'll need another directory to store custom lints)
+    let runner_dir = dest_root.join("runner");
+    utils::copy_as(src_dir, &runner_dir)?;
+
+    if !config.toolchain_is_installed {
+        bail!(t!("no_toolchain_installed"));
+    }
+
+    let path_to_rustup = config.cargo_bin().join(exe!("rustup"));
+    // link the runner toolchain using rustup
+    run!([CARGO_HOME = config.cargo_home()] path_to_rustup, "toolchain", "link", RUNNER_TOOLCHAIN_NAME, &runner_dir)?;
+
+    Ok(vec![runner_dir])
 }
 
 /// Uninstalling a tool with bin folder is as simple as removing the directory,

@@ -63,38 +63,42 @@ macro_rules! cmd {
     }};
 }
 
+/// Convenient function to execute a command to finish while looging its output.
 pub fn execute(cmd: Command) -> Result<()> {
-    execute_command(cmd, true).map(|_| ())
+    execute_command(cmd, true, true).map(|_| ())
 }
 
-pub fn execute_for_ret_code(cmd: Command) -> Result<i32> {
-    execute_command(cmd, false)
-}
+/// Execute a command.
+///
+/// - When `expect_success` is `true`,
+///   this will return `Ok` only if the command is successfully executed,
+///   otherwise this will ignore execution error and return the error code wrapped in `Ok`.
+/// - When `log_output` is `true`,
+///   this will redirect the command output using [`os_pipe`] and log them using [`log`] interface.
+pub fn execute_command(mut cmd: Command, expect_success: bool, log_output: bool) -> Result<i32> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // Prevent CMD window popup
+        use winapi::um::winbase::CREATE_NO_WINDOW;
 
-fn execute_command(mut cmd: Command, expect_success: bool) -> Result<i32> {
-    let (mut reader, stdout) = os_pipe::pipe()?;
-    let stderr = stdout.try_clone()?;
-
-    cfg_if::cfg_if! {
-        if #[cfg(windows)] {
-            use std::os::windows::process::CommandExt;
-            // Prevent CMD window popup
-            use winapi::um::winbase::CREATE_NO_WINDOW;
-            let mut child = cmd
-                .creation_flags(CREATE_NO_WINDOW)
-                .stdout(stdout)
-                .stderr(stderr)
-                .spawn()?;
-        } else {
-            let mut child = cmd
-                .stdout(stdout)
-                .stderr(stderr)
-                .spawn()?;
-        }
+        cmd.creation_flags(CREATE_NO_WINDOW);
     }
 
-    let cmd_content = cmd_to_string(cmd);
-    output_to_log(Some(&mut reader));
+    let (mut child, cmd_content) = if log_output {
+        let (mut reader, stdout) = os_pipe::pipe()?;
+        let stderr = stdout.try_clone()?;
+
+        let child = cmd.stdout(stdout).stderr(stderr).spawn()?;
+
+        // NB: to prevent deadlock, `cmd` must be dropped before reading from `reader`
+        let cmd_content = cmd_to_string(cmd);
+        output_to_log(Some(&mut reader));
+
+        (child, cmd_content)
+    } else {
+        (cmd.spawn()?, cmd_to_string(cmd))
+    };
 
     let status = child.wait()?;
     let ret_code = get_ret_code(&status);
