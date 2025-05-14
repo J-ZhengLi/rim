@@ -4,10 +4,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{
-    common::CliOpt,
-    consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT},
-};
+use crate::consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT};
 use crate::{
     common::{self, FrontendFunctionPayload},
     error::Result,
@@ -43,14 +40,24 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolkitManifest>> {
         .expect("unable to lock global mutex")
 }
 
-pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
+pub(super) fn main(
+    msg_recv: Receiver<String>,
+    maybe_args: anyhow::Result<rim::cli::Manager>,
+) -> Result<()> {
+    // store the cli args for future use
+    if let Ok(args) = &maybe_args {
+        common::update_shared_configs(args);
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cmd| {
             show_manager_window_if_possible(app);
-            if let Ok(cli) = CliOpt::try_from(argv.as_slice()) {
-                _ = cli.execute(app.clone());
+
+            if let Ok(cli) = rim::cli::Manager::try_from(argv) {
+                common::update_shared_configs(&cli);
+                common::handle_manager_args(app.clone(), cli);
             }
         }))
         .invoke_handler(tauri::generate_handler![
@@ -74,7 +81,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             common::get_build_cfg_locale_str,
         ])
         .setup(|app| {
-            let window = common::setup_main_window(app, msg_recv)?;
+            let window = common::setup_manager_window(app, msg_recv, maybe_args)?;
             handle_window_event(window);
             setup_system_tray(app)?;
             Ok(())

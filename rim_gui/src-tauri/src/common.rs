@@ -2,7 +2,7 @@ use std::{
     path::PathBuf,
     sync::{
         mpsc::{self, Receiver},
-        LazyLock, Mutex, OnceLock,
+        LazyLock, Mutex,
     },
     thread::{self, JoinHandle},
     time::Duration,
@@ -11,18 +11,21 @@ use std::{
 use super::consts::*;
 use crate::error::Result;
 use rim::{
-    components::Component, update::UpdateCheckBlocker, AppInfo, InstallConfiguration,
-    UninstallConfiguration,
+    cli::{ExecutableCommand, ManagerSubcommands},
+    components::Component,
+    update::UpdateCheckBlocker,
+    AppInfo, InstallConfiguration, UninstallConfiguration,
 };
 use rim_common::{types::ToolkitManifest, utils};
 use serde::Serialize;
-use tauri::{App, AppHandle, Emitter, WebviewWindow};
-use tauri_plugin_cli::{CliExt, Matches, SubcommandMatches};
+use tauri::{App, AppHandle, Emitter, WebviewUrl, WebviewWindow};
+use url::Url;
 
 #[allow(clippy::type_complexity)]
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
     LazyLock::new(|| Mutex::new(vec![]));
-static CLI_OPT: OnceLock<CliOpt> = OnceLock::new();
+
+static SHARED_CONFIGS: Mutex<SharedConfigs> = Mutex::new(SharedConfigs::new());
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs across threads.
@@ -95,6 +98,7 @@ pub(crate) fn install_toolkit_in_new_thread(
 ) {
     UpdateCheckBlocker::block();
 
+    let rustup_dist_server = SHARED_CONFIGS.lock().unwrap().rustup_dist_server.clone();
     let handle = thread::spawn(move || -> anyhow::Result<()> {
         // FIXME: this is needed to make sure the other thread could receive the first couple messages
         // we sent in this thread. But it feels very wrong, there has to be better way.
@@ -110,8 +114,8 @@ pub(crate) fn install_toolkit_in_new_thread(
         // TODO: Use continuous progress
         let mut config = InstallConfiguration::new(&install_dir, &manifest)?
             .with_progress_indicator(Some(progress));
-        if let Some(rustup_dist_server) = get_cli().rustup_dist_server.as_deref() {
-            config = config.with_rustup_dist_server(rustup_dist_server.parse()?);
+        if let Some(server) = rustup_dist_server {
+            config = config.with_rustup_dist_server(server);
         }
         if is_update {
             config.update(components_list)?;
@@ -247,24 +251,92 @@ impl FrontendFunctionPayload {
     setter!(with_ret_id(self.ret_id, identifier: &'static str) { Some(identifier) });
 }
 
-/// Build the main window with shared configuration.
-pub(crate) fn setup_main_window(
+/// Build the installer window with shared configuration.
+pub(crate) fn setup_installer_window(
     manager: &mut App,
     log_receiver: Receiver<String>,
+    maybe_args: anyhow::Result<rim::cli::Installer>,
 ) -> Result<WebviewWindow> {
-    let mut visible = true;
-    let (label, url) = if AppInfo::is_manager() {
-        let opt = handle_cli_args(manager);
-        if opt.silent {
-            info!("manager launched in silent mode");
-            visible = false;
+    match maybe_args {
+        Ok(args) => {
+            if args.no_gui() {
+                args.execute()?;
+                manager.handle().exit(0);
+            }
         }
-        (MANAGER_WINDOW_LABEL, "index.html/#/manager".into())
-    } else {
-        (INSTALLER_WINDOW_LABEL, "index.html/#/installer".into())
+        Err(err) => {
+            error!(
+                "tried to start the program with cli arguments \
+            but the arguments cannot be parsed. {err}"
+            );
+        }
     };
 
-    let window = tauri::WebviewWindowBuilder::new(manager, label, tauri::WebviewUrl::App(url))
+    let window = setup_window_(
+        manager,
+        INSTALLER_WINDOW_LABEL,
+        WebviewUrl::App("index.html/#/installer".into()),
+        true,
+    )?;
+    spawn_gui_update_thread(window.clone(), log_receiver);
+    Ok(window)
+}
+
+/// Build the manager window with shared configuration.
+pub(crate) fn setup_manager_window(
+    manager: &mut App,
+    log_receiver: Receiver<String>,
+    maybe_args: anyhow::Result<rim::cli::Manager>,
+) -> Result<WebviewWindow> {
+    let mut visible = true;
+
+    let args = match maybe_args {
+        Ok(args) => {
+            if args.silent_mode() {
+                visible = false;
+            }
+
+            if args.no_gui() {
+                args.execute()?;
+                // NB: `AppHandle::exit()` has a small exit delay in a separated thread,
+                // causing this function continues to create a window, don't use it!
+                manager.handle().cleanup_before_exit();
+                std::process::exit(0);
+            }
+
+            Some(args)
+        }
+        Err(err) => {
+            error!(
+                "tried to start the program with cli arguments \
+            but the arguments cannot be parsed. {err}"
+            );
+
+            None
+        }
+    };
+
+    let window = setup_window_(
+        manager,
+        MANAGER_WINDOW_LABEL,
+        WebviewUrl::App("index.html/#/manager".into()),
+        visible,
+    )?;
+
+    spawn_gui_update_thread(window.clone(), log_receiver);
+    if let Some(a) = args {
+        handle_manager_args(manager.handle().clone(), a);
+    }
+    Ok(window)
+}
+
+fn setup_window_(
+    app: &mut App,
+    label: &str,
+    url: WebviewUrl,
+    visible: bool,
+) -> Result<WebviewWindow> {
+    let window = tauri::WebviewWindowBuilder::new(app, label, url)
         .inner_size(800.0, 600.0)
         .min_inner_size(640.0, 480.0)
         .decorations(false)
@@ -282,132 +354,73 @@ pub(crate) fn setup_main_window(
     #[cfg(debug_assertions)]
     window.open_devtools();
 
-    spawn_gui_update_thread(window.clone(), log_receiver);
-    get_cli().execute(manager.handle().clone())?;
     Ok(window)
 }
 
-macro_rules! cli_value {
-    ($m:ident[$key:literal].$f:ident) => {{
-        $m.args
-            .get($key)
-            .unwrap_or_else(|| panic!("argument '{}' does not exists", $key))
-            .value
-            .$f()
-    }};
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct CliPayload {
+    pub(crate) path: String,
+    pub(crate) command_id: String,
 }
 
-#[derive(Debug, Default, Clone)]
-pub(crate) struct CliOpt {
-    /// Launching the app without showing the main window.
-    silent: bool,
-    rustup_dist_server: Option<String>,
-    subcommand: Option<CliSubcommand>,
-}
+pub(crate) fn handle_manager_args(app: AppHandle, cli: rim::cli::Manager) {
+    if cli.no_gui() {
+        cli.execute()
+            .unwrap_or_else(|e| panic!("unable to start manager: {e}"));
+    }
 
-impl CliOpt {
-    pub(crate) fn execute(&self, app: AppHandle) -> Result<()> {
-        let Some(subcmd) = &self.subcommand else {
-            return Ok(());
-        };
-
-        match subcmd {
-            CliSubcommand::Uninstall => {
-                if !AppInfo::is_manager() {
-                    return Ok(());
-                }
-                thread::spawn(move || {
-                    thread::sleep(Duration::from_millis(1500));
-                    _ = app.emit(
-                        "change-view",
-                        CliPayload {
-                            path: "/manager/uninstall".into(),
-                            command: CliSubcommand::Uninstall,
-                        },
-                    );
-                });
-            }
+    if let Some(ManagerSubcommands::Uninstall { keep_self }) = cli.command {
+        if !AppInfo::is_manager() {
+            return;
         }
-
-        Ok(())
+        let command_id = if keep_self {
+            "uninstall-toolkit"
+        } else {
+            "uninstall"
+        }
+        .to_string();
+        thread::spawn(move || {
+            thread::sleep(Duration::from_millis(1500));
+            _ = app.emit(
+                "change-view",
+                CliPayload {
+                    path: "/manager/uninstall".into(),
+                    command_id,
+                },
+            );
+        });
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-struct CliPayload {
-    path: String,
-    command: CliSubcommand,
+pub(crate) struct SharedConfigs {
+    pub(crate) rustup_dist_server: Option<Url>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[non_exhaustive]
-enum CliSubcommand {
-    Uninstall,
-}
-
-impl TryFrom<Box<SubcommandMatches>> for CliSubcommand {
-    type Error = anyhow::Error;
-    fn try_from(value: Box<SubcommandMatches>) -> anyhow::Result<Self> {
-        let res = match value.name.as_str() {
-            "uninstall" => CliSubcommand::Uninstall,
-            s => anyhow::bail!("unknown subcommand '{s}'"),
-        };
-        Ok(res)
-    }
-}
-
-fn get_cli() -> &'static CliOpt {
-    CLI_OPT.get_or_init(CliOpt::default)
-}
-
-impl From<Matches> for CliOpt {
-    fn from(value: Matches) -> Self {
+impl SharedConfigs {
+    pub(crate) const fn new() -> Self {
         Self {
-            silent: cli_value!(value["silent"].as_bool).unwrap_or_default(),
-            rustup_dist_server: cli_value!(value["rustup-dist-server"].as_str)
-                .map(ToOwned::to_owned),
-            subcommand: value
-                .subcommand
-                .and_then(|m| CliSubcommand::try_from(m).ok()),
+            rustup_dist_server: None,
         }
     }
 }
 
-impl TryFrom<&[String]> for CliOpt {
-    type Error = anyhow::Error;
-    fn try_from(value: &[String]) -> anyhow::Result<Self> {
-        let mut silent = false;
-        let mut rustup_dist_server = None;
-        let mut subcommand = None;
-
-        // skip the first arg, which is the path of this binary
-        let mut iter = value.iter().skip(1);
-        while let Some(v) = iter.next() {
-            match v.as_str() {
-                "-s" | "--silent" => silent = true,
-                "--rust-dist-server" => rustup_dist_server = iter.next().map(ToString::to_string),
-                "uninstall" => subcommand = Some(CliSubcommand::Uninstall),
-                s => anyhow::bail!("unknown argument '{s}'"),
-            }
+impl From<&rim::cli::Installer> for SharedConfigs {
+    fn from(value: &rim::cli::Installer) -> Self {
+        Self {
+            rustup_dist_server: value.rustup_dist_server.clone(),
         }
-
-        Ok(Self {
-            silent,
-            rustup_dist_server,
-            subcommand,
-        })
     }
 }
 
-fn handle_cli_args(app: &mut App) -> &'static CliOpt {
-    let Ok(matches) = app.cli().matches() else {
-        return get_cli();
-    };
-    // log raw args
-    info!("application started with args: {:?}", &matches.args);
+impl From<&rim::cli::Manager> for SharedConfigs {
+    fn from(value: &rim::cli::Manager) -> Self {
+        Self {
+            rustup_dist_server: value.rustup_dist_server.clone(),
+        }
+    }
+}
 
-    CLI_OPT
-        .set(CliOpt::from(matches))
-        .expect("unable to to set CLI options");
-    get_cli()
+pub(crate) fn update_shared_configs<T: Into<SharedConfigs>>(value: T) {
+    let mut guard = SHARED_CONFIGS.lock().unwrap();
+    *guard = value.into();
 }

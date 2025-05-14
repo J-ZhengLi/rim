@@ -1,5 +1,6 @@
 //! Contains all the definition of command line arguments.
 
+mod check;
 mod common;
 mod component;
 mod install;
@@ -41,6 +42,24 @@ macro_rules! execute_with_pause {
         #[cfg(windows)]
         $crate::cli::common::pause().expect("unable to pause terminal");
     };
+}
+
+/// Provides an `execute` function to run `clap` compatible commands.
+pub trait ExecutableCommand {
+    /// Executes a command
+    fn execute(&self) -> Result<()>;
+
+    /// Return `true` if this command should be running in silent mode.
+    /// (without any interface)
+    fn silent_mode(&self) -> bool {
+        false
+    }
+
+    /// Return `true` if the command has specify not to start graphical
+    /// interface while executing.
+    fn no_gui(&self) -> bool {
+        false
+    }
 }
 
 /// Install rustup, rust toolchain, and various tools.
@@ -94,7 +113,7 @@ pub struct Installer {
     registry_name: String,
     /// Specify another server to download Rust toolchain.
     #[arg(hide = true, long, value_name = "URL", value_hint = ValueHint::Url)]
-    rustup_dist_server: Option<Url>,
+    pub rustup_dist_server: Option<Url>,
     /// Specify another server to download rustup.
     #[arg(hide = true, long, value_name = "URL", value_hint = ValueHint::Url)]
     rustup_update_root: Option<Url>,
@@ -150,7 +169,7 @@ impl PathOrUrl {
 /// Manage Rust installation, mostly used for uninstalling.
 // NOTE: If you changed anything in this struct, or any other child types that related to
 // this struct, make sure the README doc is updated as well,
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(version, about)]
 pub struct Manager {
     /// Enable verbose output
@@ -166,6 +185,10 @@ pub struct Manager {
     /// Don't show GUI when running the program.
     #[arg(hide = true, long)]
     pub no_gui: bool,
+    #[cfg(feature = "gui")]
+    /// Run manager without showing any windows
+    #[arg(short, long)]
+    pub silent: bool,
     /// Don't modify user's `PATH` environment variable.
     #[arg(long)]
     no_modify_path: bool,
@@ -177,24 +200,25 @@ pub struct Manager {
     /// uninstallation.
     #[arg(long, conflicts_with = "no_modify_path")]
     no_modify_env: bool,
+    /// Specify another server to download Rust toolchain.
+    #[arg(hide = true, long, value_name = "URL", value_hint = ValueHint::Url)]
+    pub rustup_dist_server: Option<Url>,
 
     /// Specify another language to display
     #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
     pub lang: Option<String>,
     #[command(subcommand)]
-    command: Option<ManagerSubcommands>,
+    pub command: Option<ManagerSubcommands>,
 }
 
 impl Installer {
     pub fn install_dir(&self) -> Option<&Path> {
         self.prefix.as_deref()
     }
+}
 
-    pub fn manifest_url(&self) -> Result<Option<Url>> {
-        self.manifest.as_ref().map(|m| m.to_url()).transpose()
-    }
-
-    pub fn execute(&self) {
+impl ExecutableCommand for Installer {
+    fn execute(&self) -> Result<()> {
         execute_with_pause! {
             setup(
                 self.verbose,
@@ -206,11 +230,18 @@ impl Installer {
             )?;
             install::execute_installer(self)
         }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "gui")]
+    fn no_gui(&self) -> bool {
+        self.no_gui
     }
 }
 
-impl Manager {
-    pub fn execute(&self) {
+impl ExecutableCommand for Manager {
+    fn execute(&self) -> Result<()> {
         execute_with_pause! {
             setup(
                 self.verbose,
@@ -226,12 +257,40 @@ impl Manager {
             };
             subcmd.execute()
         }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "gui")]
+    fn silent_mode(&self) -> bool {
+        self.silent
+    }
+
+    #[cfg(feature = "gui")]
+    fn no_gui(&self) -> bool {
+        if self.no_gui {
+            return true;
+        }
+
+        // (manager only) If any of these subcommand was invoked, do not start GUI
+        matches!(
+            self.command,
+            Some(ManagerSubcommands::Check { .. } | ManagerSubcommands::TryIt { .. })
+        )
+    }
+}
+
+impl TryFrom<Vec<String>> for Manager {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Vec<String>) -> Result<Self> {
+        Ok(Self::try_parse_from(value)?)
     }
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Subcommand, Debug)]
-enum ManagerSubcommands {
+#[derive(Subcommand, Debug, Clone)]
+pub enum ManagerSubcommands {
     /// Install a specific dist version
     #[command(hide = true)]
     Install {
@@ -292,6 +351,16 @@ enum ManagerSubcommands {
         #[arg(long, short, value_name = "PATH", value_hint = ValueHint::DirPath)]
         path: Option<PathBuf>,
     },
+    /// Check source code in the current directory using installed rule-set for errors
+    Check {
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            value_name = "ARGS"
+        )]
+        /// Additional args to run `cargo clippy`, see all options with `cargo clippy --help`.
+        extra_args: Vec<String>,
+    },
 }
 
 macro_rules! return_if_executed {
@@ -304,19 +373,22 @@ macro_rules! return_if_executed {
     };
 }
 
-impl ManagerSubcommands {
-    pub(crate) fn execute(&self) -> Result<()> {
+impl ExecutableCommand for ManagerSubcommands {
+    fn execute(&self) -> Result<()> {
         return_if_executed! {
             install::execute_manager(self)?,
             update::execute(self)?,
             list::execute(self)?,
             component::execute(self)?,
             uninstall::execute(self)?,
-            tryit::execute(self)?
+            tryit::execute(self)?,
+            check::execute(self)?
         }
         Ok(())
     }
+}
 
+impl ManagerSubcommands {
     fn from_interaction() -> Result<Self> {
         loop {
             let Some(mut manager_opt) = Self::question_manager_option_()? else {

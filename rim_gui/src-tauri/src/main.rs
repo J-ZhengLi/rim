@@ -36,31 +36,16 @@ fn main() -> Result<()> {
         })),
         None,
     );
+    let msg_recv = common::setup_logger();
     match mode {
         Mode::Manager(maybe_args) => {
-            if let Ok(args) = maybe_args {
-                if args.no_gui {
-                    args.execute();
-                    return Ok(());
-                }
-            }
-            let msg_recv = common::setup_logger();
             if let Err(e) = handle_autostart() {
                 // log the error but do NOT abort the program
                 error!("unable to setup autostart: {e}");
             }
-            manager_mode::main(msg_recv)?;
+            manager_mode::main(msg_recv, maybe_args)?;
         }
-        Mode::Installer(maybe_args) => {
-            if let Ok(args) = maybe_args {
-                if args.no_gui {
-                    args.execute();
-                    return Ok(());
-                }
-            }
-            let msg_recv = common::setup_logger();
-            installer_mode::main(msg_recv)?;
-        }
+        Mode::Installer(maybe_args) => installer_mode::main(msg_recv, maybe_args)?,
     }
     Ok(())
 }

@@ -324,6 +324,8 @@ pub enum ToolKind {
     // `Cargo` just don't make any sense
     #[allow(clippy::enum_variant_names)]
     CargoTool,
+    /// A special kind of tool that representing the rule-set of the `check` subcommand.
+    RuleSet,
     /// Unknown tool, install and uninstall are not fully supported.
     #[default]
     Unknown,

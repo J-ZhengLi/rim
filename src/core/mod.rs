@@ -2,6 +2,7 @@
 //!
 //! Including configuration, toolchain, toolset management.
 
+pub(crate) mod check;
 pub mod components;
 mod custom_instructions;
 mod dependency_handler;
@@ -31,7 +32,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     env,
     path::{Path, PathBuf},
-    sync::OnceLock,
+    sync::{Mutex, OnceLock},
 };
 use url::Url;
 
@@ -51,7 +52,7 @@ declare_env_vars!(
 );
 
 /// Globally cached values
-static GLOBAL_OPTS: OnceLock<GlobalOpts> = OnceLock::new();
+static GLOBAL_OPTS: Mutex<Option<GlobalOpts>> = Mutex::new(None);
 static APP_INFO: OnceLock<AppInfo> = OnceLock::new();
 static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
@@ -98,11 +99,6 @@ pub(crate) struct GlobalOpts {
 impl GlobalOpts {
     /// Initialize a new object and store it globally, will also return a
     /// static reference to the global stored value.
-    ///
-    /// Note that the value cannot be updated once initialized.
-    ///
-    /// # Panic
-    /// Panics if the options were already set.
     pub(crate) fn set(
         verbose: bool,
         quiet: bool,
@@ -117,17 +113,15 @@ impl GlobalOpts {
             no_modify_env,
             no_modify_path,
         };
-        GLOBAL_OPTS
-            .set(opts)
-            .expect("failed to set `GlobalOpts` as it was already set somewhere else");
+
+        *GLOBAL_OPTS.lock().unwrap() = Some(opts);
     }
 
     /// Get the stored global options.
-    pub(crate) fn get() -> &'static Self {
-        GLOBAL_OPTS.get_or_init(|| {
-            // no running options set, fallback to default
-            GlobalOpts::default()
-        })
+    ///
+    /// Fallback to default value if is not set.
+    pub(crate) fn get() -> Self {
+        GLOBAL_OPTS.lock().unwrap().unwrap_or_default()
     }
 
     /// Return `true` if either one of `no-modify-path` or `no-modify-env` was set to `true`
