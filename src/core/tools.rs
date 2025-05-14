@@ -104,6 +104,10 @@ impl<'a> Tool<'a> {
         else if path.is_dir() {
             // Step 3: read directory to find characteristics.
             let entries = utils::walk_dir(path, false)?;
+            // Check for file named `Cargo.toml`
+            if entries.iter().any(|path| path.ends_with("Cargo.toml")) {
+                return Ok(Self::new(name, ToolKind::Crate).with_path(path));
+            }
             // Check if there is any folder that looks like `bin`
             // Then assuming this is `UsrDirs` type installer.
             if entries.iter().any(|path| path.ends_with("bin")) {
@@ -218,6 +222,12 @@ impl<'a> Tool<'a> {
                 vec![backup]
             }
             ToolKind::RuleSet => install_rule_set(&self.path, config)?,
+            ToolKind::Crate => {
+                // installing a crate source is as easy as extracting it under `crates` dir
+                let path = self.path.single()?;
+                let dest = utils::copy_into(path, config.crates_dir())?;
+                vec![dest]
+            }
             // Just throw it under `tools` dir
             ToolKind::Unknown => {
                 vec![move_to_tools(config, self.name(), self.path.single()?)?]
@@ -253,7 +263,9 @@ impl<'a> Tool<'a> {
                 // make a list of those and only execute it if it can be used for uninstallation
                 utils::remove(self.path.single()?)?;
             }
-            ToolKind::RuleSet | ToolKind::Unknown => utils::remove(self.path.single()?)?,
+            ToolKind::RuleSet | ToolKind::Crate | ToolKind::Unknown => {
+                utils::remove(self.path.single()?)?
+            }
         }
         Ok(())
     }

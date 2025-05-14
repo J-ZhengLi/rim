@@ -1,16 +1,20 @@
 //! Module defining types that could be serialized to a working `config.toml` for cargo.
 
+use std::{collections::HashSet, path::PathBuf};
+
 use indexmap::IndexMap;
 use rim_common::types::TomlParser;
-use serde::{ser::SerializeMap, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
 
 /// A simple struct representing the fields in `config.toml`.
 ///
 /// Only covers a small range of options we need to configure.
 /// Fwiw, the full set of configuration options can be found
 /// in the [Cargo Configuration Book](https://doc.rust-lang.org/cargo/reference/config.html).
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub(crate) struct CargoConfig {
+    /// Path dependency overrides
+    paths: Option<HashSet<PathBuf>>,
     net: Option<CargoNetConfig>,
     http: Option<CargoHttpConfig>,
     #[serde(serialize_with = "serialize_source_map")]
@@ -73,21 +77,34 @@ impl CargoConfig {
 
         self
     }
+
+    /// Add an overrided dependency path for this config.
+    ///
+    /// Note that the `paths` are stored in a `HashSet`,
+    /// so no need to worry about duplicated values.
+    ///
+    /// For more information about `paths` configuration,
+    /// visit: https://doc.rust-lang.org/cargo/reference/config.html#paths.
+    pub(crate) fn add_path<P: Into<PathBuf>>(&mut self, path: P) -> &mut Self {
+        let old_val = self.paths.get_or_insert_default();
+        old_val.insert(path.into());
+        self
+    }
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct CargoNetConfig {
     git_fetch_with_cli: Option<bool>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct CargoHttpConfig {
     check_revoke: Option<bool>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Source {
     pub(crate) replace_with: Option<String>,
@@ -144,6 +161,20 @@ replace-with = "mirror"
 
 [source.mirror]
 registry = "https://example.com/registry"
+"#
+        );
+    }
+
+    #[test]
+    fn cargo_config_insert_paths() {
+        let config = CargoConfig::new()
+            .add_path("/path/to/foo")
+            .add_path("/path/to/bar")
+            .to_toml()
+            .unwrap();
+        assert_eq!(
+            config,
+            r#"paths = ["/path/to/foo", "/path/to/bar"]
 "#
         );
     }
