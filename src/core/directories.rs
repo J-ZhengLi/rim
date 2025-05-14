@@ -40,4 +40,9 @@ pub(crate) trait RimDir {
     fn tools_dir(&self) -> &Path {
         get_path_and_create!(TOOLS_DIR, self.install_dir().join("tools"))
     }
+
+    /// The directory to store crate source code, a.k.a. `<INSTALL_DIR>/crates/`
+    fn crates_dir(&self) -> &Path {
+        get_path_and_create!(CRATES_DIR, self.install_dir().join("crates"))
+    }
 }

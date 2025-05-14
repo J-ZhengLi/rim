@@ -326,6 +326,8 @@ pub enum ToolKind {
     CargoTool,
     /// A special kind of tool that representing the rule-set of the `check` subcommand.
     RuleSet,
+    /// Compressed crate source code file (.crate)
+    Crate,
     /// Unknown tool, install and uninstall are not fully supported.
     #[default]
     Unknown,

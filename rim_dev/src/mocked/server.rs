@@ -9,6 +9,7 @@ use std::fs;
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
+use url::Url;
 
 /// The version list of rust toolchain
 static VERSIONS: &[&str] = &["1.80.1", "1.81.0", "1.82.0", "1.86.0"];
@@ -38,6 +39,8 @@ static COMPONENTS: &[Component] = &[
     Component::new("rustc-dev"),
 ];
 
+static PACKAGES: &[Package] = &[Package::new("hello-world", "hello_world_lib-0.1.0.crate")];
+
 static RENAMES: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
     HashMap::from_iter([
         ("clippy", "clippy-preview"),
@@ -46,6 +49,17 @@ static RENAMES: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
         ("rust-analyzer", "rust-analyzer-preview"),
     ])
 });
+
+struct Package {
+    name: &'static str,
+    filename: &'static str,
+}
+
+impl Package {
+    const fn new(name: &'static str, filename: &'static str) -> Self {
+        Self { name, filename }
+    }
+}
 
 struct Component {
     name: &'static str,
@@ -92,6 +106,22 @@ impl RimServer {
         Self { dist_dir }
     }
 
+    fn gen_tool_packages(&self) -> Result<()> {
+        let toolset_dir = self.dist_dir.join("toolset");
+
+        for p in PACKAGES {
+            // Im getting lazy to generate from source code...
+            // just copy the pre-packed ones...
+            let src = common::test_asset_dir().join(p.filename);
+            let dest_root = toolset_dir.join(p.name);
+            utils::ensure_dir(&dest_root)?;
+            let dest = dest_root.join(p.filename);
+            utils::copy_file(src, dest)?;
+        }
+
+        Ok(())
+    }
+
     fn gen_dist_manifest(&self) -> Result<()> {
         let server_url = common::path_to_url(super::rim_server_dir());
         let dist_manifest_content_for = |ver: &str| -> String {
@@ -121,7 +151,7 @@ manifest-url = \"{}/dist/stable-{ver}.toml\"
 
     fn gen_toolset_manifests(&self) -> Result<()> {
         let toolset_manifest_for = |ver: &str| -> String {
-            format!(
+            let mut manifest_content = format!(
                 "
 name = \"{TOOLKIT_NAME}\"
 version = \"stable-{ver}\"
@@ -139,8 +169,31 @@ description = \"Basic set of tools to use Rust properly\"
 llvm-tools = \"llvm-tools\"
 rustc-dev = \"rustc-dev\"
 rust-analyzer = \"rust-analyzer\"
+hello-world = \"a lib for demo purpose\"
 ",
-            )
+            );
+
+            let toolset_content = PACKAGES
+                .iter()
+                .map(|p| {
+                    let package_path = self.dist_dir.join("toolset").join(p.name).join(p.filename);
+                    let url = Url::from_file_path(package_path).unwrap();
+                    format!(
+                        "{} = {{ optional = true, version = \"0.1.0\", url = \"{url}\" }}",
+                        p.name
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            for target in TARGETS {
+                let targeted_tools_content =
+                    format!("\n[tools.target.{target}]\n{toolset_content}\n");
+
+                manifest_content.push_str(&targeted_tools_content);
+            }
+
+            manifest_content
         };
 
         for ver in VERSIONS {
@@ -423,6 +476,7 @@ fn calculate_sha256(file_path: &Path) -> Result<String> {
 
 pub(crate) fn generate_rim_server_files() -> Result<()> {
     let mocked = RimServer::new();
+    mocked.gen_tool_packages()?;
     mocked.gen_toolset_manifests()?;
     mocked.gen_dist_manifest()?;
     Ok(())

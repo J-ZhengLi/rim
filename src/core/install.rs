@@ -127,6 +127,7 @@ impl<'a> InstallConfiguration<'a> {
         // This step taking cares of requirements, such as `MSVC`, also third-party app such as `VS Code`.
         self.install_tools(&tools)?;
         self.install_rust(&tc_components)?;
+        self.install_tools_late(&tools)?;
         Ok(())
     }
 
@@ -186,9 +187,11 @@ impl<'a> InstallConfiguration<'a> {
             .filter(|(_, t)| {
                 let requires_toolchain =
                     t.is_cargo_tool() || t.dependencies().iter().any(|s| s == "rust");
-                // if we are using Rust toolchain to install,
-                // then we filter the tools that requires it
-                use_rust && requires_toolchain
+                if use_rust {
+                    requires_toolchain
+                } else {
+                    !requires_toolchain
+                }
             })
             .collect::<Vec<_>>();
 
@@ -203,10 +206,8 @@ impl<'a> InstallConfiguration<'a> {
         to_install.reverse();
 
         for (name, tool) in to_install {
-            info!("{}", t!("installing_via_cargo_info", name = name));
-
+            info!("{}", t!("installing_tool_info", name = name));
             self.install_tool(name, tool)?;
-
             self.inc_progress(sub_progress_delta)?;
         }
 
@@ -397,6 +398,7 @@ impl<'a> InstallConfiguration<'a> {
         info!("{}", t!("install_cargo_config"));
 
         let mut config = CargoConfig::new();
+        config.add_path(self.crates_dir());
         if let Some((name, url)) = &self.cargo_registry {
             config.add_source(name, url, true);
         }
@@ -440,6 +442,7 @@ impl InstallConfiguration<'_> {
     pub fn update(mut self, components: Vec<Component>) -> Result<()> {
         // Create a copy of the manifest which is later used for component management.
         self.manifest.write_to_dir(&self.install_dir)?;
+        self.update_cargo_config()?;
 
         let (toolchain, tools) = split_components(components);
         // setup env for current process
@@ -453,6 +456,19 @@ impl InstallConfiguration<'_> {
             self.update_toolchain(&toolchain)?;
         }
         self.update_tools(&tools)?;
+        Ok(())
+    }
+
+    /// Ensure the content of cargo configuration is up-to-date during updates.
+    fn update_cargo_config(&self) -> Result<()> {
+        info!("{}", t!("install_cargo_config"));
+
+        let mut config = CargoConfig::load_from_dir(self.cargo_home()).unwrap_or_default();
+
+        // update configuration here
+        config
+            .add_path(self.crates_dir())
+            .write_to_dir(self.cargo_home())?;
         Ok(())
     }
 
