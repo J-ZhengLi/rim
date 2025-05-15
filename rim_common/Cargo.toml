@@ -27,6 +27,3 @@ toml.workspace = true
 url.workspace = true
 xz2.workspace = true
 zip.workspace = true
-
-[target."cfg(windows)".dependencies]
-winapi = { version = "0.3", features = ["winbase"] }

@@ -76,15 +76,6 @@ pub fn execute(cmd: Command) -> Result<()> {
 /// - When `log_output` is `true`,
 ///   this will redirect the command output using [`os_pipe`] and log them using [`log`] interface.
 pub fn execute_command(mut cmd: Command, expect_success: bool, log_output: bool) -> Result<i32> {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        // Prevent CMD window popup
-        use winapi::um::winbase::CREATE_NO_WINDOW;
-
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
-
     let (mut child, cmd_content) = if log_output {
         let (mut reader, stdout) = os_pipe::pipe()?;
         let stderr = stdout.try_clone()?;

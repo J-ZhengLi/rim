@@ -32,7 +32,7 @@ pub(crate) fn run(extra_args: &[String]) -> Result<()> {
     // (why rustup? because we need to call `cargo +TOOLCHAIN` here, which is basically calling
     // rustup that work as a proxy to `cargo`)
     let rustup = exe!("rustup");
-    if !utils::cmd_exist(rustup) {
+    if !utils::cmd_exist(&rustup) {
         bail!(t!("no_toolchain_installed"));
     }
 
