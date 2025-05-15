@@ -11,6 +11,7 @@ use super::{
     tools::Tool,
     GlobalOpts, CARGO_HOME, RUSTUP_DIST_SERVER, RUSTUP_HOME, RUSTUP_UPDATE_ROOT,
 };
+use crate::core::baked_in_manifest_raw;
 use crate::core::os::add_to_path;
 use anyhow::{anyhow, bail, Context, Result};
 use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest};
@@ -93,7 +94,16 @@ impl<'a> InstallConfiguration<'a> {
         info!("{}", t!("install_init", dir = install_dir.display()));
 
         // Create a copy of the manifest which is later used for component management.
-        self.manifest.write_to_dir(install_dir)?;
+        // NB: This `setup` function only gets called during the first installation,
+        // which means this manifest should always loaded from the baked-in one.
+        // NB: If this is an offline build, meaning the manifest is likely to contain
+        // local paths, which is not useful for adding components afterwards, therefore
+        // we better store the online version instead,
+        if self.manifest.is_offline {
+            ToolkitManifest::from_str(baked_in_manifest_raw(false))?.write_to_dir(install_dir)?;
+        } else {
+            self.manifest.write_to_dir(install_dir)?;
+        }
 
         // Create a copy of this binary
         let self_exe = std::env::current_exe()?;

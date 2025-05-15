@@ -186,7 +186,7 @@ pub struct Manager {
     #[arg(hide = true, long)]
     pub no_gui: bool,
     #[cfg(feature = "gui")]
-    /// Run manager without showing any windows
+    /// Run manager without showing the main window
     #[arg(short, long)]
     pub silent: bool,
     /// Don't modify user's `PATH` environment variable.
