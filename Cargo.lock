@@ -3845,7 +3845,6 @@ dependencies = [
  "tokio",
  "toml",
  "url",
- "winapi",
  "xz2",
  "zip",
 ]
@@ -6643,3 +6642,11 @@ dependencies = [
  "syn 2.0.100",
  "winnow 0.7.6",
 ]
+
+[[patch.unused]]
+name = "ylong_light_actor"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "ylong_runtime"
+version = "1.0.0"

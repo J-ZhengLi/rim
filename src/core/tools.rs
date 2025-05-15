@@ -7,12 +7,14 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use rim_common::{
-    types::{ToolInfo, ToolKind},
+    types::{TomlParser, ToolInfo, ToolKind},
     utils,
 };
 
 use super::{
-    directories::RimDir, parser::fingerprint::ToolRecord, GlobalOpts, PathExt, CARGO_HOME,
+    directories::RimDir,
+    parser::{cargo_config::CargoConfig, fingerprint::ToolRecord},
+    GlobalOpts, PathExt, CARGO_HOME,
 };
 use crate::{
     core::{check::RUNNER_TOOLCHAIN_NAME, custom_instructions},
@@ -222,12 +224,7 @@ impl<'a> Tool<'a> {
                 vec![backup]
             }
             ToolKind::RuleSet => install_rule_set(&self.path, config)?,
-            ToolKind::Crate => {
-                // installing a crate source is as easy as extracting it under `crates` dir
-                let path = self.path.single()?;
-                let dest = utils::copy_into(path, config.crates_dir())?;
-                vec![dest]
-            }
+            ToolKind::Crate => install_crate(self.name(), &self.path, config)?,
             // Just throw it under `tools` dir
             ToolKind::Unknown => {
                 vec![move_to_tools(config, self.name(), self.path.single()?)?]
@@ -263,8 +260,9 @@ impl<'a> Tool<'a> {
                 // make a list of those and only execute it if it can be used for uninstallation
                 utils::remove(self.path.single()?)?;
             }
-            ToolKind::RuleSet | ToolKind::Crate | ToolKind::Unknown => {
-                utils::remove(self.path.single()?)?
+            ToolKind::Crate => uninstall_crate(self.name(), &self.path, config)?,
+            ToolKind::RuleSet | ToolKind::Unknown => {
+                utils::remove(self.path.single()?)?;
             }
         }
         Ok(())
@@ -331,6 +329,41 @@ fn install_rule_set(path: &PathExt<'_>, config: &InstallConfiguration) -> Result
     run!([CARGO_HOME = config.cargo_home()] path_to_rustup, "toolchain", "link", RUNNER_TOOLCHAIN_NAME, &runner_dir)?;
 
     Ok(vec![runner_dir])
+}
+
+fn install_crate(
+    name: &str,
+    path: &PathExt<'_>,
+    config: &InstallConfiguration,
+) -> Result<Vec<PathBuf>> {
+    let path = path.single()?;
+
+    // Step 1: copy the directory path to `crates/`
+    let crate_dir = utils::copy_into(path, config.crates_dir())?;
+    // Step 2: modify `cargo/config.toml` to update patch information
+    // FIXME: This method might disrupt existing configuration that was manually altered by user,
+    // use `toml-edit` to modify it instead.
+    let mut cargo_config = CargoConfig::load_from_dir(config.cargo_home())?;
+    cargo_config
+        .add_patch(name, &crate_dir)
+        .write_to_dir(config.cargo_home())?;
+
+    Ok(vec![crate_dir])
+}
+
+fn uninstall_crate<T: RimDir>(name: &str, path: &PathExt<'_>, config: T) -> Result<()> {
+    let path = path.single()?;
+
+    // remove the source code dir
+    utils::remove(path)?;
+
+    // update cargo config
+    let mut cargo_config = CargoConfig::load_from_dir(config.cargo_home())?;
+    cargo_config
+        .remove_patch(name)
+        .write_to_dir(config.cargo_home())?;
+
+    Ok(())
 }
 
 /// Uninstalling a tool with bin folder is as simple as removing the directory,

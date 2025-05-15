@@ -265,6 +265,10 @@ impl<'a> InstallConfiguration<'a> {
         &mut self,
         components: &[ToolchainComponent],
     ) -> Result<()> {
+        if components.is_empty() {
+            return Ok(());
+        }
+
         ToolchainInstaller::init(&*self).add_components(self, components)?;
 
         self.install_record
@@ -408,7 +412,6 @@ impl<'a> InstallConfiguration<'a> {
         info!("{}", t!("install_cargo_config"));
 
         let mut config = CargoConfig::new();
-        config.add_path(self.crates_dir());
         if let Some((name, url)) = &self.cargo_registry {
             config.add_source(name, url, true);
         }
@@ -452,7 +455,6 @@ impl InstallConfiguration<'_> {
     pub fn update(mut self, components: Vec<Component>) -> Result<()> {
         // Create a copy of the manifest which is later used for component management.
         self.manifest.write_to_dir(&self.install_dir)?;
-        self.update_cargo_config()?;
 
         let (toolchain, tools) = split_components(components);
         // setup env for current process
@@ -466,19 +468,6 @@ impl InstallConfiguration<'_> {
             self.update_toolchain(&toolchain)?;
         }
         self.update_tools(&tools)?;
-        Ok(())
-    }
-
-    /// Ensure the content of cargo configuration is up-to-date during updates.
-    fn update_cargo_config(&self) -> Result<()> {
-        info!("{}", t!("install_cargo_config"));
-
-        let mut config = CargoConfig::load_from_dir(self.cargo_home()).unwrap_or_default();
-
-        // update configuration here
-        config
-            .add_path(self.crates_dir())
-            .write_to_dir(self.cargo_home())?;
         Ok(())
     }
 
