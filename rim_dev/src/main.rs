@@ -206,7 +206,7 @@ fn main() -> Result<ExitCode> {
                         return Ok(ExitCode::SUCCESS);
                     }
                     "--cli" => no_gui = true,
-                    "--" if is_extra_arg == false => is_extra_arg = true,
+                    "--" if !is_extra_arg => is_extra_arg = true,
                     a => {
                         if is_extra_arg {
                             extra_args.push(a.into());

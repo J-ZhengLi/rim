@@ -86,7 +86,7 @@ impl CargoConfig {
     /// For more information about `paths` configuration,
     /// visit: https://doc.rust-lang.org/cargo/reference/config.html#paths.
     pub(crate) fn add_path<P: Into<PathBuf>>(&mut self, path: P) -> &mut Self {
-        let old_val = self.paths.get_or_insert_default();
+        let old_val = self.paths.get_or_insert_with(HashSet::default);
         old_val.insert(path.into());
         self
     }
