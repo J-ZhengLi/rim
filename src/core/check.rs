@@ -1,10 +1,9 @@
 //! Module for coding guideline lint checks
 
-use std::env;
-
 use crate::fingerprint::InstallationRecord;
 use anyhow::{bail, Context, Result};
 use rim_common::{types::ToolKind, utils};
+use std::env;
 
 pub(crate) const RUNNER_TOOLCHAIN_NAME: &str = "guidelines_runner";
 
@@ -14,7 +13,7 @@ static LINT_LIST: &[&str] = &[
     "clippy::unsafe_block_in_proc_macro",
     "clippy::untrusted_lib_loading",
     "clippy::passing_string_to_c_functions",
-    "clippy::extern_without_expr",
+    "clippy::extern_without_repr",
     "clippy::mem_unsafe_functions",
     "clippy::non_reentrant_functions",
     "clippy::blocking_op_in_async",
@@ -71,7 +70,7 @@ pub(crate) fn run(extra_args: &[String]) -> Result<()> {
     if !extra_args.is_empty() {
         cmd.args(extra_args);
     }
-    utils::execute_command(cmd, true, false).with_context(|| t!("unable_to_run_check"))?;
+    utils::execute(cmd).with_context(|| t!("unable_to_run_check"))?;
 
     Ok(())
 }

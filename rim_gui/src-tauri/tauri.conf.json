@@ -17,9 +17,7 @@
     ]
   },
   "identifier": "com.xuanwu.rust",
-  "plugins": {
-    "cli": {}
-  },
+  "plugins": {},
   "app": {
     "withGlobalTauri": true,
     "security": {

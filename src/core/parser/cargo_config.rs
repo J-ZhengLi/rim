@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use indexmap::IndexMap;
-use rim_common::types::{BuildConfig, TomlParser};
+use rim_common::types::TomlParser;
 use serde::{Deserialize, Serialize};
 
 /// A simple struct representing the fields in `config.toml`.
@@ -97,10 +97,7 @@ impl CargoConfig {
         S: Into<String>,
         P: Into<PathBuf>,
     {
-        let old_val = self
-            .patch
-            .entry(BuildConfig::load().cargo.registry_name.clone())
-            .or_default();
+        let old_val = self.patch.entry("crates-io".into()).or_default();
         old_val.0.insert(
             name.into(),
             DependencyKind::Path {
@@ -112,7 +109,7 @@ impl CargoConfig {
 
     /// Remove a dependency patch ([`DependencyPatch`]) from the patch section.
     pub(crate) fn remove_patch(&mut self, name: &str) -> &mut Self {
-        let Some(patches) = self.patch.get_mut(&BuildConfig::load().cargo.registry_name) else {
+        let Some(patches) = self.patch.get_mut("crates-io") else {
             return self;
         };
 
@@ -170,7 +167,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{BuildConfig, CargoConfig, TomlParser};
+    use super::{CargoConfig, TomlParser};
 
     #[test]
     fn cargo_config_default_serialize() {
@@ -215,13 +212,10 @@ registry = "https://example.com/registry"
             .unwrap();
         assert_eq!(
             config,
-            format!(
-                "[patch.{0}.foo]
+            "[patch.crates-io.foo]
 path = \"/path/to/foo\"\n
-[patch.{0}.bar]
-path = \"/path/to/bar\"\n",
-                &BuildConfig::load().cargo.registry_name
-            )
+[patch.crates-io.bar]
+path = \"/path/to/bar\"\n"
         );
     }
 }

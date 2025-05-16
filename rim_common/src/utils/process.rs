@@ -47,23 +47,42 @@ macro_rules! run {
 /// ```
 #[macro_export]
 macro_rules! cmd {
-    ($program:expr) => {
-        std::process::Command::new($program)
-    };
+    ($program:expr) => {{
+        let mut cmd__ = std::process::Command::new($program);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // Prevent CMD window popup
+            cmd__.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+        }
+        cmd__
+    }};
     ($program:expr $(, $arg:expr )* $(,)?) => {{
         let mut cmd__ = std::process::Command::new($program);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // Prevent CMD window popup
+            cmd__.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+        }
         $(cmd__.arg($arg);)*
         cmd__
     }};
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
         let mut cmd__ = std::process::Command::new($program);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // Prevent CMD window popup
+            cmd__.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+        }
         $(cmd__.arg($arg);)*
         $(cmd__.env($key, $val);)*
         cmd__
     }};
 }
 
-/// Convenient function to execute a command to finish while looging its output.
+/// Convenient function to execute a command to finish while logging its output.
 pub fn execute(cmd: Command) -> Result<()> {
     execute_command(cmd, true, true).map(|_| ())
 }
@@ -84,7 +103,7 @@ pub fn execute_command(mut cmd: Command, expect_success: bool, log_output: bool)
 
         // NB: to prevent deadlock, `cmd` must be dropped before reading from `reader`
         let cmd_content = cmd_to_string(cmd);
-        output_to_log(Some(&mut reader));
+        output_to_log(&mut reader);
 
         (child, cmd_content)
     } else {
@@ -125,9 +144,8 @@ fn get_ret_code(status: &ExitStatus) -> i32 {
 }
 
 /// Log the command output
-fn output_to_log<R: io::Read>(from: Option<&mut R>) {
-    let Some(out) = from else { return };
-    let reader = BufReader::new(out);
+fn output_to_log<R: io::Read>(from: &mut R) {
+    let reader = BufReader::new(from);
     for line in reader.lines().map_while(Result::ok) {
         // prevent double 'info|warn|error:' labels, although this might be a dumb way to do it
         if let Some(info) = line.strip_prefix("info: ") {

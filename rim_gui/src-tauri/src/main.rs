@@ -1,5 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 #[macro_use]
 extern crate rust_i18n;
 #[macro_use]
@@ -18,7 +16,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use anyhow::Result;
-use rim::{configuration::Configuration, AppInfo, Mode};
+use rim::{cli::ExecutableCommand, configuration::Configuration, AppInfo, Mode};
 use rim_common::utils;
 
 i18n!("../../locales", fallback = "en");
@@ -39,13 +37,18 @@ fn main() -> Result<()> {
     let msg_recv = common::setup_logger();
     match mode {
         Mode::Manager(maybe_args) => {
+            run_cli_else_hide_console(&maybe_args)?;
+
             if let Err(e) = handle_autostart() {
                 // log the error but do NOT abort the program
                 error!("unable to setup autostart: {e}");
             }
             manager_mode::main(msg_recv, maybe_args)?;
         }
-        Mode::Installer(maybe_args) => installer_mode::main(msg_recv, maybe_args)?,
+        Mode::Installer(maybe_args) => {
+            run_cli_else_hide_console(&maybe_args)?;
+            installer_mode::main(msg_recv, maybe_args)?;
+        }
     }
     Ok(())
 }
@@ -72,5 +75,29 @@ fn handle_autostart() -> Result<()> {
     } else if auto.is_enabled().unwrap_or_default() {
         auto.disable()?;
     }
+    Ok(())
+}
+
+/// This GUI program supports commandline interface as well, so if:
+///
+/// - This was started in CLI mode, execute the command then exit.
+/// - This was started in GUI mode, hide the console window on Windows.
+fn run_cli_else_hide_console<T: ExecutableCommand>(command_args: &anyhow::Result<T>) -> Result<()> {
+    if let Ok(args) = command_args {
+        if args.no_gui() {
+            args.execute()?;
+            std::process::exit(0);
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        use winapi::um::winuser::{ShowWindow, SW_HIDE};
+        let window = unsafe { winapi::um::wincon::GetConsoleWindow() };
+        unsafe {
+            ShowWindow(window, SW_HIDE);
+        }
+    }
+
     Ok(())
 }

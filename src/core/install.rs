@@ -265,7 +265,7 @@ impl<'a> InstallConfiguration<'a> {
         &mut self,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        if components.is_empty() {
+        if components.is_empty() || components.iter().all(|c| c.is_profile) {
             return Ok(());
         }
 

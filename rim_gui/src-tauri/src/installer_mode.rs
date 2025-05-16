@@ -24,7 +24,6 @@ pub(super) fn main(
         common::update_shared_configs(args);
     }
     tauri::Builder::default()
-        .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cmd| {}))
         .invoke_handler(tauri::generate_handler![
@@ -46,7 +45,7 @@ pub(super) fn main(
             common::get_build_cfg_locale_str,
         ])
         .setup(|app| {
-            common::setup_installer_window(app, msg_recv, maybe_args)?;
+            common::setup_installer_window(app, msg_recv)?;
             Ok(())
         })
         .run(tauri::generate_context!())

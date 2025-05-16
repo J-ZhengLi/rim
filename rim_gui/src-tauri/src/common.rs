@@ -255,23 +255,7 @@ impl FrontendFunctionPayload {
 pub(crate) fn setup_installer_window(
     manager: &mut App,
     log_receiver: Receiver<String>,
-    maybe_args: anyhow::Result<rim::cli::Installer>,
 ) -> Result<WebviewWindow> {
-    match maybe_args {
-        Ok(args) => {
-            if args.no_gui() {
-                args.execute()?;
-                manager.handle().exit(0);
-            }
-        }
-        Err(err) => {
-            error!(
-                "tried to start the program with cli arguments \
-            but the arguments cannot be parsed. {err}"
-            );
-        }
-    };
-
     let window = setup_window_(
         manager,
         INSTALLER_WINDOW_LABEL,
@@ -295,15 +279,6 @@ pub(crate) fn setup_manager_window(
             if args.silent_mode() {
                 visible = false;
             }
-
-            if args.no_gui() {
-                args.execute()?;
-                // NB: `AppHandle::exit()` has a small exit delay in a separated thread,
-                // causing this function continues to create a window, don't use it!
-                manager.handle().cleanup_before_exit();
-                std::process::exit(0);
-            }
-
             Some(args)
         }
         Err(err) => {
@@ -364,11 +339,6 @@ pub(crate) struct CliPayload {
 }
 
 pub(crate) fn handle_manager_args(app: AppHandle, cli: rim::cli::Manager) {
-    if cli.no_gui() {
-        cli.execute()
-            .unwrap_or_else(|e| panic!("unable to start manager: {e}"));
-    }
-
     if let Some(ManagerSubcommands::Uninstall { keep_self }) = cli.command {
         if !AppInfo::is_manager() {
             return;
