@@ -55,9 +55,9 @@ impl<'a> DependencyHandler<(&'a str, &'a ToolInfo)> for Vec<(&'a str, &'a ToolIn
             .collect::<VecDeque<_>>();
 
         while let Some(name) = queue.pop_front() {
-            let (deps, node) = graph.get(name).unwrap_or_else(|| {
-                unreachable!("`{name}` in queue came from the graph, so this unwrap has no issue")
-            });
+            let Some((deps, node)) = graph.get(name) else {
+                continue;
+            };
 
             res.push((name, *node));
             for dep in *deps {
@@ -102,9 +102,9 @@ impl<'a> DependencyHandler<Tool<'a>> for Vec<ToolWithDeps<'a>> {
             .collect::<VecDeque<_>>();
 
         while let Some(name) = queue.pop_front() {
-            let (deps, node) = graph.get(name).copied().unwrap_or_else(|| {
-                unreachable!("`{name}` in queue came from the graph, so this unwrap has no issue")
-            });
+            let Some((deps, node)) = graph.get(name).copied() else {
+                continue;
+            };
 
             res.push(node.clone());
             for dep in deps {

@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[derive(Subcommand, Debug, Default, Clone, Copy)]
-pub(super) enum ListCommand {
+pub enum ListCommand {
     /// Show components that are available in current target.
     #[default]
     Component,

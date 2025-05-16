@@ -32,9 +32,6 @@ where
         Self::load(root.join(Self::FILENAME))
     }
 
-    /// Get a list of tool names that are already installed in current environment.
-    fn already_installed_tools(&self) -> Vec<&str>;
-
     /// Get the tools that are only available in current target.
     ///
     /// Return `None` if there are no available tools in the current target.
@@ -163,7 +160,12 @@ impl ToolkitManifestExt for ToolkitManifest {
         if let Some(tools) = self.current_target_tools() {
             let installed_in_env = if check_for_existence {
                 // components that are already installed in user's machine, such as vscode, or mingw.
-                self.already_installed_tools()
+                tools
+                    .keys()
+                    .filter_map(|name| {
+                        custom_instructions::is_installed(name).then_some(name.as_str())
+                    })
+                    .collect()
             } else {
                 vec![]
             };
@@ -193,15 +195,6 @@ impl ToolkitManifestExt for ToolkitManifest {
         }
 
         Ok(components)
-    }
-
-    fn already_installed_tools(&self) -> Vec<&str> {
-        let Some(map) = self.current_target_tools() else {
-            return vec![];
-        };
-        map.keys()
-            .filter_map(|name| custom_instructions::is_installed(name).then_some(name.as_str()))
-            .collect()
     }
 
     fn package_root(&self) -> Result<PathBuf> {
@@ -278,17 +271,19 @@ impl ToolkitManifestExt for ToolkitManifest {
 }
 
 /// Get the content of baked-in toolset manifest as `str`.
-fn baked_in_manifest_raw() -> &'static str {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "no-web")] {
-            include_str!(
-                concat!("../../resources/toolkit-manifest/offline/", env!("EDITION"), ".toml")
-            )
-        } else {
-            include_str!(
-                concat!("../../resources/toolkit-manifest/online/", env!("EDITION"), ".toml")
-            )
-        }
+pub(crate) fn baked_in_manifest_raw(no_web: bool) -> &'static str {
+    if no_web {
+        include_str!(concat!(
+            "../../resources/toolkit-manifest/offline/",
+            env!("EDITION"),
+            ".toml"
+        ))
+    } else {
+        include_str!(concat!(
+            "../../resources/toolkit-manifest/online/",
+            env!("EDITION"),
+            ".toml"
+        ))
     }
 }
 
@@ -305,8 +300,7 @@ pub async fn get_toolkit_manifest(url: Option<Url>, insecure: bool) -> Result<To
     // or the size of manifest files are very big, then we need to switch the caching location
     // to disk. But right now, each `ToolsetManifest` only takes up a few KB, so it's fine to
     // store them in memory.
-    // NB: This will reduce the time and IO load with repeating calls, but will increase the
-    // time for the initial call because of the `manifest.clone()`.
+    // NB: This will reduce the time and IO load with repeating calls
     static CACHED_MANIFESTS: OnceLock<Mutex<HashMap<Option<Url>, ToolkitManifest>>> =
         OnceLock::new();
 
@@ -327,11 +321,17 @@ pub async fn get_toolkit_manifest(url: Option<Url>, insecure: bool) -> Result<To
             .insecure(insecure)
             .download(url, temp.path())
             .await?;
-        ToolkitManifest::load(temp.path())
+        ToolkitManifest::load(temp.path())?
     } else {
         debug!("loading built-in toolset manifest");
-        ToolkitManifest::from_str(baked_in_manifest_raw())
-    }?;
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "no-web")] {
+                ToolkitManifest::from_str(baked_in_manifest_raw(true))?.offline(true)
+            } else {
+                ToolkitManifest::from_str(baked_in_manifest_raw(false))?
+            }
+        }
+    };
     debug!("caching toolset manifest in memory");
     guard.insert(url, manifest.clone());
 

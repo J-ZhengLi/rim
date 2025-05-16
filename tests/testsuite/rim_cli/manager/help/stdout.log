@@ -8,6 +8,7 @@ Commands:
   component  Install or uninstall components
   uninstall  Uninstall individual components or everything
   try-it     A subcommand to create a new Rust project template and let you start coding with it
+  check      Check source code in the current directory using installed rule-set for errors
   help       Print this message or the help of the given subcommand(s)
 
 Options:
@@ -19,6 +20,9 @@ Options:
 
   -y, --yes
           Disable interaction and answer 'yes' to all prompts
+
+  -s, --silent
+          Run manager without showing the main window
 
       --no-modify-path
           Don't modify user's `PATH` environment variable

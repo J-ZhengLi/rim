@@ -146,7 +146,7 @@ Keywords=vscode;
         Ok(())
     }
 
-    pub(crate) fn already_installed(&self) -> bool {
+    pub(crate) fn is_installed(&self) -> bool {
         utils::cmd_exist(self.cmd)
     }
 }
@@ -169,6 +169,6 @@ pub(super) fn uninstall<T: RimDir>(config: T) -> Result<()> {
     VSCODE.uninstall(config)
 }
 
-pub(super) fn already_installed() -> bool {
-    VSCODE.already_installed()
+pub(super) fn is_installed() -> bool {
+    VSCODE.is_installed()
 }

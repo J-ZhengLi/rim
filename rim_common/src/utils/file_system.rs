@@ -260,6 +260,7 @@ pub fn is_executable<P: AsRef<Path>>(path: P) -> bool {
     path.as_ref().is_file() && is_executable_ext
 }
 
+/// Delete a file or directory (recursively) from disk.
 pub fn remove<P: AsRef<Path>>(src: P) -> Result<()> {
     if src.as_ref().is_file() {
         fs::remove_file(&src)

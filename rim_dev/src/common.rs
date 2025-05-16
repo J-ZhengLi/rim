@@ -14,6 +14,12 @@ fn rim_gui_dir() -> &'static Path {
     RIM_GUI_DIR.get_or_init(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("rim_gui"))
 }
 
+pub(crate) fn test_asset_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .with_file_name("tests")
+        .join("assets")
+}
+
 /// Return the base command to run `pnpm`.
 pub fn pnpm_cmd() -> Command {
     cfg_if::cfg_if! {

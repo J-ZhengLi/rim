@@ -24,7 +24,7 @@ pub struct CargoConfig {
 }
 
 impl BuildConfig {
-    pub(crate) fn load() -> &'static Self {
+    pub fn load() -> &'static Self {
         BUILD_CFG_SINGLETON.get_or_init(|| {
             let raw = include_str!("../../../configuration.toml");
             toml::from_str(raw).expect("unable to load build configuration")

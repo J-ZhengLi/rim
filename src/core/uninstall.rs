@@ -104,6 +104,10 @@ impl<'a> UninstallConfiguration<'a> {
         components: &[ToolchainComponent],
         weight: f32,
     ) -> Result<()> {
+        if components.is_empty() {
+            return Ok(());
+        }
+
         ToolchainInstaller::init(&*self).remove_components(self, components)?;
 
         self.install_record.remove_component_record(components);

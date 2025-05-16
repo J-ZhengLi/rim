@@ -11,6 +11,7 @@ use super::{
     tools::Tool,
     GlobalOpts, CARGO_HOME, RUSTUP_DIST_SERVER, RUSTUP_HOME, RUSTUP_UPDATE_ROOT,
 };
+use crate::core::baked_in_manifest_raw;
 use crate::core::os::add_to_path;
 use anyhow::{anyhow, bail, Context, Result};
 use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest};
@@ -47,8 +48,9 @@ pub struct InstallConfiguration<'a> {
     pub install_dir: PathBuf,
     pub rustup_dist_server: Url,
     pub rustup_update_root: Url,
-    /// Indicates whether `cargo` was already installed, useful when installing third-party tools.
-    pub cargo_is_installed: bool,
+    /// Indicates whether the rust toolchain was already installed,
+    /// useful when installing third-party tools.
+    pub toolchain_is_installed: bool,
     install_record: InstallationRecord,
     pub(crate) progress_indicator: Option<utils::Progress<'a>>,
     pub(crate) manifest: &'a ToolkitManifest,
@@ -77,7 +79,7 @@ impl<'a> InstallConfiguration<'a> {
             cargo_registry: Some((reg_name.into(), reg_url.into())),
             rustup_dist_server: super::default_rustup_dist_server().clone(),
             rustup_update_root: super::default_rustup_update_root().clone(),
-            cargo_is_installed: false,
+            toolchain_is_installed: false,
             progress_indicator: None,
             manifest,
             insecure: false,
@@ -92,7 +94,16 @@ impl<'a> InstallConfiguration<'a> {
         info!("{}", t!("install_init", dir = install_dir.display()));
 
         // Create a copy of the manifest which is later used for component management.
-        self.manifest.write_to_dir(install_dir)?;
+        // NB: This `setup` function only gets called during the first installation,
+        // which means this manifest should always loaded from the baked-in one.
+        // NB: If this is an offline build, meaning the manifest is likely to contain
+        // local paths, which is not useful for adding components afterwards, therefore
+        // we better store the online version instead,
+        if self.manifest.is_offline {
+            ToolkitManifest::from_str(baked_in_manifest_raw(false))?.write_to_dir(install_dir)?;
+        } else {
+            self.manifest.write_to_dir(install_dir)?;
+        }
 
         // Create a copy of this binary
         let self_exe = std::env::current_exe()?;
@@ -126,8 +137,7 @@ impl<'a> InstallConfiguration<'a> {
         // This step taking cares of requirements, such as `MSVC`, also third-party app such as `VS Code`.
         self.install_tools(&tools)?;
         self.install_rust(&tc_components)?;
-        // install third-party tools via cargo that got installed by rustup
-        self.cargo_install(&tools)?;
+        self.install_tools_late(&tools)?;
         Ok(())
     }
 
@@ -181,14 +191,16 @@ impl<'a> InstallConfiguration<'a> {
         Ok(env_vars)
     }
 
-    fn install_tools_(&mut self, use_cargo: bool, tools: &ToolMap, weight: f32) -> Result<()> {
+    fn install_tools_(&mut self, use_rust: bool, tools: &ToolMap, weight: f32) -> Result<()> {
         let mut to_install = tools
             .iter()
             .filter(|(_, t)| {
-                if use_cargo {
-                    t.is_cargo_tool()
+                let requires_toolchain =
+                    t.is_cargo_tool() || t.dependencies().iter().any(|s| s == "rust");
+                if use_rust {
+                    requires_toolchain
                 } else {
-                    !t.is_cargo_tool()
+                    !requires_toolchain
                 }
             })
             .collect::<Vec<_>>();
@@ -198,23 +210,14 @@ impl<'a> InstallConfiguration<'a> {
         }
         let sub_progress_delta = weight / to_install.len() as f32;
 
-        if !use_cargo {
-            to_install = to_install.topological_sorted();
-            // topological sort place the tool with more dependencies at the back,
-            // which is what we need to install first, therefore we need to reverse it.
-            to_install.reverse();
-        }
+        to_install = to_install.topological_sorted();
+        // topological sort place the tool with more dependencies at the back,
+        // which is what we need to install first, therefore we need to reverse it.
+        to_install.reverse();
 
         for (name, tool) in to_install {
-            let info = if use_cargo {
-                t!("installing_via_cargo_info", name = name)
-            } else {
-                t!("installing_tool_info", name = name)
-            };
-            info!("{info}");
-
+            info!("{}", t!("installing_tool_info", name = name));
             self.install_tool(name, tool)?;
-
             self.inc_progress(sub_progress_delta)?;
         }
 
@@ -228,7 +231,8 @@ impl<'a> InstallConfiguration<'a> {
         self.install_tools_(false, tools, 30.0)
     }
 
-    pub fn cargo_install(&mut self, tools: &ToolMap) -> Result<()> {
+    /// A step to include `cargo install`, and any tools that requires rust to be installed
+    pub fn install_tools_late(&mut self, tools: &ToolMap) -> Result<()> {
         info!("{}", t!("install_via_cargo"));
         self.install_tools_(true, tools, 30.0)
     }
@@ -242,7 +246,7 @@ impl<'a> InstallConfiguration<'a> {
             .insecure(self.insecure)
             .install(self, components)?;
         add_to_path(self.cargo_bin())?;
-        self.cargo_is_installed = true;
+        self.toolchain_is_installed = true;
 
         // Add the rust info to the fingerprint.
         self.install_record
@@ -261,6 +265,10 @@ impl<'a> InstallConfiguration<'a> {
         &mut self,
         components: &[ToolchainComponent],
     ) -> Result<()> {
+        if components.is_empty() || components.iter().all(|c| c.is_profile) {
+            return Ok(());
+        }
+
         ToolchainInstaller::init(&*self).add_components(self, components)?;
 
         self.install_record

@@ -33,7 +33,7 @@ impl<'a> Extractable<'a> {
         let Ok(extensions) = file_extension(path) else {
             return false;
         };
-        matches!(extensions, "7z" | "zip" | "gz" | "xz")
+        matches!(extensions, "7z" | "zip" | "gz" | "xz" | "crate")
     }
 
     pub fn load(path: &'a Path, custom_kind: Option<&str>) -> Result<Self> {
@@ -58,7 +58,7 @@ impl<'a> Extractable<'a> {
                 );
                 ExtractableKind::Zip(ZipArchive::new(File::open(path)?)?)
             }
-            "gz" => {
+            "gz" | "crate" => {
                 info!(
                     "{}",
                     t!("loading_archive_info", kind = ext, path = path.display())

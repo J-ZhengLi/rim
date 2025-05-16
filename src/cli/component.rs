@@ -15,8 +15,8 @@ use super::{
     ManagerSubcommands,
 };
 
-#[derive(Subcommand, Debug)]
-pub(super) enum ComponentCommand {
+#[derive(Subcommand, Debug, Clone)]
+pub enum ComponentCommand {
     /// Install components
     #[command(alias = "add")]
     Install {

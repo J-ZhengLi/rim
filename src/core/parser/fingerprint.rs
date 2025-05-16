@@ -168,6 +168,11 @@ impl InstallationRecord {
     pub fn get_tool_version(&self, name: &str) -> Option<&str> {
         self.tools.get(name).and_then(|rec| rec.version.as_deref())
     }
+
+    /// Check if any of the specific type of tool was installed
+    pub fn type_of_tool_is_installed(&self, kind: ToolKind) -> bool {
+        self.tools.iter().any(|(_, rec)| rec.kind == kind)
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
