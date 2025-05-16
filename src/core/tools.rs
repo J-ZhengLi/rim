@@ -284,7 +284,8 @@ fn cargo_install_or_uninstall(op: &str, args: &[&str], cargo_home: &Path) -> Res
     }
     full_args.extend_from_slice(args);
     cmd.args(full_args);
-    utils::execute(cmd)
+    utils::execute(cmd)?;
+    Ok(())
 }
 
 /// Move one path (file/dir) to a new folder with `name` under tools dir.
@@ -436,7 +437,7 @@ impl Plugin {
                         )
                     );
                     match run!(program, arg_opt, plugin_path) {
-                        Ok(()) => continue,
+                        Ok(_) => continue,
                         // Ignore error when uninstalling.
                         Err(_) if uninstall => {
                             info!(

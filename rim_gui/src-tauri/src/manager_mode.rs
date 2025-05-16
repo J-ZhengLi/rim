@@ -12,6 +12,7 @@ use crate::{
 };
 use anyhow::Context;
 use rim::{
+    cli::ExecutableCommand,
     components::Component,
     toolkit::{self, Toolkit},
     update::{self, UpdateCheckBlocker, UpdateOpt},
@@ -50,15 +51,22 @@ pub(super) fn main(
     }
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cmd| {
-            show_manager_window_if_possible(app);
-
-            if let Ok(cli) = rim::cli::Manager::try_from(argv) {
-                common::update_shared_configs(&cli);
-                common::handle_manager_args(app.clone(), cli);
-            }
+            let cli = match rim::cli::Manager::try_from(argv) {
+                Ok(a) => {
+                    if !a.no_gui() {
+                        show_manager_window_if_possible(app);
+                    }
+                    a
+                }
+                Err(err) => {
+                    error!("unable to parse commandline arguments: {err}");
+                    return;
+                }
+            };
+            common::update_shared_configs(&cli);
+            common::handle_manager_args(app.clone(), cli);
         }))
         .invoke_handler(tauri::generate_handler![
             close_window,

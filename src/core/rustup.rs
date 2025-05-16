@@ -114,7 +114,21 @@ impl ToolchainInstaller {
     ) -> Result<()> {
         let rustup = ensure_rustup(config, self.insecure)?;
         self.ensure_toolchain(&rustup, config.manifest, first_install)?;
-        self.add_components(config, components)?;
+        // if this is the first time installing the tool chain, we need to add the base components
+        // from the manifest.
+        let mut base = if first_install {
+            config
+                .manifest
+                .rust
+                .components
+                .iter()
+                .map(ToolchainComponent::new)
+                .collect()
+        } else {
+            vec![]
+        };
+        base.extend(components.to_vec());
+        self.add_components(config, &base)?;
 
         // Remove the `rustup` uninstall entry on windows, because we don't want users to
         // accidentally uninstall `rustup` thus removing the tools installed by this program.
@@ -179,7 +193,8 @@ impl ToolchainInstaller {
             cmd.args(args);
         }
 
-        utils::execute(cmd)
+        utils::execute(cmd)?;
+        Ok(())
     }
 
     pub(crate) fn remove_components(
@@ -212,7 +227,8 @@ impl ToolchainInstaller {
 
         let mut cmd = cmd!(rustup_bin, "component", "remove");
         cmd.args(comp_args);
-        utils::execute(cmd)
+        utils::execute(cmd)?;
+        Ok(())
     }
 
     // Rustup self uninstall all the components and toolchains.
@@ -308,5 +324,6 @@ fn install_rustup(rustup_init: &PathBuf) -> Result<()> {
     }
     let mut cmd = cmd!(rustup_init);
     cmd.args(args);
-    utils::execute(cmd)
+    utils::execute(cmd)?;
+    Ok(())
 }

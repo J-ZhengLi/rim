@@ -32,15 +32,21 @@ macro_rules! execute_with_pause {
         let _inner_ = || {
             $($body)*
         };
-        if let Err(_err_) = _inner_() {
-            if rim_common::utils::logger_is_set() {
-                log::error!("{_err_}");
-            } else {
-                eprintln!("{_err_}");
+        match _inner_() {
+            Ok(_) => {
+                #[cfg(windows)]
+                $crate::cli::common::pause_unless_started_with_command().expect("unable to pause terminal");
+            },
+            Err(_err_) => {
+                if rim_common::utils::logger_is_set() {
+                    log::error!("{_err_}");
+                } else {
+                    eprintln!("{_err_}");
+                }
+                #[cfg(windows)]
+                $crate::cli::common::pause().expect("unable to pause terminal");
             }
         }
-        #[cfg(windows)]
-        $crate::cli::common::pause().expect("unable to pause terminal");
     };
 }
 

@@ -65,14 +65,42 @@ impl Logger {
     /// - If [`quiet`](Logger::quiet) was called with `true`, this will not output any message
     ///   on `stdout`, but will still output them into log file.
     pub fn setup(self) -> Result<()> {
-        let dispatch = fern::Dispatch::new().level(LevelFilter::Trace);
+        let mut dispatch = fern::Dispatch::new().level(LevelFilter::Trace);
         let filter_log_for_output = move |md: &log::Metadata| -> bool {
             md.level() <= self.level && md.level() != LevelFilter::Trace
         };
 
-        // decide if `Sender` or `Stdout` should be used as message medium.
-        let output = if let Some(sender) = self.output_sender {
-            fern::Dispatch::new()
+        // log to standard output (colored info label)
+        let stdout = fern::Dispatch::new()
+            .filter(filter_log_for_output)
+            .format(|out, msg, rec| {
+                out.finish(format_args!(
+                    "{}: {msg}",
+                    ColoredLevelConfig::new()
+                        .info(Color::BrightBlue)
+                        .debug(Color::Magenta)
+                        .color(rec.level())
+                        .to_string()
+                        .to_lowercase(),
+                ));
+            })
+            .chain(io::stdout());
+        dispatch = dispatch.chain(stdout);
+        // log to file (detailed trace with timestamp)
+        let file_config = fern::Dispatch::new()
+            .format(|out, msg, rec| {
+                out.finish(format_args!(
+                    "[{} {} {}] {msg}",
+                    Local::now().to_rfc3339(),
+                    rec.target(),
+                    rec.level(),
+                ))
+            })
+            .chain(fern::log_file(log_file_path()?)?);
+        dispatch = dispatch.chain(file_config);
+        // log to custom channel if available (regular style)
+        if let Some(sender) = self.output_sender {
+            let custom = fern::Dispatch::new()
                 .filter(filter_log_for_output)
                 .format(|out, msg, rec| {
                     out.finish(format_args!(
@@ -80,35 +108,11 @@ impl Logger {
                         rec.level().to_string().to_lowercase()
                     ));
                 })
-                .chain(sender)
-        } else {
-            fern::Dispatch::new()
-                .filter(filter_log_for_output)
-                .format(|out, msg, rec| {
-                    out.finish(format_args!(
-                        "{}: {msg}",
-                        ColoredLevelConfig::new()
-                            .info(Color::BrightBlue)
-                            .debug(Color::Magenta)
-                            .color(rec.level())
-                            .to_string()
-                            .to_lowercase(),
-                    ));
-                })
-                .chain(io::stdout())
-        };
+                .chain(sender);
+            dispatch = dispatch.chain(custom);
+        }
 
-        let file_config = fern::Dispatch::new()
-            .format(|out, msg, rec| {
-                out.finish(format_args!(
-                    "[{} {}] {msg}",
-                    Local::now().to_rfc3339(),
-                    rec.target(),
-                ))
-            })
-            .chain(fern::log_file(log_file_path()?)?);
-
-        if dispatch.chain(output).chain(file_config).apply().is_ok() {
+        if dispatch.apply().is_ok() {
             LOGGER_SET.set(true).unwrap_or_else(|_| {
                 unreachable!("logger setup will fail before reaching this point")
             });
