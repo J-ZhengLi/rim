@@ -270,7 +270,7 @@ pub(crate) fn setup_installer_window(
 pub(crate) fn setup_manager_window(
     manager: &mut App,
     log_receiver: Receiver<String>,
-    maybe_args: anyhow::Result<rim::cli::Manager>,
+    maybe_args: anyhow::Result<Box<rim::cli::Manager>>,
 ) -> Result<WebviewWindow> {
     let mut visible = true;
 
@@ -300,7 +300,7 @@ pub(crate) fn setup_manager_window(
 
     spawn_gui_update_thread(window.clone(), log_receiver);
     if let Some(a) = args {
-        handle_manager_args(manager.handle().clone(), a);
+        handle_manager_args(manager.handle().clone(), *a);
     }
     Ok(window)
 }

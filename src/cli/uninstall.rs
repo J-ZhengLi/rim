@@ -2,15 +2,15 @@
 
 use crate::core::uninstall::UninstallConfiguration;
 
-use super::{common, ManagerSubcommands};
+use super::{common, ExecStatus, ManagerSubcommands};
 
 use anyhow::Result;
 use rim_common::build_config;
 
 /// Execute `uninstall` command.
-pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<bool> {
+pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<ExecStatus> {
     let ManagerSubcommands::Uninstall { keep_self } = subcommand else {
-        return Ok(false);
+        return Ok(ExecStatus::default());
     };
 
     let config = UninstallConfiguration::init(None)?;
@@ -24,10 +24,10 @@ pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<bool> {
         t!("uninstall_confirmation", list = installed)
     };
     if !common::confirm(prompt, false)? {
-        return Ok(true);
+        return Ok(ExecStatus::new_executed());
     }
 
     config.uninstall(!keep_self)?;
 
-    Ok(true)
+    Ok(ExecStatus::new_executed())
 }

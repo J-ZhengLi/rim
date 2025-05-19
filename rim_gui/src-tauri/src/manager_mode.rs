@@ -43,11 +43,11 @@ fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolkitManifest>> {
 
 pub(super) fn main(
     msg_recv: Receiver<String>,
-    maybe_args: anyhow::Result<rim::cli::Manager>,
+    maybe_args: anyhow::Result<Box<rim::cli::Manager>>,
 ) -> Result<()> {
     // store the cli args for future use
     if let Ok(args) = &maybe_args {
-        common::update_shared_configs(args);
+        common::update_shared_configs(args.as_ref());
     }
 
     tauri::Builder::default()

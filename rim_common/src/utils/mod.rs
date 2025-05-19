@@ -47,14 +47,7 @@ static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(Str
 #[macro_export]
 macro_rules! exe {
     ($input:expr) => {{
-        #[cfg(windows)]
-        {
-            format!("{}.exe", $input)
-        }
-        #[cfg(not(windows))]
-        {
-            $input
-        }
+        format!("{}{}", $input, std::env::consts::EXE_SUFFIX)
     }};
 }
 

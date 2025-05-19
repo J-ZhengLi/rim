@@ -13,9 +13,9 @@ use crate::InstallConfiguration;
 use super::common::{
     ComponentChoices, ComponentDecoration, ComponentListBuilder, VersionDiff, VersionDiffMap,
 };
-use super::{common, GlobalOpts, ManagerSubcommands};
+use super::{common, ExecStatus, GlobalOpts, ManagerSubcommands};
 
-pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
+pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     let ManagerSubcommands::Update {
         toolkit_only,
         manager_only,
@@ -23,7 +23,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
         component,
     } = cmd
     else {
-        return Ok(false);
+        return Ok(ExecStatus::default());
     };
 
     let update_opt = UpdateOpt::new().insecure(*insecure);
@@ -36,7 +36,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
         blocking!(update_opt.self_update(false))?;
     }
 
-    Ok(true)
+    Ok(ExecStatus::new_executed())
 }
 
 async fn update_toolkit_(
