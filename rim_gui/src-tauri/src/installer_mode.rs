@@ -18,10 +18,10 @@ static TOOLSET_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
 
 pub(super) fn main(
     msg_recv: Receiver<String>,
-    maybe_args: anyhow::Result<rim::cli::Installer>,
+    maybe_args: anyhow::Result<Box<rim::cli::Installer>>,
 ) -> Result<()> {
     if let Ok(args) = &maybe_args {
-        common::update_shared_configs(args);
+        common::update_shared_configs(args.as_ref());
     }
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())

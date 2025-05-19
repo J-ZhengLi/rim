@@ -9,6 +9,7 @@ mod tryit;
 mod uninstall;
 mod update;
 
+use crate::core::{GlobalOpts, Language};
 use anyhow::{anyhow, bail, Result};
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand, ValueHint};
@@ -21,39 +22,58 @@ use std::{
 };
 use url::Url;
 
-use crate::core::{GlobalOpts, Language};
+// Re-exports
+pub use common::pause;
 
-/// Try to pause terminal after executing a block or after error occurs.
+/// Receive a list of function calls, that waits to be executed,
+/// if any of them returning [`ExecStatus`] which the `executed` flag is `true`,
+/// this will trigger an return action.
 ///
-/// Pause on Windows only, if running on other platform, this will only
-/// executing the code within the block and return the result directly.
-macro_rules! execute_with_pause {
-    ($($body:tt)+) => {
-        let _inner_ = || {
-            $($body)*
-        };
-        match _inner_() {
-            Ok(_) => {
-                #[cfg(windows)]
-                $crate::cli::common::pause_unless_started_with_command().expect("unable to pause terminal");
-            },
-            Err(_err_) => {
-                if rim_common::utils::logger_is_set() {
-                    log::error!("{_err_}");
-                } else {
-                    eprintln!("{_err_}");
-                }
-                #[cfg(windows)]
-                $crate::cli::common::pause().expect("unable to pause terminal");
+/// Therefore make sure the return type of each function call and the upper function
+/// of this macro call are all `Result<ExecStatus>`.
+///
+/// # Example
+/// ```ignore
+/// fn foo(x: i32) -> Result<ExecStatus> {
+///     Ok(ExecStatus::default())
+/// }
+/// fn bar(x: i32) -> Result<ExecStatus> {
+///     if x = 1 {
+///         Ok(ExecStatus::new_executed())
+///     } else {
+///         Ok(ExecStatus::default())
+///     }
+/// }
+/// fn baz(x: i32) -> Result<ExecStatus> {
+///     Ok(ExecStatus::new_executed())
+/// }
+///
+/// let x = 1;
+/// // This will first run `foo(x)`, which returns `Ok(ExecStatus::default())`,
+/// // thus the `executed` flag is `false`, so the code continues to run.
+/// // Then the `bar(x)` gets to run, and because `x` is `1`, causing `ExecStatus::new_executed()`
+/// // being returned, therefore the whole block returns and `baz(x)` was never run.
+/// return_if_executed {
+///     foo(x),
+///     bar(x),
+///     baz(x),
+/// }
+/// ```
+macro_rules! return_if_executed {
+    ($($fn:expr),+) => {
+        $(
+            let _res_ = $fn;
+            if _res_.executed {
+                return Ok(_res_);
             }
-        }
+        )*
     };
 }
 
 /// Provides an `execute` function to run `clap` compatible commands.
 pub trait ExecutableCommand {
-    /// Executes a command
-    fn execute(&self) -> Result<()>;
+    /// Executes a command and return [`ExecStatus`].
+    fn execute(&self) -> Result<ExecStatus>;
 
     /// Return `true` if this command should be running in silent mode.
     /// (without any interface)
@@ -66,6 +86,50 @@ pub trait ExecutableCommand {
     fn no_gui(&self) -> bool {
         false
     }
+}
+
+impl<T: ExecutableCommand> ExecutableCommand for Box<T> {
+    fn execute(&self) -> Result<ExecStatus> {
+        self.as_ref().execute()
+    }
+    fn silent_mode(&self) -> bool {
+        self.as_ref().silent_mode()
+    }
+    fn no_gui(&self) -> bool {
+        self.as_ref().no_gui()
+    }
+}
+
+/// Indicates the status after running a [`ExecutableCommand`].
+///
+/// # Note
+/// The status mainly indicates two things:
+/// 1. `executed`, this flag is used to determine whether a command was executed
+///    or not (obviously). Because this program supports multiple commands and subcommands,
+///    we can have a list of these command's execute function to wait for run,
+///    and return only if one of them was executed. Check [`return_if_executed`] for example.
+/// 2. `no_pause`, on Windows, when user double clicks our main executable,
+///    without manually pausing, the window will open then immediately closes after
+///    executing, making error reporting extremely hard.
+#[derive(Debug, Clone, Default)]
+pub struct ExecStatus {
+    /// Whether the command was executed or not.
+    pub executed: bool,
+    /// A flag to skip pausing the console window (on Windows) after executing.
+    pub no_pause: bool,
+}
+
+impl ExecStatus {
+    /// Create a new `ExecStatus` and mark it as `executed`
+    pub fn new_executed() -> Self {
+        Self {
+            executed: true,
+            ..Default::default()
+        }
+    }
+
+    setter!(executed(self.executed, bool));
+    setter!(no_pause(self.no_pause, bool));
 }
 
 /// Install rustup, rust toolchain, and various tools.
@@ -224,20 +288,16 @@ impl Installer {
 }
 
 impl ExecutableCommand for Installer {
-    fn execute(&self) -> Result<()> {
-        execute_with_pause! {
-            setup(
-                self.verbose,
-                self.quiet,
-                self.yes_to_all,
-                self.no_modify_env,
-                self.no_modify_path,
-                self.lang.as_deref(),
-            )?;
-            install::execute_installer(self)
-        }
-
-        Ok(())
+    fn execute(&self) -> Result<ExecStatus> {
+        setup(
+            self.verbose,
+            self.quiet,
+            self.yes_to_all,
+            self.no_modify_env,
+            self.no_modify_path,
+            self.lang.as_deref(),
+        )?;
+        install::execute_installer(self)
     }
 
     #[cfg(feature = "gui")]
@@ -247,24 +307,20 @@ impl ExecutableCommand for Installer {
 }
 
 impl ExecutableCommand for Manager {
-    fn execute(&self) -> Result<()> {
-        execute_with_pause! {
-            setup(
-                self.verbose,
-                self.quiet,
-                self.yes_to_all,
-                self.no_modify_env,
-                self.no_modify_path,
-                self.lang.as_deref(),
-            )?;
+    fn execute(&self) -> Result<ExecStatus> {
+        setup(
+            self.verbose,
+            self.quiet,
+            self.yes_to_all,
+            self.no_modify_env,
+            self.no_modify_path,
+            self.lang.as_deref(),
+        )?;
 
-            let Some(subcmd) = &self.command else {
-                return ManagerSubcommands::from_interaction()?.execute();
-            };
-            subcmd.execute()
-        }
-
-        Ok(())
+        let Some(subcmd) = &self.command else {
+            return ManagerSubcommands::from_interaction()?.execute();
+        };
+        subcmd.execute()
     }
 
     #[cfg(feature = "gui")]
@@ -369,18 +425,8 @@ pub enum ManagerSubcommands {
     },
 }
 
-macro_rules! return_if_executed {
-    ($($fn:expr),+) => {
-        $(
-            if $fn {
-                return Ok(());
-            }
-        )*
-    };
-}
-
 impl ExecutableCommand for ManagerSubcommands {
-    fn execute(&self) -> Result<()> {
+    fn execute(&self) -> Result<ExecStatus> {
         return_if_executed! {
             install::execute_manager(self)?,
             update::execute(self)?,
@@ -390,7 +436,7 @@ impl ExecutableCommand for ManagerSubcommands {
             tryit::execute(self)?,
             check::execute(self)?
         }
-        Ok(())
+        Ok(ExecStatus::default())
     }
 }
 
@@ -538,13 +584,17 @@ impl ManagerSubcommands {
 }
 
 /// Parsing commandline args for `Installer` mode.
-pub fn parse_installer_cli() -> Result<Installer> {
-    Installer::try_parse().map_err(manually_show_help_or_version)
+pub fn parse_installer_cli() -> Result<Box<Installer>> {
+    Installer::try_parse()
+        .map(Box::new)
+        .map_err(manually_show_help_or_version)
 }
 
 /// Parsing commandline args for `Manager` mode.
-pub fn parse_manager_cli() -> Result<Manager> {
-    Manager::try_parse().map_err(manually_show_help_or_version)
+pub fn parse_manager_cli() -> Result<Box<Manager>> {
+    Manager::try_parse()
+        .map(Box::new)
+        .map_err(manually_show_help_or_version)
 }
 
 fn manually_show_help_or_version(error: clap::Error) -> anyhow::Error {

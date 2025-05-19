@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::Subcommand;
 use rim_common::types::ToolkitManifest;
 
-use super::{handle_user_choice, GlobalOpts, ManagerSubcommands};
+use super::{handle_user_choice, ExecStatus, GlobalOpts, ManagerSubcommands};
 use crate::{
     components,
     core::ToolkitManifestExt,
@@ -30,9 +30,9 @@ impl ListCommand {
     }
 }
 
-pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
+pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     let ManagerSubcommands::List { installed, command } = cmd else {
-        return Ok(false);
+        return Ok(ExecStatus::default());
     };
 
     // `command` should either be passed from commandline option or being repeat
@@ -41,7 +41,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
     let sub_cmd = command.unwrap_or_default();
     sub_cmd.execute(*installed)?;
 
-    Ok(true)
+    Ok(ExecStatus::new_executed())
 }
 
 /// Ask user about list options, return a `bool` indicates whether the user wishs to continue.

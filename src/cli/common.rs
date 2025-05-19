@@ -408,10 +408,9 @@ where
     selections
 }
 
-/// Pausing the console window on Windows OS.
+/// Pausing the console window.
 ///
-/// This is to prevent the CMD window flashes after program finishes.
-#[cfg(windows)]
+/// This will ask user to press `enter` key after the program finishes.
 pub fn pause() -> Result<()> {
     if GlobalOpts::get().yes_to_all {
         return Ok(());
@@ -422,19 +421,6 @@ pub fn pause() -> Result<()> {
 
     readline()?;
     Ok(())
-}
-
-/// Pausing the console window only if the program was started with double click.
-#[cfg(windows)]
-pub fn pause_unless_started_with_command() -> Result<()> {
-    // so far there's no perfect solution do detect whether the program was started
-    // with double click or by command, we can only assume it was started with command
-    // if there are more than one args (has args other than the program itself).
-    if std::env::args_os().count() > 1 {
-        Ok(())
-    } else {
-        pause()
-    }
 }
 
 fn readline() -> Result<String> {

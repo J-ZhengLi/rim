@@ -146,8 +146,8 @@ impl GlobalOpts {
 /// - In [`Manager`](Mode::Manager) mode, this program can be used for
 ///   updating, uninstalling toolkit etc.
 pub enum Mode {
-    Manager(Result<cli::Manager>),
-    Installer(Result<cli::Installer>),
+    Manager(Result<Box<cli::Manager>>),
+    Installer(Result<Box<cli::Installer>>),
 }
 
 impl Mode {

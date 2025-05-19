@@ -42,3 +42,5 @@ jobs:
       run: cargo clippy --no-deps --workspace --exclude rim-gui -- -D warnings
     - name: run tests
       run: cargo test --workspace --exclude rim-gui --verbose
+      env:
+        RUST_BACKTRACE: full

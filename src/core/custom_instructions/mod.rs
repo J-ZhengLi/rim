@@ -1,5 +1,4 @@
 use rim_common::utils;
-use std::env::consts::EXE_SUFFIX;
 use std::{collections::HashMap, sync::LazyLock};
 
 macro_rules! declare_instructions {
@@ -50,10 +49,7 @@ pub(crate) fn is_supported(name: &str) -> bool {
 /// Since the list to check is highly rely on tool's name, let's calling it `semi-supported` for now.
 static SEMI_SUPPORTED_TOOLS: LazyLock<HashMap<&str, Vec<String>>> = LazyLock::new(|| {
     HashMap::from([
-        (
-            "mingw64",
-            vec![format!("gcc{EXE_SUFFIX}"), format!("ld{EXE_SUFFIX}")],
-        ),
+        ("mingw64", vec![exe!("gcc"), exe!("ld")]),
         ("codearts-rust", vec!["codearts-rust".into()]),
     ])
 });

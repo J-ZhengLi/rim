@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     common::{self, ComponentDecoration, ComponentListBuilder, Confirm},
-    ManagerSubcommands,
+    ExecStatus, ManagerSubcommands,
 };
 
 #[derive(Subcommand, Debug, Clone)]
@@ -48,14 +48,14 @@ impl ComponentCommand {
     }
 }
 
-pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<bool> {
+pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     let ManagerSubcommands::Component { command } = cmd else {
-        return Ok(false);
+        return Ok(ExecStatus::default());
     };
 
     command.execute()?;
 
-    Ok(true)
+    Ok(ExecStatus::new_executed())
 }
 
 fn install_components(components: &[String], insecure: bool) -> Result<()> {
