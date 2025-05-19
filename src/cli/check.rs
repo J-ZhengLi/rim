@@ -1,13 +1,13 @@
 use super::{ExecStatus, ManagerSubcommands};
-use crate::core::try_it;
+use crate::core::check;
 use anyhow::Result;
 
 /// Execute `install` command.
 pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<ExecStatus> {
-    let ManagerSubcommands::TryIt { path } = subcommand else {
+    let ManagerSubcommands::Check { extra_args } = subcommand else {
         return Ok(ExecStatus::default());
     };
 
-    try_it::try_it(path.as_deref())?;
+    check::run(extra_args)?;
     Ok(ExecStatus::new_executed().no_pause(true))
 }

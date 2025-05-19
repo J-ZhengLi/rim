@@ -17,7 +17,6 @@
     "install_via_cargo": "Installing third-party tools via cargo...",
 
     "installing_tool_info": "installing '%{name}'",
-    "installing_via_cargo_info": "installing '%{name}' using cargo",
     "installing_msvc_info": "running VS BuildTools installer...",
     "msvc_installed": "VS BuildTools is successfully installed!",
     "msvc_installed_reboot_required": "VS BuildTools is successfully installed, please reboot your computer after this installation",
@@ -158,5 +157,9 @@
     "task_success": "task successfully completed!",
     "no_installable_components": "no installable components",
     "no_component_selected": "no component selected",
-    "modify_option": "Modify"
+    "modify_option": "Modify",
+    "no_toolchain_installed": "no toolchain was installed",
+    "no_check_runner_installed": "the check runner toolchain '%{name}' was not installed, maybe re-installing the rule-set will fix this problem",
+    "no_rule_set_installed": "no rule-set was installed, the `check` command requires at least one rule-set to work, check the available tools option to see if your device support rule-set installation",
+    "unable_to_run_check": "unable to perform check, maybe the rule-set wasn't installed properly"
 }

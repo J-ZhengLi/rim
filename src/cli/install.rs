@@ -18,7 +18,7 @@ use crate::default_install_dir;
 use super::common::{
     question_single_choice, ComponentChoices, ComponentDecoration, ComponentListBuilder,
 };
-use super::{Installer, ManagerSubcommands};
+use super::{ExecStatus, Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
 use rim_common::utils;
@@ -26,7 +26,7 @@ use rim_common::utils;
 /// Perform installer actions.
 ///
 /// This will setup the environment and install user selected components.
-pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
+pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     let Installer {
         prefix,
         registry_url,
@@ -49,7 +49,8 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
 
     if *list_components {
         // print a list of available components then return, don't do anything else
-        return super::list::list_components(false, Some(&manifest));
+        super::list::list_components(false, Some(&manifest))?;
+        return Ok(ExecStatus::new_executed().no_pause(true));
     }
 
     manifest.adjust_paths()?;
@@ -108,7 +109,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<()> {
         }
     }
 
-    Ok(())
+    Ok(ExecStatus::new_executed())
 }
 
 /// Contains customized install options that will be collected from user input.
@@ -288,9 +289,9 @@ fn ask_tool_source(name: String) -> Result<String> {
     common::question_str(t!("question_package_source", tool = name), None, "")
 }
 
-pub(super) fn execute_manager(manager: &ManagerSubcommands) -> Result<bool> {
+pub(super) fn execute_manager(manager: &ManagerSubcommands) -> Result<ExecStatus> {
     let ManagerSubcommands::Install { version, .. } = manager else {
-        return Ok(false);
+        return Ok(ExecStatus::default());
     };
 
     todo!("install dist with version '{version}'");

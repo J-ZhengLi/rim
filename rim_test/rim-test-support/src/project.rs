@@ -30,7 +30,8 @@ impl ProjectBuilder {
         self.root.path()
     }
 
-    pub fn build(&self) -> Command {
+    /// Returns a new test [`Command`] to run test process.
+    pub fn command(&self) -> Command {
         // retain the modification entry.
         Command::new(&self.cmd)
     }

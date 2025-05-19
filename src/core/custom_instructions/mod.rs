@@ -1,7 +1,5 @@
-use std::env::consts::EXE_SUFFIX;
-use std::{collections::HashMap, sync::LazyLock};
-
 use rim_common::utils;
+use std::{collections::HashMap, sync::LazyLock};
 
 macro_rules! declare_instructions {
     ($($name:ident),+) => {
@@ -29,7 +27,7 @@ macro_rules! declare_instructions {
         fn supported_tool_is_installed(tool: &str) -> bool {
             match tool.replace('-', "_").as_str() {
                 $(
-                    stringify!($name) => $name::already_installed(),
+                    stringify!($name) => $name::is_installed(),
                 )*
                 // Is not supported, assume not installed for now
                 _ => false
@@ -51,17 +49,14 @@ pub(crate) fn is_supported(name: &str) -> bool {
 /// Since the list to check is highly rely on tool's name, let's calling it `semi-supported` for now.
 static SEMI_SUPPORTED_TOOLS: LazyLock<HashMap<&str, Vec<String>>> = LazyLock::new(|| {
     HashMap::from([
-        (
-            "mingw64",
-            vec![format!("gcc{EXE_SUFFIX}"), format!("ld{EXE_SUFFIX}")],
-        ),
+        ("mingw64", vec![exe!("gcc"), exe!("ld")]),
         ("codearts-rust", vec!["codearts-rust".into()]),
     ])
 });
 
 /// Checking if a certain tool is installed by:
 ///
-/// 1. If it has it's on module, it should be determined there, see list: [`SUPPORTED_TOOLS`].
+/// 1. It's custom instruction.
 /// 2. Looking up the same name in path.
 /// 3. Looking up a pre-defined list related to the given tool, to see if
 ///    those are all in the path.

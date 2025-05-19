@@ -47,54 +47,68 @@ macro_rules! run {
 /// ```
 #[macro_export]
 macro_rules! cmd {
-    ($program:expr) => {
-        std::process::Command::new($program)
-    };
+    ($program:expr) => {{
+        let mut cmd__ = std::process::Command::new($program);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // Prevent CMD window popup
+            cmd__.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+        }
+        cmd__
+    }};
     ($program:expr $(, $arg:expr )* $(,)?) => {{
         let mut cmd__ = std::process::Command::new($program);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // Prevent CMD window popup
+            cmd__.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+        }
         $(cmd__.arg($arg);)*
         cmd__
     }};
     ([$($key:tt = $val:expr),*] $program:expr $(, $arg:expr )* $(,)?) => {{
         let mut cmd__ = std::process::Command::new($program);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // Prevent CMD window popup
+            cmd__.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
+        }
         $(cmd__.arg($arg);)*
         $(cmd__.env($key, $val);)*
         cmd__
     }};
 }
 
+/// Convenient function to execute a command to finish while logging its output.
 pub fn execute(cmd: Command) -> Result<()> {
-    execute_command(cmd, true).map(|_| ())
+    execute_command(cmd, true, true).map(|_| ())
 }
 
-pub fn execute_for_ret_code(cmd: Command) -> Result<i32> {
-    execute_command(cmd, false)
-}
+/// Execute a command.
+///
+/// - When `expect_success` is `true`,
+///   this will return `Ok` only if the command is successfully executed,
+///   otherwise this will ignore execution error and return the error code wrapped in `Ok`.
+/// - When `log_output` is `true`,
+///   this will redirect the command output using [`os_pipe`] and log them using [`log`] interface.
+pub fn execute_command(mut cmd: Command, expect_success: bool, log_output: bool) -> Result<i32> {
+    let (mut child, cmd_content) = if log_output {
+        let (mut reader, stdout) = os_pipe::pipe()?;
+        let stderr = stdout.try_clone()?;
 
-fn execute_command(mut cmd: Command, expect_success: bool) -> Result<i32> {
-    let (mut reader, stdout) = os_pipe::pipe()?;
-    let stderr = stdout.try_clone()?;
+        let child = cmd.stdout(stdout).stderr(stderr).spawn()?;
 
-    cfg_if::cfg_if! {
-        if #[cfg(windows)] {
-            use std::os::windows::process::CommandExt;
-            // Prevent CMD window popup
-            use winapi::um::winbase::CREATE_NO_WINDOW;
-            let mut child = cmd
-                .creation_flags(CREATE_NO_WINDOW)
-                .stdout(stdout)
-                .stderr(stderr)
-                .spawn()?;
-        } else {
-            let mut child = cmd
-                .stdout(stdout)
-                .stderr(stderr)
-                .spawn()?;
-        }
-    }
+        // NB: to prevent deadlock, `cmd` must be dropped before reading from `reader`
+        let cmd_content = cmd_to_string(cmd);
+        output_to_log(&mut reader);
 
-    let cmd_content = cmd_to_string(cmd);
-    output_to_log(Some(&mut reader));
+        (child, cmd_content)
+    } else {
+        (cmd.spawn()?, cmd_to_string(cmd))
+    };
 
     let status = child.wait()?;
     let ret_code = get_ret_code(&status);
@@ -130,9 +144,8 @@ fn get_ret_code(status: &ExitStatus) -> i32 {
 }
 
 /// Log the command output
-fn output_to_log<R: io::Read>(from: Option<&mut R>) {
-    let Some(out) = from else { return };
-    let reader = BufReader::new(out);
+fn output_to_log<R: io::Read>(from: &mut R) {
+    let reader = BufReader::new(from);
     for line in reader.lines().map_while(Result::ok) {
         // prevent double 'info|warn|error:' labels, although this might be a dumb way to do it
         if let Some(info) = line.strip_prefix("info: ") {

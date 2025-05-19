@@ -7,14 +7,19 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use rim_common::{
-    types::{ToolInfo, ToolKind},
+    types::{TomlParser, ToolInfo, ToolKind},
     utils,
 };
 
 use super::{
-    directories::RimDir, parser::fingerprint::ToolRecord, GlobalOpts, PathExt, CARGO_HOME,
+    directories::RimDir,
+    parser::{cargo_config::CargoConfig, fingerprint::ToolRecord},
+    GlobalOpts, PathExt, CARGO_HOME,
 };
-use crate::{core::custom_instructions, InstallConfiguration};
+use crate::{
+    core::{check::RUNNER_TOOLCHAIN_NAME, custom_instructions},
+    InstallConfiguration,
+};
 
 /// All supported VS Code variants
 pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
@@ -40,6 +45,7 @@ pub(crate) static VSCODE_FAMILY: LazyLock<Vec<String>> = LazyLock::new(|| {
 #[derive(Debug, Clone)]
 pub(crate) struct Tool<'a> {
     name: String,
+    /// The install location of this tool
     path: PathExt<'a>,
     pub(crate) kind: ToolKind,
     /// Additional args to run installer, currently only used for `cargo install`.
@@ -100,6 +106,10 @@ impl<'a> Tool<'a> {
         else if path.is_dir() {
             // Step 3: read directory to find characteristics.
             let entries = utils::walk_dir(path, false)?;
+            // Check for file named `Cargo.toml`
+            if entries.iter().any(|path| path.ends_with("Cargo.toml")) {
+                return Ok(Self::new(name, ToolKind::Crate).with_path(path));
+            }
             // Check if there is any folder that looks like `bin`
             // Then assuming this is `UsrDirs` type installer.
             if entries.iter().any(|path| path.ends_with("bin")) {
@@ -165,7 +175,7 @@ impl<'a> Tool<'a> {
     ) -> Result<ToolRecord> {
         let paths = match self.kind {
             ToolKind::CargoTool => {
-                if !config.cargo_is_installed {
+                if !config.toolchain_is_installed {
                     bail!(
                         "trying to install '{}' using cargo, but cargo is not installed",
                         self.name()
@@ -213,6 +223,8 @@ impl<'a> Tool<'a> {
                 let backup = utils::copy_into(path, config.tools_dir())?;
                 vec![backup]
             }
+            ToolKind::RuleSet => install_rule_set(&self.path, config)?,
+            ToolKind::Crate => install_crate(self.name(), &self.path, config)?,
             // Just throw it under `tools` dir
             ToolKind::Unknown => {
                 vec![move_to_tools(config, self.name(), self.path.single()?)?]
@@ -225,6 +237,7 @@ impl<'a> Tool<'a> {
             .with_dependencies(info.dependencies().to_vec()))
     }
 
+    /// Remove a tool from user's machine.
     pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
         match self.kind {
             ToolKind::CargoTool => {
@@ -247,7 +260,10 @@ impl<'a> Tool<'a> {
                 // make a list of those and only execute it if it can be used for uninstallation
                 utils::remove(self.path.single()?)?;
             }
-            ToolKind::Unknown => utils::remove(self.path.single()?)?,
+            ToolKind::Crate => uninstall_crate(self.name(), &self.path, config)?,
+            ToolKind::RuleSet | ToolKind::Unknown => {
+                utils::remove(self.path.single()?)?;
+            }
         }
         Ok(())
     }
@@ -268,7 +284,8 @@ fn cargo_install_or_uninstall(op: &str, args: &[&str], cargo_home: &Path) -> Res
     }
     full_args.extend_from_slice(args);
     cmd.args(full_args);
-    utils::execute(cmd)
+    utils::execute(cmd)?;
+    Ok(())
 }
 
 /// Move one path (file/dir) to a new folder with `name` under tools dir.
@@ -290,6 +307,64 @@ fn install_dir_with_bin_(
     let bin_dir_after_move = dir.join("bin");
     super::os::add_to_path(&bin_dir_after_move)?;
     Ok(dir)
+}
+
+fn install_rule_set(path: &PathExt<'_>, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
+    let src_dir = path.single()?;
+
+    // make a directory to store it under `tools`
+    let dest_root = config.tools_dir().join("ruleset");
+    // make a runner directory to store the runner toolchain.
+    // (since we are using a dedicated toolchain with customized clippy, the runner
+    // should be the only directory under `ruleset`. If we use `cargo-dylint` in the future
+    // we'll need another directory to store custom lints)
+    let runner_dir = dest_root.join("runner");
+    utils::copy_as(src_dir, &runner_dir)?;
+
+    if !config.toolchain_is_installed {
+        bail!(t!("no_toolchain_installed"));
+    }
+
+    let path_to_rustup = config.cargo_bin().join(exe!("rustup"));
+    // link the runner toolchain using rustup
+    run!([CARGO_HOME = config.cargo_home()] path_to_rustup, "toolchain", "link", RUNNER_TOOLCHAIN_NAME, &runner_dir)?;
+
+    Ok(vec![runner_dir])
+}
+
+fn install_crate(
+    name: &str,
+    path: &PathExt<'_>,
+    config: &InstallConfiguration,
+) -> Result<Vec<PathBuf>> {
+    let path = path.single()?;
+
+    // Step 1: copy the directory path to `crates/`
+    let crate_dir = utils::copy_into(path, config.crates_dir())?;
+    // Step 2: modify `cargo/config.toml` to update patch information
+    // FIXME: This method might disrupt existing configuration that was manually altered by user,
+    // use `toml-edit` to modify it instead.
+    let mut cargo_config = CargoConfig::load_from_dir(config.cargo_home())?;
+    cargo_config
+        .add_patch(name, &crate_dir)
+        .write_to_dir(config.cargo_home())?;
+
+    Ok(vec![crate_dir])
+}
+
+fn uninstall_crate<T: RimDir>(name: &str, path: &PathExt<'_>, config: T) -> Result<()> {
+    let path = path.single()?;
+
+    // remove the source code dir
+    utils::remove(path)?;
+
+    // update cargo config
+    let mut cargo_config = CargoConfig::load_from_dir(config.cargo_home())?;
+    cargo_config
+        .remove_patch(name)
+        .write_to_dir(config.cargo_home())?;
+
+    Ok(())
 }
 
 /// Uninstalling a tool with bin folder is as simple as removing the directory,
@@ -362,7 +437,7 @@ impl Plugin {
                         )
                     );
                     match run!(program, arg_opt, plugin_path) {
-                        Ok(()) => continue,
+                        Ok(_) => continue,
                         // Ignore error when uninstalling.
                         Err(_) if uninstall => {
                             info!(
