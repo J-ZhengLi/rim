@@ -21,6 +21,9 @@ Options:
   -y, --yes
           Disable interaction and answer 'yes' to all prompts
 
+  -s, --silent
+          Run manager without showing the main window
+
       --no-modify-path
           Don't modify user's `PATH` environment variable
 

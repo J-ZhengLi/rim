@@ -408,7 +408,9 @@ where
     selections
 }
 
-#[cfg(windows)]
+/// Pausing the console window.
+///
+/// This will ask user to press `enter` key after the program finishes.
 pub fn pause() -> Result<()> {
     if GlobalOpts::get().yes_to_all {
         return Ok(());

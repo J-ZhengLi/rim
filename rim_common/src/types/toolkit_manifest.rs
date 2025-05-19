@@ -1,5 +1,5 @@
 use super::{TomlParser, ToolMap};
-use crate::utils;
+use crate::{setter, utils};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -22,6 +22,9 @@ pub struct ToolkitManifest {
     /// Path to the manifest file.
     #[serde(skip)]
     pub path: Option<PathBuf>,
+    /// A boolean flag to indicate whether this manifest is for offline package.
+    #[serde(skip)]
+    pub is_offline: bool,
 }
 
 impl TomlParser for ToolkitManifest {
@@ -53,6 +56,8 @@ impl ToolkitManifest {
             .iter()
             .find_map(|(group, tools)| tools.contains(tool).then_some(group.as_str()))
     }
+
+    setter!(offline(self.is_offline, bool));
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]

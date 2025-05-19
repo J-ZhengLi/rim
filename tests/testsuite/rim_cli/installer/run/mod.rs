@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
+use super::INSTALLER_PROCESS;
 use rim_common::utils::Extractable;
 use rim_test_support::prelude::*;
-use rim_test_support::project::ProjectBuilder;
 
 // Clear the mocked server once to make sure it's always up-to-date
 static CLEAR_OBSCURE_MOCKED_SERVER_ONCE: OnceLock<()> = OnceLock::new();
@@ -47,10 +47,9 @@ fn mocked_dist_server() -> &'static str {
 
 #[rim_test]
 fn insecure_installation() {
-    let test_process = ProjectBuilder::installer_process();
-    let root = test_process.root();
-    test_process
-        .build()
+    let root = INSTALLER_PROCESS.root();
+    INSTALLER_PROCESS
+        .command()
         .arg("-y")
         .arg("--insecure")
         .arg("--no-modify-env")

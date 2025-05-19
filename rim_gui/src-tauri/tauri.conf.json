@@ -17,31 +17,7 @@
     ]
   },
   "identifier": "com.xuanwu.rust",
-  "plugins": {
-    "cli": {
-      "description": "An interactive Rust installation manager",
-      "args": [
-        {
-          "name": "silent",
-          "short": "s"
-        },
-        {
-          "name": "rustup-dist-server",
-          "takesValue": true
-        }
-      ],
-      "subcommands": {
-        "uninstall": {
-          "description": "Uninstall individual components or everything.",
-          "args": [
-            {
-              "name": "keep-self"
-            }
-          ]
-        }
-      }
-    }
-  },
+  "plugins": {},
   "app": {
     "withGlobalTauri": true,
     "security": {

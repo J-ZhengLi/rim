@@ -39,7 +39,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     info!("{}", t!("installing_msvc_info"));
     let mut cmd = cmd!(buildtools_exe);
     cmd.args(args);
-    let exit_code: VSExitCode = utils::execute_for_ret_code(cmd)?.into();
+    let exit_code: VSExitCode = utils::execute_command(cmd, false, true)?.into();
     match exit_code {
         VSExitCode::Success => {
             info!("{}", t!("msvc_installed"));
@@ -61,7 +61,7 @@ pub(super) fn uninstall<T: RimDir>(_config: T) -> Result<()> {
     Ok(())
 }
 
-pub(super) fn already_installed() -> bool {
+pub(super) fn is_installed() -> bool {
     // Other targets don't need MSVC, so assume it has already installed
     if !env!("TARGET").contains("msvc") {
         return true;

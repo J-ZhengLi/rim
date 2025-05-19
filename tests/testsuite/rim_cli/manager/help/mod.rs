@@ -1,16 +1,14 @@
+use super::MANAGER_PROCESS;
 use rim_test_support::file;
 use rim_test_support::prelude::*;
-use rim_test_support::project::ProjectBuilder;
 
 #[rim_test]
 fn case() {
-    let test_process = ProjectBuilder::manager_process();
-    let project = test_process.build();
+    let base = MANAGER_PROCESS.command().arg("--help").assert().success();
 
-    project
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout_eq(file!["stdout.log"])
-        .stderr_eq(file!["stderr.log"]);
+    #[cfg(feature = "gui")]
+    base.stdout_eq(file!["stdout_gui.log"]);
+
+    #[cfg(not(feature = "gui"))]
+    base.stdout_eq(file!["stdout.log"]);
 }
