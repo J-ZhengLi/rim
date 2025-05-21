@@ -1,16 +1,16 @@
 
 # This file was automatically generated.
 # 此文件是自动生成的.
-name = "Rust 中国社区发行版"
-version = "stable v1.86.0"
+name = "Rust 中国社区发行版 (毕昇)"
+version = "stable v1.72.0"
 
 [rust]
-channel = "1.86.0"
+channel = "1.72.0"
 profile = "minimal"
 display-name = "Rust 官方工具"
 description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
 components = ["clippy", "rustfmt", "rust-src"]
-optional-components = ["llvm-tools", "rust-docs", "rust-analyzer"]
+optional-components = ["llvm-tools", "rust-analyzer"]
 group = "Rust 基础工具集"
 offline-dist-server = "toolchain"
 
@@ -39,7 +39,7 @@ ylong_xml = "ylong_xml 模块提供了 XML 语法格式文本或字符串的序�
 
 [tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
-"Rust 优选工具集" = ["typos", "cargo-nextest"]
+"Rust 优选工具集" = ["cargo-nextest"]
 "Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml"]

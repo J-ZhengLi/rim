@@ -35,7 +35,7 @@ async function openFolder() {
   <div flex="~ col">
     <div flex="1" mx="12px">
       <h4>安装目录</h4>
-      <p>Rust 一站式开发套件将会安装到该路径中。</p>
+      <p>Rust 发行版将会安装到该路径中。</p>
       <div flex="~ items-center">
         <base-input v-bind:value="installConf.path.value" flex="1" type="text" placeholder="选择一个文件夹" @change="
           (event: Event) =>
