@@ -225,7 +225,7 @@ pub fn has_desktop_environment() -> bool {
             true
         } else {
             // Linux desktop typically have one of these env set
-            ["DESKTOP_SESSION", "DISPLAY", "XDG_CURRENT_DESKTOP", "WAYLAND_DISPLAY"].into_iter()
+            ["DESKTOP_SESSION", "XDG_CURRENT_DESKTOP", "WAYLAND_DISPLAY"].into_iter()
                 .any(|env| std::env::var_os(env).is_some())
         }
     }
