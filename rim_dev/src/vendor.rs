@@ -1,6 +1,6 @@
 use crate::{
     common::{download, resources_dir},
-    toolkits_parser::{Component, GlobalConfig, Toolkits},
+    toolkits_parser::{Component, Configuration, Toolkits},
 };
 use anyhow::{anyhow, Result};
 use indexmap::IndexMap;
@@ -115,7 +115,8 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
     ensure_dir(&offline_manifests_dir)?;
 
     for (name, toolkit) in &mut toolkits.toolkit {
-        let toolkit_root = toolkits.config.abs_package_dir().join(toolkit.full_name());
+        let config = &toolkit.overridden_config(&toolkits.config);
+        let toolkit_root = config.abs_package_dir().join(toolkit.full_name());
         if args.should_clear_previous_downloads(name) && toolkit_root.is_dir() {
             println!(
                 "removing previously downloaded packages under: {:?}",
@@ -138,7 +139,7 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
         // and change it to a relative `path`
         // (assuming that path is valid, we will use it to download packages).
         let offline_manifest_path = offline_manifests_dir.join(format!("{name}.toml"));
-        let targeted_tools = toolkit.targeted_tools_mut();
+        let targeted_tools = &mut toolkit.manifest.tools.target;
         for (target, tool_info) in targeted_tools {
             let tools_dir = toolkit_root.join(target).join(TOOLS_DIRNAME);
 
@@ -174,11 +175,11 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
             }
         }
         // Then, insert `[rust.offline-dist-server]` value and `[rust.rustup]` section
-        let rust_section = toolkit.rust_section_mut();
+        let rust_section = &mut toolkit.manifest.rust;
         rust_section.offline_dist_server = Some(TOOLCHAIN_DIRNAME.into());
         // Make a `[rust.rustup]` map, download rustup-init if necessary
         let mut rustup_sources = IndexMap::new();
-        for target in &toolkits.config.targets {
+        for target in &config.targets {
             let triple = target.triple();
             let suffix = if triple.contains("windows") {
                 ".exe"
@@ -189,10 +190,7 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
 
             if args.should_download(name, triple) {
                 let rustup_init = format!("rustup-init{suffix}");
-                let url = format!(
-                    "{}/dist/{triple}/{rustup_init}",
-                    toolkits.config.rustup_server,
-                );
+                let url = config.rustup_dist_url(&format!("{triple}/{rustup_init}"));
                 let tools_dir = toolkit_root.join(triple).join(TOOLS_DIRNAME);
                 ensure_dir(&tools_dir)?;
                 let dest = tools_dir.join(rustup_init);
@@ -204,14 +202,14 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
         rust_section.rustup = rustup_sources;
 
         // Download rust-toolchain component packages if necessary
-        for target in &toolkits.config.targets {
+        for target in &config.targets {
             let triple = target.triple();
             if !args.should_download(name, triple) {
                 continue;
             }
 
             download_toolchain_components(
-                &toolkits.config,
+                config,
                 &toolkit_root,
                 toolkit.rust_version(),
                 toolkit.date(),
@@ -228,7 +226,7 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
 }
 
 fn download_toolchain_components(
-    config: &GlobalConfig,
+    config: &Configuration,
     root: &Path,
     version: &str,
     date: &str,

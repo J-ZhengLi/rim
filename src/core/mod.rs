@@ -57,11 +57,11 @@ static APP_INFO: OnceLock<AppInfo> = OnceLock::new();
 static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
 pub(crate) fn default_rustup_dist_server() -> &'static Url {
-    &build_config().rustup_dist_server
+    build_config().rustup_dist_server(env!("EDITION"))
 }
 
 pub(crate) fn default_rustup_update_root() -> &'static Url {
-    &build_config().rustup_update_root
+    build_config().rustup_update_root(env!("EDITION"))
 }
 
 pub(crate) fn rim_dist_server() -> Url {
@@ -71,7 +71,7 @@ pub(crate) fn rim_dist_server() -> Url {
         }
     }
 
-    build_config().rim_dist_server.clone()
+    build_config().rim_dist_server(env!("EDITION")).clone()
 }
 
 pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {

@@ -1,8 +1,9 @@
 
 # This file was automatically generated.
 # 此文件是自动生成的.
-name = "Rust 中国社区一站式开发套件"
+name = "Rust 中国社区发行版"
 version = "stable v1.86.0"
+edition = "community"
 
 [rust]
 channel = "1.86.0"
@@ -21,7 +22,6 @@ rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个
 rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
 mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
-typos = "源代码拼写检查器，用于查找并纠正源代码中的拼写错误"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
 vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
 vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
@@ -35,8 +35,8 @@ ylong_xml = "ylong_xml 模块提供了 XML 语法格式文本或字符串的序�
 
 [tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
-"Rust 优选工具集" = ["cargo-nextest", "typos"]
-"Rust 软件开发工具链" = ["vscode", "vscode-rust-analyzer", "codearts-rust", "vscodium"]
+"Rust 优选工具集" = ["typos", "cargo-nextest"]
+"Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml"]
 
@@ -60,11 +60,14 @@ optional = true
 version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
 
-[tools.target.x86_64-pc-windows-gnu.typos]
+[tools.target.x86_64-pc-windows-gnu.coding-guidelines-ruleset]
 required = false
 optional = true
-version = "1.31.1"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip"
+version = "0.1.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-gnu.tar.xz"
+kind = "rule-set"
+display-name = "编程规范规则集"
+requires = ["rust"]
 
 [tools.target.x86_64-pc-windows-gnu.ylong_json]
 required = false
@@ -107,15 +110,9 @@ optional = true
 version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
 
-[tools.target.x86_64-pc-windows-msvc.typos]
-required = false
-optional = true
-version = "1.31.1"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-pc-windows-msvc.zip"
-
 [tools.target.x86_64-pc-windows-msvc.coding-guidelines-ruleset]
 required = false
-optional = false
+optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-msvc.tar.xz"
 kind = "rule-set"
@@ -164,11 +161,14 @@ optional = true
 version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz"
 
-[tools.target.x86_64-unknown-linux-gnu.typos]
+[tools.target.x86_64-unknown-linux-gnu.coding-guidelines-ruleset]
 required = false
 optional = true
-version = "1.31.1"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/typos/1.31.1/typos-v1.31.1-x86_64-unknown-linux-musl.tar.gz"
+version = "0.1.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-unknown-linux-gnu.tar.xz"
+kind = "rule-set"
+display-name = "编程规范规则集"
+requires = ["rust"]
 
 [tools.target.x86_64-unknown-linux-gnu.ylong_json]
 required = false
@@ -212,11 +212,14 @@ optional = true
 version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-aarch64-unknown-linux-gnu.tar.gz"
 
-[tools.target.aarch64-unknown-linux-gnu.typos]
+[tools.target.aarch64-unknown-linux-gnu.coding-guidelines-ruleset]
 required = false
 optional = true
-identifier = "typos-cli"
-version = "1.31.1"
+version = "0.1.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-aarch64-unknown-linux-gnu.tar.xz"
+kind = "rule-set"
+display-name = "编程规范规则集"
+requires = ["rust"]
 
 [tools.target.aarch64-unknown-linux-gnu.ylong_json]
 required = false

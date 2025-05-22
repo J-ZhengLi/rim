@@ -24,6 +24,7 @@ pub struct InstallationRecord {
     /// Name of the bundle, such as `my-rust-stable`
     pub name: Option<String>,
     pub version: Option<String>,
+    pub edition: Option<String>,
     pub root: PathBuf,
     pub rust: Option<RustRecord>,
     #[serde(default)]
@@ -92,6 +93,7 @@ impl InstallationRecord {
     pub(crate) fn clone_toolkit_meta_from_manifest(&mut self, manifest: &ToolkitManifest) {
         self.name.clone_from(&manifest.name);
         self.version.clone_from(&manifest.version);
+        self.edition.clone_from(&manifest.edition);
     }
 
     pub(crate) fn remove_toolkit_meta(&mut self) {
@@ -316,11 +318,13 @@ paths = [{QUOTE}{}{QUOTE}]
         let input = r#"
 name = "rust bundle (experimental)"
 version = "0.1"
+edition = "professional"
 root = '/path/to/something'"#;
 
         let expected = InstallationRecord::from_str(input).unwrap();
         assert_eq!(expected.name.unwrap(), "rust bundle (experimental)");
         assert_eq!(expected.version.unwrap(), "0.1");
+        assert_eq!(expected.edition.unwrap(), "professional");
         assert_eq!(expected.root, PathBuf::from("/path/to/something"));
     }
 
