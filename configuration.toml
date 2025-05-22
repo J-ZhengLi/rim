@@ -16,14 +16,14 @@ registry_url = 'sparse+https://xuanwu.base.atomgit.com/index/'
 
 [locale.en-US]
 vendor = "Rust China Community"
-product = "Rust China Community Distribution"
+product = "Rust China Community Distribution (BISHENG)"
 installer_title = "Rust China Community Distribution Installer"
 manager_title = "Rust China Community Distribution Manager"
 content_source = "Content source: Rust China Community, Rust Native Community, Third-party open source community"
 
 [locale.zh-CN]
 vendor = "Rust 中国社区"
-product = "Rust 中国社区发行版"
+product = "Rust 中国社区发行版 (毕昇)"
 installer_title = "Rust 中国社区发行版安装工具"
 manager_title = "Rust 中国社区发行版管理工具"
 content_source = "内容来源：Rust 中国社区，Rust 原生社区，第三方开源社区"
