@@ -24,7 +24,6 @@ pub(super) fn main(
         common::update_shared_configs(args.as_ref());
     }
     tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cmd| {}))
         .invoke_handler(tauri::generate_handler![
             close_window,
@@ -54,7 +53,7 @@ pub(super) fn main(
 }
 
 #[tauri::command]
-fn close_window(window: tauri::WebviewWindow) {
+fn close_window(window: tauri::Window) {
     common::close_window(window);
 }
 

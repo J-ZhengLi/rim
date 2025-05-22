@@ -126,14 +126,7 @@ impl<'a> DistWorker<'a> {
             cmd
         } else {
             let mut cmd = pnpm_cmd();
-            cmd.args([
-                "run",
-                "tauri",
-                "build",
-                "--no-bundle",
-                "--target",
-                self.build_target,
-            ]);
+            cmd.args(["run", "tauri", "build", "--target", self.build_target]);
             if noweb {
                 cmd.args(["--features", "no-web"]);
             }

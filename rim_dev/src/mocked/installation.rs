@@ -51,7 +51,7 @@ paths = ['{0}/tools/mingw64']
 
             // use tauri-cli under rim_gui dir
             let mut cmd = pnpm_cmd();
-            cmd.args(["run", "tauri", "build", "-d", "--no-bundle"]);
+            cmd.args(["run", "tauri", "build", "-d"]);
 
             (
                 cmd,
