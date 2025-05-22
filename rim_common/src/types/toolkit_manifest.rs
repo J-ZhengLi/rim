@@ -1,8 +1,7 @@
 use super::{TomlParser, ToolMap};
 use crate::{setter, utils};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::path::PathBuf;
 use url::Url;
 
@@ -13,6 +12,8 @@ pub struct ToolkitManifest {
     pub name: Option<String>,
     /// Product version to be cached after installation, so that we can show it as `installed`
     pub version: Option<String>,
+    /// Toolkit edition, such as `basic`, `community`
+    pub edition: Option<String>,
 
     pub rust: RustToolchain,
     #[serde(default)]
@@ -185,7 +186,7 @@ pub struct Tools {
     ///
     /// Note that not all tools will have a group.
     #[serde(default)]
-    group: IndexMap<String, HashSet<String>>,
+    group: IndexMap<String, IndexSet<String>>,
     #[serde(default)]
     pub target: IndexMap<String, ToolMap>,
 }
@@ -453,7 +454,7 @@ Others = [ "t3", "t4" ]
         let expected = ToolkitManifest::from_str(input).unwrap();
         assert_eq!(
             expected.tools.group,
-            IndexMap::<String, HashSet<String>>::from_iter([
+            IndexMap::<String, IndexSet<String>>::from_iter([
                 (
                     "Some Group".to_string(),
                     ["t1".to_string(), "t2".to_string()].into_iter().collect()
@@ -596,6 +597,7 @@ no-proxy = "localhost,some.domain.com"
         let input = r#"
 name = "my toolkit"
 version = "1.0"
+edition = "professional"
 
 [rust]
 version = "1.0.0"
@@ -603,6 +605,7 @@ version = "1.0.0"
         let expected = ToolkitManifest::from_str(input).unwrap();
         assert_eq!(expected.name.unwrap(), "my toolkit");
         assert_eq!(expected.version.unwrap(), "1.0");
+        assert_eq!(expected.edition.unwrap(), "professional");
     }
 
     #[test]
