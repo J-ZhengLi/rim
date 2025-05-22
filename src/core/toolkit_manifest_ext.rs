@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use anyhow::{anyhow, Result};
-use rim_common::types::{TomlParser, ToolMap, ToolkitManifest};
+use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolkitManifest};
 use rim_common::utils;
 use serde::de::DeserializeOwned;
 use tokio::sync::Mutex;
@@ -169,8 +169,11 @@ impl ToolkitManifestExt for ToolkitManifest {
             } else {
                 vec![]
             };
+            let filter_out_gui_tools = |a: &(&str, &ToolInfo)| -> bool {
+                utils::has_desktop_environment() || a.1.is_gui_only()
+            };
 
-            for (tool_name, tool_info) in tools {
+            for (tool_name, tool_info) in tools.iter().filter(filter_out_gui_tools) {
                 let installed = installed_in_env.contains(&tool_name);
                 let version = if check_for_existence && installed {
                     // if the tool is already installed but we are doing a fresh install here,
@@ -457,26 +460,20 @@ optional-components = []
 plain_version = "0.1.0"
 
 [tools.target.x86_64-pc-windows-msvc.detailed_version]
-required = false
 optional = true
 identifier = "hello"
 version = "0.2.0"
 
 [tools.target.x86_64-pc-windows-msvc.url_tool]
 required = true
-optional = false
 url = "http://example.com/"
 filename = "hello.zip"
 
 [tools.target.x86_64-pc-windows-msvc.path_tool]
-required = false
-optional = false
 version = "0.3.0"
 path = "path/to/bin"
 
 [tools.target.x86_64-pc-windows-msvc.git_tool]
-required = false
-optional = false
 git = "https://example.git/"
 branch = "dev"
 "#;
