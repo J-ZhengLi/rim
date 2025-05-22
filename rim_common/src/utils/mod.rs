@@ -7,6 +7,7 @@ mod log;
 mod process;
 mod progress_bar;
 
+use cfg_if::cfg_if;
 // Re-exports
 pub use download::DownloadOpt;
 pub use extraction::Extractable;
@@ -211,6 +212,23 @@ pub fn build_cfg_locale(key: &str) -> &str {
 /// Note: Use this in `async` context rather than [`std::thread::sleep`].
 pub async fn async_sleep(duration: Duration) {
     tokio::time::sleep(duration).await;
+}
+
+/// Check if the current operation system has desktop environment running.
+pub fn has_desktop_environment() -> bool {
+    cfg_if! {
+        if #[cfg(windows)] {
+            // assuming all Windows OS have desktop environment
+            true
+        } else if #[cfg(target_os = "macos")] {
+            // assuming MacOS has DE as well, although it might not always true,
+            true
+        } else {
+            // Linux desktop typically have one of these env set
+            ["DESKTOP_SESSION", "DISPLAY", "XDG_CURRENT_DESKTOP", "WAYLAND_DISPLAY"].into_iter()
+                .any(|env| std::env::var_os(env).is_some())
+        }
+    }
 }
 
 #[cfg(test)]
