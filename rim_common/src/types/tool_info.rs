@@ -145,6 +145,12 @@ impl ToolInfo {
         }
     }
 
+    /// Return `true` if this tool only has graphical user interface,
+    /// thus cannot be installed on system that has no desktop environment.
+    pub fn is_gui_only(&self) -> bool {
+        self.details().map(|d| d.gui_only).unwrap_or_default()
+    }
+
     /// Retrieve the identifier string of this tool.
     ///
     /// ```toml
@@ -214,13 +220,21 @@ impl ToolInfo {
     }
 }
 
+fn is_false(val: &bool) -> bool {
+    !val
+}
+
 #[derive(Debug, Default, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct ToolInfoDetails {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub required: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub optional: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    /// A flag to indicate whether this tool only offers GUI,
+    /// thus should not be installed if the user doesn't have desktop environment.
+    pub gui_only: bool,
     pub identifier: Option<String>,
     #[serde(flatten)]
     pub source: Option<ToolSource>,
