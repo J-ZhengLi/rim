@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { onMounted, Ref, ref } from 'vue';
 import { Notification, NotificationAction, RustFunction } from './utils/types/Notification'
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { appWindow } from '@tauri-apps/api/window';
 import { invokeCommand, managerConf } from './utils';
-import { message } from '@tauri-apps/plugin-dialog';
-const appWindow = getCurrentWebviewWindow()
+import { message } from '@tauri-apps/api/dialog';
 
 const appName = ref('');
 const appIcon = "/128x128.png";
@@ -23,9 +22,9 @@ function onAction(command: RustFunction) {
     args ? invokeCommand(func, Object.fromEntries(args)) : invokeCommand(func);
   } catch (err) {
     if (err instanceof SyntaxError && args) {
-      message("无效的 JSON 语法: " + args, { kind: 'error' });
+      message("无效的 JSON 语法: " + args, { type: 'error' });
     } else {
-      message('调用 tauri 命令时发生错误: ' + err, { kind: 'error' });
+      message('调用 tauri 命令时发生错误: ' + err, { type: 'error' });
     }
   }
 }

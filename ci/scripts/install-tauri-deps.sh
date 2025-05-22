@@ -3,13 +3,13 @@
 # Reference: https://v2.tauri.app/start/prerequisites/#system-dependencies
 install_on_debian() {
     sudo apt update
-    sudo apt install libwebkit2gtk-4.1-dev \
+    sudo apt install libwebkit2gtk-4.0-dev \
         build-essential \
         curl \
         wget \
         file \
-        libxdo-dev \
         libssl-dev \
+        libgtk-3-dev \
         libayatana-appindicator3-dev \
         librsvg2-dev
 }
@@ -17,32 +17,34 @@ install_on_debian() {
 install_on_arch() {
     sudo pacman -Syu
     sudo pacman -S --needed \
-        webkit2gtk-4.1 \
+        webkit2gtk \
         base-devel \
         curl \
         wget \
         file \
         openssl \
         appmenu-gtk-module \
+        gtk3 \
         libappindicator-gtk3 \
-        librsvg
+        librsvg \
+        libvips
 }
 
 install_on_fedora() {
     sudo dnf check-update
-    sudo dnf install webkit2gtk4.1-devel \
+    sudo dnf install webkit2gtk4.0-devel \
         openssl-devel \
         curl \
         wget \
         file \
         libappindicator-gtk3-devel \
         librsvg2-devel
-    sudo dnf group install "c-development"
+    sudo dnf group install "C Development Tools and Libraries"
 }
 
 install_on_gentoo() {
     sudo emerge --ask \
-        net-libs/webkit-gtk:4.1 \
+        net-libs/webkit-gtk:4 \
         dev-libs/libappindicator \
         net-misc/curl \
         net-misc/wget \
@@ -51,7 +53,7 @@ install_on_gentoo() {
 
 install_on_opensuse() {
     sudo zypper up
-    sudo zypper in webkit2gtk3-devel \
+    sudo zypper in webkit2gtk3-soup2-devel \
         libopenssl-devel \
         curl \
         wget \
@@ -61,16 +63,19 @@ install_on_opensuse() {
     sudo zypper in -t pattern devel_basis
 }
 
-install_on_alpine() {
-    sudo apk add \
-        build-base \
-        webkit2gtk \
+install_on_void() {
+    sudo xbps-install -Syu
+    sudo xbps-install -S \
+        webkit2gtk-devel \
         curl \
         wget \
         file \
         openssl \
-        libayatana-appindicator-dev \
-        librsvg
+        gtk+3-devel \
+        libappindicator \
+        librsvg-devel \
+        gcc \
+        pkg-config
 }
 
 if [ -f /etc/os-release ]; then
@@ -81,7 +86,7 @@ if [ -f /etc/os-release ]; then
         fedora | rhel | centos) install_on_fedora ;;
         gentoo) install_on_gentoo ;;
         opensuse* | suse) install_on_opensuse ;;
-        alpine) install_on_alpine ;;
+        void) install_on_void ;;
         *)
             echo "Unsupported distribution: $ID"
             exit 1
