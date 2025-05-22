@@ -20,6 +20,7 @@ static INSTALLED_KIT: OnceCell<Mutex<Toolkit>> = OnceCell::const_new();
 pub struct Toolkit {
     pub name: String,
     pub version: String,
+    pub edition: Option<String>,
     desc: Option<String>,
     #[serde(alias = "notes")]
     info: Option<String>,
@@ -59,6 +60,7 @@ impl Toolkit {
         let tk = Self {
             name,
             version: fp.version.as_deref().unwrap_or("N/A").to_string(),
+            edition: fp.edition.clone(),
             desc: None,
             info: None,
             manifest_url: None,
@@ -84,6 +86,7 @@ impl From<DistPackage> for Toolkit {
         Self {
             name: value.name,
             version: value.version,
+            edition: value.edition,
             desc: value.desc,
             info: value.info,
             manifest_url: Some(value.manifest_url.to_string()),
@@ -101,6 +104,7 @@ impl TryFrom<&ToolkitManifest> for Toolkit {
                 .clone()
                 .unwrap_or_else(|| "Unknown Toolkit".into()),
             version: value.version.clone().unwrap_or_else(|| "N/A".to_string()),
+            edition: value.edition.clone(),
             desc: None,
             info: None,
             manifest_url: None,
@@ -111,7 +115,7 @@ impl TryFrom<&ToolkitManifest> for Toolkit {
 
 /// Download the dist manifest from server to get the list of all provided toolkits.
 ///
-/// Note the retrieved list will be reversed so that the newest toolkit will always be on top.
+/// The result will be sorted by the version.
 ///
 /// The collection will always be cached to reduce the number of server requests.
 // TODO: track how many times this function was called, are all server requests necessary?
@@ -132,7 +136,8 @@ pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>>
 
     // load dist "pacakges" then convert them into `toolkit`s
     let packages = DistManifest::load(dist_m_file.path())?.packages;
-    let toolkits: Vec<Toolkit> = packages.into_iter().map(Toolkit::from).rev().collect();
+    let mut toolkits: Vec<Toolkit> = packages.into_iter().map(Toolkit::from).collect();
+    toolkits.sort_by(|a, b| trim_version(&b.version).cmp(trim_version(&a.version)));
     debug!(
         "detected {} available toolkits by accessing server:\n{}",
         toolkits.len(),
@@ -151,11 +156,14 @@ pub async fn installable_toolkits(reload_cache: bool, insecure: bool) -> Result<
 
     let all_toolkits = toolkits_from_server(insecure).await?;
     let installable = if let Some(installed) = Toolkit::installed(reload_cache).await? {
-        let installed = installed.lock().await;
-        all_toolkits
-            .into_iter()
-            .filter(|tk| tk != &*installed)
-            .collect()
+        let installed: tokio::sync::MutexGuard<'_, Toolkit> = installed.lock().await;
+        // filter the installed toolkit
+        let all = all_toolkits.into_iter().filter(|tk| tk != &*installed);
+        // partition the list so that the ones with same edition are always on top
+        let (mut same, diff): (Vec<_>, Vec<_>) =
+            all.partition(|tk| tk.edition == installed.edition);
+        same.extend_from_slice(&diff);
+        same
     } else {
         all_toolkits
     };
@@ -174,22 +182,13 @@ pub async fn latest_installable_toolkit(
         .await?
         .into_iter()
         // make sure they are the same **product**
-        .find(|tk| tk.name == installed.name)
+        .find(|tk| tk.edition == installed.edition)
     else {
         info!("{}", t!("no_available_updates", toolkit = &installed.name));
         return Ok(None);
     };
-    // For some reason, the version might contains prefixes such as "stable 1.80.1",
-    // therefore we need to trim them so that `semver` can be used to parse the actual
-    // version string.
-    // NB (J-ZhengLi): We might need another version field... one for display,
-    // one for the actual version.
-    let cur_ver = installed
-        .version
-        .trim_start_matches(|c| !char::is_ascii_digit(&c));
-    let target_ver = maybe_latest
-        .version
-        .trim_start_matches(|c| !char::is_ascii_digit(&c));
+    let cur_ver = trim_version(&installed.version);
+    let target_ver = trim_version(&maybe_latest.version);
     let cur_version: Version = cur_ver.parse()?;
     let target_version: Version = target_ver.parse()?;
 
@@ -206,4 +205,13 @@ pub async fn latest_installable_toolkit(
         );
         Ok(None)
     }
+}
+
+// For some reason, the version might contains prefixes such as "stable 1.80.1",
+// therefore we need to trim them so that `semver` can be used to parse the actual
+// version string.
+// NB (J-ZhengLi): We might need another version field... one for display,
+// one for the actual version.
+fn trim_version(raw: &str) -> &str {
+    raw.trim_start_matches(|c| !char::is_ascii_digit(&c))
 }

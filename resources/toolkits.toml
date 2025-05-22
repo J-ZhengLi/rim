@@ -43,6 +43,7 @@ date = "2025-04-03"
 [toolkit.basic.value]
 name = "XuanWu Rust Development Kit"
 version = "stable v1.86.0"
+edition = "basic"
 
 [toolkit.basic.value.rust]
 display-name = "Basic"
@@ -75,6 +76,7 @@ web-only = [ "buildtools", "vscode" ]
 [toolkit.community.value]
 name = "Rust 中国社区发行版"
 version = "stable v1.86.0"
+edition = "community"
 
 [toolkit.community.value.rust]
 display-name = "Rust 官方工具"
@@ -158,6 +160,7 @@ rust-server = "https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng"
 [toolkit.bisheng.value]
 name = "Rust 中国社区发行版 (毕昇)"
 version = "stable v1.72.0"
+edition = "bisheng"
 
 [toolkit.bisheng.value.rust]
 display-name = "Rust 官方工具"

@@ -19,6 +19,7 @@ pub struct DistManifest {
 pub struct DistPackage {
     pub name: String,
     pub version: String,
+    pub edition: Option<String>,
     pub desc: Option<String>,
     pub info: Option<String>,
     pub manifest_url: Url,
@@ -37,6 +38,7 @@ mod tests {
     fn dist_package(
         name: &str,
         ver: &str,
+        edition: Option<&str>,
         desc: Option<&str>,
         info: Option<&str>,
         url: &str,
@@ -44,6 +46,7 @@ mod tests {
         DistPackage {
             name: name.to_string(),
             version: ver.to_string(),
+            edition: edition.map(ToString::to_string),
             desc: desc.map(ToString::to_string),
             info: info.map(ToString::to_string),
             manifest_url: url.parse().unwrap(),
@@ -56,6 +59,7 @@ mod tests {
 [[packages]]
 name = "A"
 version = "1.0"
+edition = "community"
 desc = "A toolkit"
 info = "initial version, includes nothing"
 manifest-url = "https://example.com/path/to/a/manifest-1.0"
@@ -63,6 +67,7 @@ manifest-url = "https://example.com/path/to/a/manifest-1.0"
 [[packages]]
 name = "A"
 version = "2.0"
+edition = "education"
 desc = "A toolkit"
 info = "Second version, but still includes nothing"
 manifest-url = "https://example.com/path/to/a/manifest-2.0"
@@ -70,6 +75,7 @@ manifest-url = "https://example.com/path/to/a/manifest-2.0"
 [[packages]]
 name = "B"
 version = "1.0"
+edition = "professional"
 desc = "B toolkit"
 info = "initial version, includes nothing"
 manifest-url = "https://example.com/path/to/b/manifest-1.0"
@@ -79,6 +85,7 @@ manifest-url = "https://example.com/path/to/b/manifest-1.0"
             dist_package(
                 "A",
                 "1.0",
+                Some("community"),
                 Some("A toolkit"),
                 Some("initial version, includes nothing"),
                 "https://example.com/path/to/a/manifest-1.0",
@@ -86,6 +93,7 @@ manifest-url = "https://example.com/path/to/b/manifest-1.0"
             dist_package(
                 "A",
                 "2.0",
+                Some("education"),
                 Some("A toolkit"),
                 Some("Second version, but still includes nothing"),
                 "https://example.com/path/to/a/manifest-2.0",
@@ -93,6 +101,7 @@ manifest-url = "https://example.com/path/to/b/manifest-1.0"
             dist_package(
                 "B",
                 "1.0",
+                Some("professional"),
                 Some("B toolkit"),
                 Some("initial version, includes nothing"),
                 "https://example.com/path/to/b/manifest-1.0",

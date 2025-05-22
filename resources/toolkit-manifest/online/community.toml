@@ -3,6 +3,7 @@
 # 此文件是自动生成的.
 name = "Rust 中国社区发行版"
 version = "stable v1.86.0"
+edition = "community"
 
 [rust]
 channel = "1.86.0"

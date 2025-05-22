@@ -12,6 +12,8 @@ pub struct ToolkitManifest {
     pub name: Option<String>,
     /// Product version to be cached after installation, so that we can show it as `installed`
     pub version: Option<String>,
+    /// Toolkit edition, such as `basic`, `community`
+    pub edition: Option<String>,
 
     pub rust: RustToolchain,
     #[serde(default)]
@@ -595,6 +597,7 @@ no-proxy = "localhost,some.domain.com"
         let input = r#"
 name = "my toolkit"
 version = "1.0"
+edition = "professional"
 
 [rust]
 version = "1.0.0"
@@ -602,6 +605,7 @@ version = "1.0.0"
         let expected = ToolkitManifest::from_str(input).unwrap();
         assert_eq!(expected.name.unwrap(), "my toolkit");
         assert_eq!(expected.version.unwrap(), "1.0");
+        assert_eq!(expected.edition.unwrap(), "professional");
     }
 
     #[test]
