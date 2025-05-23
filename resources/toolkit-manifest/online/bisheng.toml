@@ -2,7 +2,7 @@
 # This file was automatically generated.
 # 此文件是自动生成的.
 name = "Rust 中国社区发行版 (毕昇)"
-version = "stable v1.72.0"
+version = "bisheng v1.72.0"
 edition = "bisheng"
 
 [rust]

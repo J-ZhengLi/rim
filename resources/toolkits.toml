@@ -172,7 +172,7 @@ components = [
 
 [toolkit.bisheng.value]
 name = "Rust 中国社区发行版 (毕昇)"
-version = "stable v1.72.0"
+version = "bisheng v1.72.0"
 edition = "bisheng"
 
 [toolkit.bisheng.value.rust]
