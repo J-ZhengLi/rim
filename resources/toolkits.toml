@@ -156,6 +156,19 @@ web-only = [ "buildtools", "vscode" ]
 
 [toolkit.bisheng.config.override]
 rust-server = "https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng"
+components = [
+    "cargo",
+    "clippy",
+    "rust-std",
+    # "rustc-dev", # useless in stable toolchain
+    # { name = "rust-docs", excluded-targets = [ "aarch64-unknown-linux-musl" ] }, # has problems with building in bisheng toolchain
+    "rustc",
+    "rustfmt",
+    "llvm-tools",
+    { name = "rust-mingw", target = "x86_64-pc-windows-gnu" },
+    { name = "rust-src", wildcard-target = true },
+    "rust-analyzer",
+]
 
 [toolkit.bisheng.value]
 name = "Rust 中国社区发行版 (毕昇)"
