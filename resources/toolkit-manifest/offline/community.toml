@@ -41,7 +41,7 @@ ylong_xml = "ylong_xml 模块提供了 XML 语法格式文本或字符串的序�
 [tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
 "Rust 优选工具集" = ["typos", "cargo-nextest"]
-"Rust 软件开发工具链" = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
+IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml"]
 
