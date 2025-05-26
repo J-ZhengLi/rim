@@ -1,0 +1,44 @@
+name: Release With Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: tag name
+  push:
+    tags:
+      - v*.*.*
+
+jobs:
+  release:
+    name: "Job - ${{ matrix.name }}"
+    runs-on: "${{ matrix.os }}"
+    env: 
+      EDITION: community
+      CI_JOB_NAME: ${{ matrix.name }}
+    
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: dist-aarch64-linux-gnu
+            os: ubuntu-22.04-arm
+
+          - name: dist-x86-64-linux-gnu
+            os: ubuntu-22.04
+
+    steps:
+      - name: checkout the source code
+        uses: actions/checkout@v4
+
+      - name: run build job
+        run: bash ci/run.sh
+
+      - name: upload release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.event.inputs.tag }}
+          allowUpdates: true
+          generateReleaseNotes: true
+          artifacts: "./dist/*"
+          prerelease: true
