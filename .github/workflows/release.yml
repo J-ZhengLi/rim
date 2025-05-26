@@ -15,7 +15,8 @@ jobs:
     runs-on: "${{ matrix.os }}"
     env:
       EDITION: community
-    
+      image: "${{ matrix.name }}"
+
     strategy:
       fail-fast: true
       matrix:
@@ -73,7 +74,7 @@ jobs:
 
       - name: run build job (linux gnu)
         if: contains(matrix.build-target, 'linux-gnu')
-        run: bash ci/run.sh
+        run: bash ci/run.sh $image
 
       - name: run build job (linux musl)
         if: contains(matrix.build-target, 'linux-musl')
