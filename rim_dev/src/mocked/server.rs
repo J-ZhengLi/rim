@@ -39,7 +39,10 @@ static COMPONENTS: &[Component] = &[
     Component::new("rustc-dev"),
 ];
 
-static PACKAGES: &[Package] = &[Package::new("hello-world", "hello_world_lib-0.1.0.crate")];
+static PACKAGES: &[Package] = &[
+    Package::new("hello-world", "hello_world_lib-0.1.0.crate", None),
+    Package::new("hello-workspace", "hello_workspace.zip", Some("crate")),
+];
 
 static RENAMES: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
     HashMap::from_iter([
@@ -53,11 +56,16 @@ static RENAMES: LazyLock<HashMap<&str, &str>> = LazyLock::new(|| {
 struct Package {
     name: &'static str,
     filename: &'static str,
+    kind: Option<&'static str>,
 }
 
 impl Package {
-    const fn new(name: &'static str, filename: &'static str) -> Self {
-        Self { name, filename }
+    const fn new(name: &'static str, filename: &'static str, kind: Option<&'static str>) -> Self {
+        Self {
+            name,
+            filename,
+            kind,
+        }
     }
 }
 
@@ -178,8 +186,13 @@ hello-world = \"a lib for demo purpose\"
                 .map(|p| {
                     let package_path = self.dist_dir.join("toolset").join(p.name).join(p.filename);
                     let url = Url::from_file_path(package_path).unwrap();
+                    let kind_opt = if let Some(kind) = p.kind {
+                        format!(", kind = \"{kind}\"")
+                    } else {
+                        String::new()
+                    };
                     format!(
-                        "{} = {{ optional = true, version = \"0.1.0\", url = \"{url}\" }}",
+                        "{} = {{ optional = true, version = \"0.1.0\", url = \"{url}\"{kind_opt} }}",
                         p.name
                     )
                 })
