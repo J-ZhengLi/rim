@@ -15,7 +15,7 @@ jobs:
     runs-on: "${{ matrix.os }}"
     env: 
       EDITION: community
-      CI_JOB_NAME: ${{ matrix.name }}
+      IMAGE: ${{ matrix.name }}
     
     strategy:
       fail-fast: true
