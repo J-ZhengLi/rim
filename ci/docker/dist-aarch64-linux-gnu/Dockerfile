@@ -1,6 +1,6 @@
 FROM debian:buster
 
-WORKDIR /build
+WORKDIR /checkout
 
 RUN sed -i 's/deb.debian.org/repo.huaweicloud.com/g' /etc/apt/sources.list
 
@@ -17,20 +17,19 @@ RUN apt-get update -y && \
         librsvg2-dev \
         git
 
-ENV NVM_DIR "$HOME/.nvm"
-RUN wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-RUN [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-RUN NVM_NODEJS_ORG_MIRROR=https://repo.huaweicloud.com/nodejs/ nvm install --lts && \
-    NVM_IOJS_ORG_MIRROR=https://repo.huaweicloud.com/iojs/ nvm use --lts
+# Download and install nvm
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - 
+RUN apt-get install -y nodejs
 
 RUN npm i -g pnpm
 
-ENV RUSTUP_DIST_SERVER "https://rsproxy.cn"
-ENV RUSTUP_UPDATE_ROOT "https://rsproxy.cn/rustup"
-RUN curl --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y && \
-    . "$HOME/.cargo/env"
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="$PATH:/root/.cargo/bin"
+
+ENV EDITION community
 
 ENV CARGO_NET_GIT_FETCH_WITH_CLI true
-RUN cargo dev vendor --for aarch64-unknown-linux-gnu
-RUN cargo dev dist --target aarch64-unknown-linux-gnu --for aarch64-unknown-linux-gnu
+ENV SCRIPT "cargo dev vendor --for aarch64-unknown-linux-gnu && cargo dev dist --target aarch64-unknown-linux-gnu --for aarch64-unknown-linux-gnu --gui"
+RUN mkdir /scripts && touch /scripts/command.sh && chmod +x /scripts/command.sh
+RUN echo 'pwd && ls -al' >> /scripts/command.sh
+RUN echo 'sh -x -c "$SCRIPT"' >> /scripts/command.sh
