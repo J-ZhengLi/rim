@@ -6,26 +6,13 @@ export MSYS_NO_PATHCONV=1
 
 script=`cd $(dirname $0) && pwd`/`basename $0`
 
-image=""
-dev=0
-
-while [[ $# -gt 0 ]]
-do
-  case "$1" in
-    --dev)
-      dev=1
-      ;;
-    *)
-      if [ -n "$image" ]
-      then
-        echo "expected single argument for the image name"
-        exit 1
-      fi
-      image="$1"
-      ;;
-  esac
-  shift
-done
+# 检查环境变量 IMAGE 是否存在
+if [ -z "$IMAGE" ]; then
+  echo "Error: IMAGE environment variable is not set."
+  exit 1
+fi
+image="$IMAGE"
+echo Current image: $image
 
 # MacOS reports "arm64" while Linux reports "aarch64". Commonize this.
 machine="$(uname -m | sed 's/arm64/aarch64/')"
