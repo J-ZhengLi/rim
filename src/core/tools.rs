@@ -5,7 +5,7 @@ use std::{
     sync::LazyLock,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use rim_common::{
     types::{TomlParser, ToolInfo, ToolKind},
     utils,
@@ -13,7 +13,7 @@ use rim_common::{
 
 use super::{
     directories::RimDir,
-    parser::{cargo_config::CargoConfig, fingerprint::ToolRecord},
+    parser::{cargo_config::CargoConfig, cargo_manifest::CargoManifest, fingerprint::ToolRecord},
     GlobalOpts, PathExt, CARGO_HOME,
 };
 use crate::{
@@ -341,13 +341,44 @@ fn install_crate(
 
     // Step 1: copy the directory path to `crates/`
     let crate_dir = utils::copy_into(path, config.crates_dir())?;
+    let crate_manifest = CargoManifest::load_from_dir(&crate_dir)?;
+    let crate_name = crate_manifest
+        .package
+        .as_ref()
+        .map(|pkg| pkg.name.as_str())
+        .unwrap_or(name);
+
     // Step 2: modify `cargo/config.toml` to update patch information
     // FIXME: This method might disrupt existing configuration that was manually altered by user,
     // use `toml-edit` to modify it instead.
     let mut cargo_config = CargoConfig::load_from_dir(config.cargo_home())?;
-    cargo_config
-        .add_patch(name, &crate_dir)
-        .write_to_dir(config.cargo_home())?;
+
+    // store crate's name and path pair as dependency patch config
+    // if this crate contains multiple sub-crates (a.k.a workspace), we need to
+    // separate the workspace members and add each individual path into patches
+    if let Some(ws) = &crate_manifest.workspace {
+        // workspaces section and the package section might coexist
+        if let Some(package) = crate_manifest.package {
+            cargo_config.add_patch(&package.name, &crate_dir);
+        }
+
+        for member_path in ws.member_paths()? {
+            let member_manifest = CargoManifest::load_from_dir(&member_path)?;
+            let member_name = &member_manifest
+                .package
+                .with_context(|| {
+                    format!(
+                        "a workspace member in '{}' does not have package metadata",
+                        member_path.display()
+                    )
+                })?
+                .name;
+            cargo_config.add_patch(member_name, member_path);
+        }
+    } else {
+        cargo_config.add_patch(crate_name, &crate_dir);
+    };
+    cargo_config.write_to_dir(config.cargo_home())?;
 
     Ok(vec![crate_dir])
 }
