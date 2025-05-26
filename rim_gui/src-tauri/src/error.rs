@@ -51,9 +51,9 @@ impl std::error::Error for InstallerError {
     }
 }
 
-impl From<InstallerError> for tauri::ipc::InvokeError {
+impl From<InstallerError> for tauri::InvokeError {
     fn from(value: InstallerError) -> Self {
         let anyhow_error: anyhow::Error = value.into();
-        tauri::ipc::InvokeError::from_anyhow(anyhow_error)
+        tauri::InvokeError::from_anyhow(anyhow_error)
     }
 }

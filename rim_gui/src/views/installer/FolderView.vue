@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { useCustomRouter } from '@/router/index';
 import { installConf, invokeCommand } from '@/utils/index';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open } from '@tauri-apps/api/dialog';
 
 const { routerPush, routerBack } = useCustomRouter();
 // const diskRequire = ref(33);
@@ -25,7 +25,7 @@ async function openFolder() {
     directory: true,
     defaultPath: installConf.path.value,
   });
-  if (selected) {
+  if (selected && typeof selected === 'string') {
     installConf.setPath(selected.trim());
   }
 }

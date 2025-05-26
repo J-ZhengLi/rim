@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { invokeCommand } from "@/utils";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { appWindow } from "@tauri-apps/api/window";
 import { onMounted, Ref, ref } from "vue";
 import { event } from "@tauri-apps/api";
-const appWindow = getCurrentWebviewWindow()
 
 const { title } = defineProps({
     title: {

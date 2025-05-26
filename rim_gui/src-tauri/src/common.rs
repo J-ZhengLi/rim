@@ -18,7 +18,7 @@ use rim::{
 };
 use rim_common::{types::ToolkitManifest, utils};
 use serde::Serialize;
-use tauri::{App, AppHandle, Emitter, WebviewUrl, WebviewWindow};
+use tauri::{App, AppHandle, Manager, Window, WindowUrl};
 use url::Url;
 
 #[allow(clippy::type_complexity)]
@@ -44,7 +44,7 @@ pub(crate) fn setup_logger() -> Receiver<String> {
     msg_recvr
 }
 
-pub(crate) fn spawn_gui_update_thread(window: tauri::WebviewWindow, msg_recv: Receiver<String>) {
+pub(crate) fn spawn_gui_update_thread(window: Window, msg_recv: Receiver<String>) {
     thread::spawn(move || loop {
         // wait for all other thread to finish and report errors
         let mut pool = THREAD_POOL
@@ -80,7 +80,7 @@ pub(crate) fn spawn_gui_update_thread(window: tauri::WebviewWindow, msg_recv: Re
     });
 }
 
-fn emit<S: Serialize + Clone>(window: &tauri::WebviewWindow, event: &str, msg: S) {
+fn emit<S: Serialize + Clone>(window: &Window, event: &str, msg: S) {
     window.emit(event, msg).unwrap_or_else(|e| {
         log::error!(
             "unexpected error occurred \
@@ -212,7 +212,7 @@ pub(crate) fn app_info() -> AppInfo {
 
 /// Close the given window in a separated thread.
 #[tauri::command]
-pub(crate) fn close_window(win: WebviewWindow) {
+pub(crate) fn close_window(win: Window) {
     let label = win.label().to_owned();
     thread::spawn(move || win.close())
         .join()
@@ -255,11 +255,11 @@ impl FrontendFunctionPayload {
 pub(crate) fn setup_installer_window(
     manager: &mut App,
     log_receiver: Receiver<String>,
-) -> Result<WebviewWindow> {
+) -> Result<Window> {
     let window = setup_window_(
         manager,
         INSTALLER_WINDOW_LABEL,
-        WebviewUrl::App("index.html/#/installer".into()),
+        WindowUrl::App("index.html/#/installer".into()),
         true,
     )?;
     spawn_gui_update_thread(window.clone(), log_receiver);
@@ -271,7 +271,7 @@ pub(crate) fn setup_manager_window(
     manager: &mut App,
     log_receiver: Receiver<String>,
     maybe_args: anyhow::Result<Box<rim::cli::Manager>>,
-) -> Result<WebviewWindow> {
+) -> Result<Window> {
     let mut visible = true;
 
     let args = match maybe_args {
@@ -294,7 +294,7 @@ pub(crate) fn setup_manager_window(
     let window = setup_window_(
         manager,
         MANAGER_WINDOW_LABEL,
-        WebviewUrl::App("index.html/#/manager".into()),
+        WindowUrl::App("index.html/#/manager".into()),
         visible,
     )?;
 
@@ -305,13 +305,8 @@ pub(crate) fn setup_manager_window(
     Ok(window)
 }
 
-fn setup_window_(
-    app: &mut App,
-    label: &str,
-    url: WebviewUrl,
-    visible: bool,
-) -> Result<WebviewWindow> {
-    let window = tauri::WebviewWindowBuilder::new(app, label, url)
+fn setup_window_(app: &mut App, label: &str, url: WindowUrl, visible: bool) -> Result<Window> {
+    let window = tauri::WindowBuilder::new(app, label, url)
         .inner_size(800.0, 600.0)
         .min_inner_size(640.0, 480.0)
         .decorations(false)
@@ -320,8 +315,8 @@ fn setup_window_(
         .visible(visible)
         .build()?;
 
-    #[cfg(windows)]
-    if let Err(e) = window.set_shadow(true) {
+    #[cfg(not(target_os = "linux"))]
+    if let Err(e) = window_shadows::set_shadow(&window, true) {
         log::error!("unable to apply window effects: {e}");
     }
 
@@ -351,7 +346,7 @@ pub(crate) fn handle_manager_args(app: AppHandle, cli: rim::cli::Manager) {
         .to_string();
         thread::spawn(move || {
             thread::sleep(Duration::from_millis(1500));
-            _ = app.emit(
+            _ = app.emit_all(
                 "change-view",
                 CliPayload {
                     path: "/manager/uninstall".into(),

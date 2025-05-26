@@ -69,7 +69,7 @@ impl Notification {
             .as_deref()
             .unwrap_or(NOTIFICATION_WINDOW_LABEL)
             .to_string();
-        if let Some(popup) = app_handle.get_webview_window(&label) {
+        if let Some(popup) = app_handle.get_window(&label) {
             popup.show()?;
             return Ok(());
         }
@@ -78,10 +78,10 @@ impl Notification {
         let mut guard = CONTENT_QUEUE.lock().unwrap();
         guard.push_back(self);
 
-        let popup = tauri::WebviewWindowBuilder::new(
+        let popup = tauri::WindowBuilder::new(
             app_handle,
             label,
-            tauri::WebviewUrl::App("notification.html".into()),
+            tauri::WindowUrl::App("notification.html".into()),
         )
         .always_on_top(true)
         .decorations(false)
@@ -123,7 +123,7 @@ pub(crate) async fn notification_content() -> Option<Notification> {
 
 #[tauri::command]
 pub(crate) fn close(app: AppHandle, label: String) {
-    let Some(window) = app.get_webview_window(&label) else {
+    let Some(window) = app.get_window(&label) else {
         return;
     };
     crate::common::close_window(window);
@@ -132,7 +132,7 @@ pub(crate) fn close(app: AppHandle, label: String) {
 
 pub(crate) fn close_all_notification(app: AppHandle) {
     for (_, window) in app
-        .webview_windows()
+        .windows()
         .iter()
         .filter(|(label, _)| label.starts_with("notification:"))
     {
