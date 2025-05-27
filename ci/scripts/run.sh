@@ -51,7 +51,7 @@ command=(/scripts/command.sh)
 docker \
   run \
   --workdir /checkout/rim \
-  --env $EDITION \
+  --env EDITION=$EDITION \
   --volume $root_dir:/checkout \
   --init \
   --rm \

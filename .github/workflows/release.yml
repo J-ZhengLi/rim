@@ -20,40 +20,14 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name: dist-aarch64-linux-gnu
-            os: ubuntu-22.04-arm
-            build-target: aarch64-unknown-linux-gnu
-            dist-targets: aarch64-unknown-linux-gnu
-
           - name: dist-x86-64-linux-gnu
             os: ubuntu-22.04
             build-target: x86_64-unknown-linux-gnu
             dist-targets: x86_64-unknown-linux-gnu
 
-          - name: dist-windows-msvc
-            os: windows-latest
-            build-target: x86_64-pc-windows-msvc
-            dist-targets: x86_64-pc-windows-msvc,x86_64-pc-windows-gnu
-
     steps:
       - name: checkout the source code
         uses: actions/checkout@v4
-
-      - name: setup NodeJS
-        uses: actions/setup-node@v4
-        if: contains(matrix.build-target, 'windows')
-        with:
-          node-version: lts/*
-
-      - name: install pnpm
-        if: contains(matrix.build-target, 'windows')
-        run: npm i -g pnpm
-
-      - name: install Rust
-        if: contains(matrix.build-target, 'windows')
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.build-target }}
 
       - name: download packages for offline build
         run: cargo dev vendor --for ${{ matrix.dist-targets }}
