@@ -149,7 +149,7 @@ pub struct Installer {
     yes_to_all: bool,
     #[cfg(feature = "gui")]
     /// Don't show GUI when running the program.
-    #[arg(hide = true, long)]
+    #[arg(long)]
     pub no_gui: bool,
     /// Don't modify user's `PATH` environment variable.
     ///
@@ -253,7 +253,7 @@ pub struct Manager {
     yes_to_all: bool,
     #[cfg(feature = "gui")]
     /// Don't show GUI when running the program.
-    #[arg(hide = true, long)]
+    #[arg(long)]
     pub no_gui: bool,
     #[cfg(feature = "gui")]
     /// Run manager without showing the main window
