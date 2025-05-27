@@ -20,16 +20,6 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name: dist-aarch64-linux-musl
-            os: ubuntu-22.04-arm
-            build-target: aarch64-unknown-linux-musl
-            dist-targets: aarch64-unknown-linux-gnu
-
-          - name: dist-x86-64-linux-musl
-            os: ubuntu-22.04
-            build-target: x86_64-unknown-linux-musl
-            dist-targets: x86_64-unknown-linux-gnu
-
           - name: dist-aarch64-linux-gnu
             os: ubuntu-22.04-arm
             build-target: aarch64-unknown-linux-gnu
@@ -49,21 +39,18 @@ jobs:
       - name: checkout the source code
         uses: actions/checkout@v4
 
-      - name: install dependencies (Linux)
-        if: matrix.os != 'windows-latest'
-        run: |
-          bash ci/scripts/install-tauri-deps.sh
-          sudo apt-get install -y musl-tools
-
       - name: setup NodeJS
         uses: actions/setup-node@v4
+        if: contains(matrix.build-target, 'windows')
         with:
           node-version: lts/*
 
       - name: install pnpm
+        if: contains(matrix.build-target, 'windows')
         run: npm i -g pnpm
 
       - name: install Rust
+        if: contains(matrix.build-target, 'windows')
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.build-target }}
@@ -72,15 +59,9 @@ jobs:
         run: cargo dev vendor --for ${{ matrix.dist-targets }}
 
       - name: run build job (linux gnu)
-        if: contains(matrix.build-target, 'linux-gnu')
+        if: contains(matrix.build-target, 'linux')
         run: |
           bash ci/run.sh ${{ matrix.name }}
-
-      - name: run build job (linux musl)
-        if: contains(matrix.build-target, 'linux-musl')
-        run: |
-          cargo dev dist --cli --target ${{ matrix.build-target }} --for ${{ matrix.dist-targets }}
-          cargo dev dist --gui --for ${{ matrix.dist-targets }}
 
       - name: run build job (windows)
         if: contains(matrix.build-target, 'windows')

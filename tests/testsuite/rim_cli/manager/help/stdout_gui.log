@@ -21,6 +21,9 @@ Options:
   -y, --yes
           Disable interaction and answer 'yes' to all prompts
 
+      --no-gui
+          Don't show GUI when running the program
+
   -s, --silent
           Run manager without showing the main window
 
