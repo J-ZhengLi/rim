@@ -170,7 +170,7 @@ impl ToolkitManifestExt for ToolkitManifest {
                 vec![]
             };
             let filter_out_gui_tools = |a: &(&str, &ToolInfo)| -> bool {
-                utils::has_desktop_environment() || a.1.is_gui_only()
+                utils::has_desktop_environment() || !a.1.is_gui_only()
             };
 
             for (tool_name, tool_info) in tools.iter().filter(filter_out_gui_tools) {
