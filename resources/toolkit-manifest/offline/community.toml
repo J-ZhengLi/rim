@@ -48,10 +48,10 @@ ylong_macros：实现 ylong_runtime 所需的过程宏，目前主要用于提�
 
 [tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
-"Rust 优选工具集" = ["typos", "cargo-nextest"]
+"Rust 优选工具集" = ["cargo-nextest"]
 IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
-"Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml"]
+"Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
 [tools.target.x86_64-pc-windows-gnu.mingw64]
 required = true
@@ -104,7 +104,7 @@ kind = "crate"
 [tools.target.x86_64-pc-windows-gnu.ylong_runtime]
 optional = true
 version = "1.0.0"
-path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
+path = "tools/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"
 
 [tools.target.x86_64-pc-windows-msvc.buildtools]
@@ -158,7 +158,7 @@ kind = "crate"
 [tools.target.x86_64-pc-windows-msvc.ylong_runtime]
 optional = true
 version = "1.0.0"
-path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
+path = "tools/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"
 
 [tools.target.x86_64-unknown-linux-gnu.vscodium]
@@ -212,7 +212,7 @@ kind = "crate"
 [tools.target.x86_64-unknown-linux-gnu.ylong_runtime]
 optional = true
 version = "1.0.0"
-path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
+path = "tools/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"
 
 [tools.target.aarch64-unknown-linux-gnu.vscodium]
@@ -266,5 +266,5 @@ kind = "crate"
 [tools.target.aarch64-unknown-linux-gnu.ylong_runtime]
 optional = true
 version = "1.0.0"
-path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
+path = "tools/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"

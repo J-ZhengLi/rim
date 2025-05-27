@@ -108,10 +108,10 @@ ylong_runtime = "Rust 异步运行时库，用于生成并执行异步任务。�
 
 [toolkit.community.value.tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
-"Rust 优选工具集" = ["typos", "cargo-nextest"]
+"Rust 优选工具集" = ["cargo-nextest"]
 IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
-"Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml"]
+"Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
 mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev2", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z" }
@@ -122,7 +122,7 @@ ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https:
 ylong_light_actor = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip" }
 ylong_xml = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip" }
 ylong_http = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip" }
-ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
+ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
 buildtools = { required = true, display-name = "Visual Studio Build Tools", restricted = true, default = "https://aka.ms/vs/17/release/vs_BuildTools.exe" }
@@ -133,7 +133,7 @@ ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https:
 ylong_light_actor = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip" }
 ylong_xml = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip" }
 ylong_http = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip" }
-ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
+ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
 vscodium = { display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz" }
@@ -144,7 +144,7 @@ ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https:
 ylong_light_actor = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip" }
 ylong_xml = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip" }
 ylong_http = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip" }
-ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
+ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
 
 [toolkit.community.value.tools.target.aarch64-unknown-linux-gnu]
 vscodium = { display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-arm64-1.99.32562.tar.gz" }
@@ -155,7 +155,7 @@ ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https:
 ylong_light_actor = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip" }
 ylong_xml = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip" }
 ylong_http = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip" }
-ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
+ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
 # ========================= Manifest For Community Toolkit END =========================
 
 # ========================= Manifest For BiSheng Toolkit START =========================
