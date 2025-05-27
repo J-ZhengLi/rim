@@ -30,6 +30,16 @@ jobs:
             build-target: x86_64-unknown-linux-musl
             dist-targets: x86_64-unknown-linux-gnu
 
+          - name: dist-aarch64-linux-gnu
+            os: ubuntu-22.04-arm
+            build-target: aarch64-unknown-linux-gnu
+            dist-targets: aarch64-unknown-linux-gnu
+
+          - name: dist-x86-64-linux-gnu
+            os: ubuntu-22.04
+            build-target: x86_64-unknown-linux-gnu
+            dist-targets: x86_64-unknown-linux-gnu
+
           - name: dist-windows-msvc
             os: windows-latest
             build-target: x86_64-pc-windows-msvc
@@ -61,14 +71,19 @@ jobs:
       - name: download packages for offline build
         run: cargo dev vendor --for ${{ matrix.dist-targets }}
 
-      - name: run build job (musl)
-        if: contains(matrix.build-target, 'musl')
+      - name: run build job (linux gnu)
+        if: contains(matrix.build-target, 'linux-gnu')
+        run: |
+          bash ci/run.sh ${{ matrix.name }}
+
+      - name: run build job (linux musl)
+        if: contains(matrix.build-target, 'linux-musl')
         run: |
           cargo dev dist --cli --target ${{ matrix.build-target }} --for ${{ matrix.dist-targets }}
           cargo dev dist --gui --for ${{ matrix.dist-targets }}
 
-      - name: run build job
-        if: ${{ !contains(matrix.build-target, 'musl') }}
+      - name: run build job (windows)
+        if: contains(matrix.build-target, 'windows')
         run: cargo dev dist --target ${{ matrix.build-target }} --for ${{ matrix.dist-targets }}
 
       - name: upload release
