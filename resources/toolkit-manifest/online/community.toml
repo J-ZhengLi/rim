@@ -65,7 +65,6 @@ version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
 
 [tools.target.x86_64-pc-windows-gnu.coding-guidelines-ruleset]
-optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-gnu.tar.xz"
 kind = "rule-set"
@@ -119,7 +118,6 @@ version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
 
 [tools.target.x86_64-pc-windows-msvc.coding-guidelines-ruleset]
-optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-msvc.tar.xz"
 kind = "rule-set"
@@ -157,11 +155,13 @@ url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_r
 kind = "crate"
 
 [tools.target.x86_64-unknown-linux-gnu.vscodium]
+gui-only = true
 version = "1.99.32562"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz"
 display-name = "VSCodium"
 
 [tools.target.x86_64-unknown-linux-gnu.vscode-rust-analyzer]
+gui-only = true
 version = "0.3.2379"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-x64.vsix"
 display-name = "rust-analyzer (插件)"
@@ -173,7 +173,6 @@ version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz"
 
 [tools.target.x86_64-unknown-linux-gnu.coding-guidelines-ruleset]
-optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-unknown-linux-gnu.tar.xz"
 kind = "rule-set"
@@ -211,11 +210,13 @@ url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_r
 kind = "crate"
 
 [tools.target.aarch64-unknown-linux-gnu.vscodium]
+gui-only = true
 version = "1.99.32562"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-arm64-1.99.32562.tar.gz"
 display-name = "VSCodium"
 
 [tools.target.aarch64-unknown-linux-gnu.vscode-rust-analyzer]
+gui-only = true
 version = "0.3.2379"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-arm64.vsix"
 display-name = "rust-analyzer (插件)"
@@ -227,7 +228,6 @@ version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-aarch64-unknown-linux-gnu.tar.gz"
 
 [tools.target.aarch64-unknown-linux-gnu.coding-guidelines-ruleset]
-optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-aarch64-unknown-linux-gnu.tar.xz"
 kind = "rule-set"

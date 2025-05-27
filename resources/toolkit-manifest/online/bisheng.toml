@@ -21,108 +21,27 @@ llvm-tools = "包含 LLVM 工具的集合"
 rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个; 仅当开发链接到编译器的工具时才需要它, 例如对 Clippy 进行修改"
 rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
-mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
-vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
 vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
-codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
 vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
-buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
 coding-guidelines-ruleset = "Rust 编程规范的代码检查规则集，提供了基于该规范要求或建议的全部自定义检查规则 (lint)。"
 ylong_json = "ylong_json 是一个通用的 JSON 语法解析库，提供了 JSON 文本和特定数据结构之间的相互转换功能。"
 ylong_light_actor = "ylong_light_actor 提供了两个功能模块：Actor 和 EventHandler. Actor 编程模型是一种并发编程模型，旨在解决并发编程中使用传统的内存共享模型带来的数据竞争以及加锁导致的性能损失及死锁等问题。EventHandler 提供一种机制，用于处理线程间通信，可以通过创建新线程，将耗时的操作放到新线程上执行。这样既不阻塞原来的线程，任务又可以得到合理的处理。"
 ylong_xml = "ylong_xml 模块提供了 XML 语法格式文本或字符串的序列化功能，以及对应生成实例的反序列化功能。"
+ylong_http = """
+ylong_http 构建了完整的 HTTP 能力，支持用户使用 HTTP 能力完成通信场景的需求。ylong_http 向 OpenHarmony 系统服务层中的网络协议栈模块提供 HTTP 协议支持，经由网络协议栈模块帮助上层应用建立 HTTP 通信能力。
+ylong_http 内部当前分为两个主要模块：ylong_http_client 客户端模块和 ylong_http 协议组件模块。"""
+ylong_runtime = """
+Rust 异步运行时库，用于生成并执行异步任务。同时提供了异步网络 IO，异步文件 IO，定时器，异步同步原语，并行迭代器等功能。ylong_runtime为功能主体，用户使用时直接依赖该库即可。ylong_runtime 依赖以下三个 crates：
+ylong_io：提供了事件驱动型网络 IO，通过 epoll 实现了非阻塞性的 TCP 和 UDP。用户无需直接依赖该库。
+ylong_ffrt：提供了 Function Flow Runtime 接口的 Rust 封装，可作为 ylong_runtime 的底层任务调度器。可通过 ylong_runtime 的 feature ffrt 来配置是否使用该调度器，OpenHarmony 上默认使用该调度器。用户无需直接依赖该库。
+ylong_macros：实现 ylong_runtime 所需的过程宏，目前主要用于提供 select! 过程宏。可通过 ylong_runtime 的 feature macros 来配置是否使用该库，OpenHarmony上默认使用该库。用户无需直接依赖该库。"""
 
 [tools.group]
-"Rust 基础工具集" = ["mingw64", "buildtools"]
 "Rust 优选工具集" = ["cargo-nextest"]
 IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
-"Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml"]
-
-[tools.target.x86_64-pc-windows-gnu.mingw64]
-required = true
-version = "14.2.0-rt_v12-rev2"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z"
-display-name = "MinGW-w64"
-
-[tools.target.x86_64-pc-windows-gnu.codearts-rust]
-version = "3.2.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip"
-display-name = "CodeArts IDE"
-
-[tools.target.x86_64-pc-windows-gnu.cargo-nextest]
-optional = true
-version = "0.9.94"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
-
-[tools.target.x86_64-pc-windows-gnu.coding-guidelines-ruleset]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-gnu.tar.xz"
-kind = "rule-set"
-display-name = "编程规范规则集"
-requires = ["rust"]
-
-[tools.target.x86_64-pc-windows-gnu.ylong_json]
-optional = true
-version = "1.0.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip"
-kind = "crate"
-
-[tools.target.x86_64-pc-windows-gnu.ylong_light_actor]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip"
-kind = "crate"
-
-[tools.target.x86_64-pc-windows-gnu.ylong_xml]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
-kind = "crate"
-
-[tools.target.x86_64-pc-windows-msvc.buildtools]
-required = true
-restricted = true
-default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
-display-name = "Visual Studio Build Tools"
-
-[tools.target.x86_64-pc-windows-msvc.codearts-rust]
-version = "3.2.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip"
-display-name = "CodeArts IDE"
-
-[tools.target.x86_64-pc-windows-msvc.cargo-nextest]
-optional = true
-version = "0.9.94"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
-
-[tools.target.x86_64-pc-windows-msvc.coding-guidelines-ruleset]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-msvc.tar.xz"
-kind = "rule-set"
-display-name = "编程规范规则集"
-requires = ["rust"]
-
-[tools.target.x86_64-pc-windows-msvc.ylong_json]
-optional = true
-version = "1.0.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip"
-kind = "crate"
-
-[tools.target.x86_64-pc-windows-msvc.ylong_light_actor]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip"
-kind = "crate"
-
-[tools.target.x86_64-pc-windows-msvc.ylong_xml]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
-kind = "crate"
+"Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
 [tools.target.x86_64-unknown-linux-gnu.vscodium]
 gui-only = true
@@ -143,7 +62,6 @@ version = "0.9.94"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz"
 
 [tools.target.x86_64-unknown-linux-gnu.coding-guidelines-ruleset]
-optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-unknown-linux-gnu.tar.xz"
 kind = "rule-set"
@@ -168,46 +86,14 @@ version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
 kind = "crate"
 
-[tools.target.aarch64-unknown-linux-gnu.vscodium]
-gui-only = true
-version = "1.99.32562"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-arm64-1.99.32562.tar.gz"
-display-name = "VSCodium"
-
-[tools.target.aarch64-unknown-linux-gnu.vscode-rust-analyzer]
-gui-only = true
-version = "0.3.2379"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-arm64.vsix"
-display-name = "rust-analyzer (插件)"
-requires = ["vscodium"]
-
-[tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
-optional = true
-version = "0.9.94"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-aarch64-unknown-linux-gnu.tar.gz"
-
-[tools.target.aarch64-unknown-linux-gnu.coding-guidelines-ruleset]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-aarch64-unknown-linux-gnu.tar.xz"
-kind = "rule-set"
-display-name = "编程规范规则集"
-requires = ["rust"]
-
-[tools.target.aarch64-unknown-linux-gnu.ylong_json]
+[tools.target.x86_64-unknown-linux-gnu.ylong_http]
 optional = true
 version = "1.0.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip"
 kind = "crate"
 
-[tools.target.aarch64-unknown-linux-gnu.ylong_light_actor]
+[tools.target.x86_64-unknown-linux-gnu.ylong_runtime]
 optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip"
-kind = "crate"
-
-[tools.target.aarch64-unknown-linux-gnu.ylong_xml]
-optional = true
-version = "0.1.0"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
+version = "1.0.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"
