@@ -41,14 +41,14 @@ pub trait TomlParser {
     where
         Self: Sized + DeserializeOwned,
     {
-        let raw = utils::read_to_string("toml", path)?;
+        let raw = utils::read_to_string(Self::FILENAME, path)?;
         Self::from_str(&raw)
     }
 
     /// Load data from certain file under the given `parent` directory.
     fn load_from_dir<P: AsRef<Path>>(parent: P) -> Result<Self>
     where
-        Self: Sized + DeserializeOwned + Default,
+        Self: Sized + DeserializeOwned,
     {
         let path = parent.as_ref().join(Self::FILENAME);
         Self::load(path)
