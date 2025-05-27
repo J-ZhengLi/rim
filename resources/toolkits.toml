@@ -217,8 +217,8 @@ IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
 [toolkit.bisheng.value.tools.target.x86_64-unknown-linux-gnu]
-vscodium = { gui-only = true, display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz" }
-vscode-rust-analyzer = { gui-only = true, display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2379", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-x64.vsix" }
+vscodium = { display-name = "VSCodium", gui-only = true, version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz" }
+vscode-rust-analyzer = { display-name = "rust-analyzer (插件)", gui-only = true, requires = ["vscodium"], version = "0.3.2379", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-x64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz" }
 coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = ["rust"], kind = "rule-set", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-unknown-linux-gnu.tar.xz" }
 ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip" }
