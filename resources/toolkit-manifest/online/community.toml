@@ -32,6 +32,14 @@ coding-guidelines-ruleset = "Rust 编程规范的代码检查规则集，提供�
 ylong_json = "ylong_json 是一个通用的 JSON 语法解析库，提供了 JSON 文本和特定数据结构之间的相互转换功能。"
 ylong_light_actor = "ylong_light_actor 提供了两个功能模块：Actor 和 EventHandler. Actor 编程模型是一种并发编程模型，旨在解决并发编程中使用传统的内存共享模型带来的数据竞争以及加锁导致的性能损失及死锁等问题。EventHandler 提供一种机制，用于处理线程间通信，可以通过创建新线程，将耗时的操作放到新线程上执行。这样既不阻塞原来的线程，任务又可以得到合理的处理。"
 ylong_xml = "ylong_xml 模块提供了 XML 语法格式文本或字符串的序列化功能，以及对应生成实例的反序列化功能。"
+ylong_http = """
+ylong_http 构建了完整的 HTTP 能力，支持用户使用 HTTP 能力完成通信场景的需求。ylong_http 向 OpenHarmony 系统服务层中的网络协议栈模块提供 HTTP 协议支持，经由网络协议栈模块帮助上层应用建立 HTTP 通信能力。
+ylong_http 内部当前分为两个主要模块：ylong_http_client 客户端模块和 ylong_http 协议组件模块。"""
+ylong_runtime = """
+Rust 异步运行时库，用于生成并执行异步任务。同时提供了异步网络 IO，异步文件 IO，定时器，异步同步原语，并行迭代器等功能。ylong_runtime为功能主体，用户使用时直接依赖该库即可。ylong_runtime 依赖以下三个 crates：
+ylong_io：提供了事件驱动型网络 IO，通过 epoll 实现了非阻塞性的 TCP 和 UDP。用户无需直接依赖该库。
+ylong_ffrt：提供了 Function Flow Runtime 接口的 Rust 封装，可作为 ylong_runtime 的底层任务调度器。可通过 ylong_runtime 的 feature ffrt 来配置是否使用该调度器，OpenHarmony 上默认使用该调度器。用户无需直接依赖该库。
+ylong_macros：实现 ylong_runtime 所需的过程宏，目前主要用于提供 select! 过程宏。可通过 ylong_runtime 的 feature macros 来配置是否使用该库，OpenHarmony上默认使用该库。用户无需直接依赖该库。"""
 
 [tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
@@ -82,6 +90,18 @@ version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
 kind = "crate"
 
+[tools.target.x86_64-pc-windows-gnu.ylong_http]
+optional = true
+version = "1.0.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip"
+kind = "crate"
+
+[tools.target.x86_64-pc-windows-gnu.ylong_runtime]
+optional = true
+version = "1.0.0"
+path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
+kind = "crate"
+
 [tools.target.x86_64-pc-windows-msvc.buildtools]
 required = true
 restricted = true
@@ -122,6 +142,18 @@ kind = "crate"
 optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
+kind = "crate"
+
+[tools.target.x86_64-pc-windows-msvc.ylong_http]
+optional = true
+version = "1.0.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip"
+kind = "crate"
+
+[tools.target.x86_64-pc-windows-msvc.ylong_runtime]
+optional = true
+version = "1.0.0"
+path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"
 
 [tools.target.x86_64-unknown-linux-gnu.vscodium]
@@ -166,6 +198,18 @@ version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
 kind = "crate"
 
+[tools.target.x86_64-unknown-linux-gnu.ylong_http]
+optional = true
+version = "1.0.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip"
+kind = "crate"
+
+[tools.target.x86_64-unknown-linux-gnu.ylong_runtime]
+optional = true
+version = "1.0.0"
+path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
+kind = "crate"
+
 [tools.target.aarch64-unknown-linux-gnu.vscodium]
 version = "1.99.32562"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-arm64-1.99.32562.tar.gz"
@@ -206,4 +250,16 @@ kind = "crate"
 optional = true
 version = "0.1.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_xml/0.1.0/commonlibrary_rust_ylong_xml-master.zip"
+kind = "crate"
+
+[tools.target.aarch64-unknown-linux-gnu.ylong_http]
+optional = true
+version = "1.0.0"
+url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_http/1.0.0/commonlibrary_rust_ylong_http-master.zip"
+kind = "crate"
+
+[tools.target.aarch64-unknown-linux-gnu.ylong_runtime]
+optional = true
+version = "1.0.0"
+path = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"

@@ -3676,6 +3676,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "env_proxy",
+ "glob",
  "indexmap 2.9.0",
  "libc",
  "log",
