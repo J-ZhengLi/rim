@@ -69,20 +69,20 @@ mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust
 
 # ========================= Manifest For Community Toolkit START =========================
 [toolkit.community.config]
-date = "2025-04-03"
+date = "2025-05-15"
 # These tools does not allow re-distribution
 web-only = [ "buildtools", "vscode" ]
 
 [toolkit.community.value]
 name = "Rust 中国社区发行版"
-version = "stable v1.86.0"
+version = "stable v1.87.0"
 edition = "community"
 
 [toolkit.community.value.rust]
 display-name = "Rust 官方工具"
 description = "Rust 官方工具链，包含 rustc (编译器), rust-std (标准库), cargo (包管理) 等工具"
 profile = "minimal"
-version = "1.86.0"
+version = "1.87.0"
 group = "Rust 基础工具集"
 components = ["clippy", "rustfmt", "rust-src"]
 optional-components = ["llvm-tools", "rust-docs", "rust-analyzer"]

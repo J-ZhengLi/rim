@@ -100,13 +100,13 @@ impl<'a> DistWorker<'a> {
     /// The binary name that user see.
     ///
     /// `simple` - the simple version of binary name, just `installer`.
-    fn dest_binary_name(&self, simple: bool) -> String {
+    fn dest_binary_name(&self, simple: bool, is_cli: bool) -> String {
         format!(
             "{}installer{}{EXE_SUFFIX}",
             (!simple)
                 .then_some(format!("{}-", self.release_name()))
                 .unwrap_or_default(),
-            self.is_cli.then_some("-cli").unwrap_or_default(),
+            is_cli.then_some("-cli").unwrap_or_default(),
         )
     }
 
@@ -142,6 +142,15 @@ impl<'a> DistWorker<'a> {
         if noweb {
             dest_dir.push(self.release_name());
             ensure_dir(&dest_dir)?;
+
+            // when packing the offline build, is better to include both CLI and GUI binary,
+            // so, here we check if there's an alternative binary and copy them into the folder
+            // if exists.
+            let alt_bin_name = self.dest_binary_name(noweb, !self.is_cli);
+            let possible_alt_bin = dist_dir()?.join(&alt_bin_name);
+            if possible_alt_bin.is_file() {
+                copy_file(&possible_alt_bin, dest_dir.join(&alt_bin_name))?;
+            }
         }
 
         let mut cmd = self.command(noweb);
@@ -154,7 +163,7 @@ impl<'a> DistWorker<'a> {
             // `--target` option, therefore the release dir's path will not have a target in it.
             let src = release_dir(self.build_target).join(self.source_binary_name());
             // copy and rename the binary with vendor name
-            let to = dest_dir.join(self.dest_binary_name(noweb));
+            let to = dest_dir.join(self.dest_binary_name(noweb, self.is_cli));
             copy_file(src, to)?;
         } else {
             bail!("build failed with code: {}", status.code().unwrap_or(-1));

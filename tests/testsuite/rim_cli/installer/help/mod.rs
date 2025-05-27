@@ -4,10 +4,11 @@ use rim_test_support::prelude::*;
 
 #[rim_test]
 fn case() {
-    INSTALLER_PROCESS
-        .command()
-        .arg("--help")
-        .assert()
-        .success()
-        .stdout_eq(file!["stdout.log"]);
+    let base = INSTALLER_PROCESS.command().arg("--help").assert().success();
+
+    #[cfg(feature = "gui")]
+    base.stdout_eq(file!["stdout_gui.log"]);
+
+    #[cfg(not(feature = "gui"))]
+    base.stdout_eq(file!["stdout.log"]);
 }
