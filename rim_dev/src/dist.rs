@@ -138,7 +138,7 @@ impl<'a> DistWorker<'a> {
     /// Run build command, move the built binary into a specific location,
     /// then return the path to that location.
     fn build_binary(&self, noweb: bool) -> Result<PathBuf> {
-        let mut dest_dir = dist_dir()?;
+        let mut dest_dir = dist_dir(self.dist_target)?;
         if noweb {
             dest_dir.push(self.release_name());
             ensure_dir(&dest_dir)?;
@@ -147,7 +147,7 @@ impl<'a> DistWorker<'a> {
             // so, here we check if there's an alternative binary and copy them into the folder
             // if exists.
             let alt_bin_name = self.dest_binary_name(noweb, !self.is_cli);
-            let possible_alt_bin = dist_dir()?.join(&alt_bin_name);
+            let possible_alt_bin = dist_dir(self.dist_target)?.join(&alt_bin_name);
             if possible_alt_bin.is_file() {
                 copy_file(&possible_alt_bin, dest_dir.join(&alt_bin_name))?;
             }
@@ -310,10 +310,10 @@ fn compress_offline_package(dir: &Path, target: &str) -> Result<()> {
     })?;
 
     if target.contains("windows") {
-        let dest = dist_dir()?.join(format!("{filename}.zip"));
+        let dest = dist_dir(target)?.join(format!("{filename}.zip"));
         compress_zip(dir, dest)?;
     } else {
-        let dest = dist_dir()?.join(format!("{filename}.tar.xz"));
+        let dest = dist_dir(target)?.join(format!("{filename}.tar.xz"));
         compress_xz(dir, dest)?;
     }
     Ok(())
@@ -329,8 +329,11 @@ fn release_dir(target: &str) -> PathBuf {
     res
 }
 
-fn dist_dir() -> Result<PathBuf> {
-    let res = PathBuf::from(env!("CARGO_MANIFEST_DIR")).with_file_name("dist");
+/// Path to the directory to store dist artifacts for given target
+fn dist_dir(target: &str) -> Result<PathBuf> {
+    let res = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .with_file_name("dist")
+        .join(target);
     ensure_dir(&res)?;
     Ok(res)
 }
