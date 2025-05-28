@@ -70,20 +70,27 @@ impl ToolchainInstaller {
         // if this is the first time installing the tool chain, we need to add the base components
         // from the manifest.
         let mut base = if first_install {
-            config
-                .manifest
-                .rust
-                .components
-                .iter()
-                .map(ToolchainComponent::new)
-                .collect()
+            config.manifest.rust.components.clone()
         } else {
             vec![]
         };
-        base.extend(components.to_vec());
+        base.extend(
+            components
+                .iter()
+                .filter_map(|c| (!c.is_profile).then_some(c.name.clone())),
+        );
+        let components_arg = base.join(",");
 
         let version = &config.manifest.rust.channel;
-        let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update");
+        let mut cmd = cmd!(
+            rustup,
+            "toolchain",
+            "install",
+            version,
+            "--no-self-update",
+            "-c",
+            &components_arg
+        );
         if let Some(profile) = config.manifest.rust.profile() {
             cmd.args(["--profile", profile]);
         }
