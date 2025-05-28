@@ -9,6 +9,7 @@ use rim_common::utils;
 use url::Url;
 
 use super::components::ToolchainComponent;
+use super::default_rustup_dist_server;
 use super::directories::RimDir;
 use super::install::InstallConfiguration;
 use super::uninstall::UninstallConfiguration;
@@ -52,68 +53,20 @@ impl ToolchainInstaller {
 
     setter!(insecure(self.insecure, bool));
 
-    /// Check and install rust toolchain if it does not exists yet.
-    ///
-    /// Return `true` if the toolchain was already installed.
-    fn ensure_toolchain(
-        &self,
-        rustup: &Path,
-        manifest: &ToolkitManifest,
-        use_offline_server: bool,
-    ) -> Result<bool> {
-        let version = &manifest.rust.channel;
-        let mut toolchain_list_cmd = cmd!(rustup, "toolchain", "list");
-        let toolchain_list_output = String::from_utf8(toolchain_list_cmd.output()?.stdout)?;
-        if toolchain_list_output
-            .split('\n')
-            .any(|line| line.starts_with(version))
-        {
-            // no need to install toolchain as it already exists
-            run!(&rustup, "default", version)?;
-            return Ok(true);
-        }
-
-        let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update");
-        if let Some(profile) = manifest.rust.profile() {
-            cmd.args(["--profile", profile]);
-        }
-        if use_offline_server && manifest.rust.offline_dist_server.is_some() {
-            let local_server = manifest
-                .offline_dist_server()?
-                .unwrap_or_else(|| unreachable!("already checked in if condition"));
-            cmd.env(RUSTUP_DIST_SERVER, local_server.as_str());
-        } else if let Ok(dist_server) = std::env::var(RUSTUP_DIST_SERVER) {
-            let mut server: Url = dist_server.parse()?;
-            if server.scheme() == "https" && self.insecure {
-                warn!("{}", t!("insecure_http_override"));
-                // the old scheme is `https` and new scheme is `http`, meaning that this
-                // is guaranteed to be `Ok`.
-                server.set_scheme("http").unwrap();
-            }
-            cmd.env(RUSTUP_DIST_SERVER, server.as_str());
-        }
-
-        // install the toolchain
-        utils::execute(cmd)?;
-        // set it as default
-        run!(&rustup, "default", version)?;
-
-        Ok(false)
-    }
-
     /// Install toolchain including optional set of components.
     ///
     /// If `first_install` flag was set to `false`, meaning this is likely an
     /// update operation, thus will not try to use offline dist server and
     /// will not try to remove `rustup`'s uninstallation entry on Windows.
-    fn install_(
+    fn install_toolchain_with_components(
         &self,
         config: &InstallConfiguration,
         components: &[ToolchainComponent],
         first_install: bool,
     ) -> Result<()> {
-        let rustup = ensure_rustup(config, self.insecure)?;
-        self.ensure_toolchain(&rustup, config.manifest, first_install)?;
+        ensure_rustup_dist_server_env(config.manifest, self.insecure, first_install)?;
+
+        let rustup = &ensure_rustup(config, self.insecure)?;
         // if this is the first time installing the tool chain, we need to add the base components
         // from the manifest.
         let mut base = if first_install {
@@ -128,7 +81,17 @@ impl ToolchainInstaller {
             vec![]
         };
         base.extend(components.to_vec());
-        self.add_components(config, &base)?;
+
+        let version = &config.manifest.rust.channel;
+        let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update");
+        if let Some(profile) = config.manifest.rust.profile() {
+            cmd.args(["--profile", profile]);
+        }
+
+        // install the toolchain
+        utils::execute(cmd)?;
+        // set it as default
+        run!(rustup, "-q", "default", version)?;
 
         // Remove the `rustup` uninstall entry on windows, because we don't want users to
         // accidentally uninstall `rustup` thus removing the tools installed by this program.
@@ -148,7 +111,7 @@ impl ToolchainInstaller {
         config: &InstallConfiguration,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        self.install_(config, components, true)
+        self.install_toolchain_with_components(config, components, true)
     }
 
     /// Update rust toolchain by invoking `rustup toolchain add`, then `rustup default`.
@@ -157,7 +120,7 @@ impl ToolchainInstaller {
         config: &InstallConfiguration,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        self.install_(config, components, false)
+        self.install_toolchain_with_components(config, components, false)
     }
 
     /// Install components via rustup.
@@ -166,35 +129,44 @@ impl ToolchainInstaller {
         config: &InstallConfiguration,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        let rustup = ensure_rustup(config, self.insecure)?;
-        let mut cmd = cmd!(&rustup, "component", "add");
-
-        let comp_args = components
-            .iter()
-            .filter_map(|c| (!c.is_profile).then_some(&c.name));
-
-        info!(
-            "{}",
-            t!(
-                "install_toolchain_components",
-                list = comp_args
-                    .clone()
-                    .map(|s| s.as_str())
-                    .collect::<Vec<_>>()
-                    .join(",")
-            )
-        );
-
-        if self.ensure_toolchain(&rustup, config.manifest, false)? {
-            cmd.args(comp_args);
-        } else {
-            // include base components as well
-            let args = config.manifest.rust.components.iter().chain(comp_args);
-            cmd.args(args);
+        if components.is_empty() || components.iter().all(|c| c.is_profile) {
+            return Ok(());
         }
 
-        utils::execute(cmd)?;
-        Ok(())
+        ensure_rustup_dist_server_env(config.manifest, self.insecure, false)?;
+        let rustup = &ensure_rustup(config, self.insecure)?;
+
+        // check if toolchain is installed
+        let version = &config.manifest.rust.channel;
+        let mut toolchain_list_cmd = cmd!(rustup, "toolchain", "list");
+        let toolchain_list_output = String::from_utf8(toolchain_list_cmd.output()?.stdout)?;
+        if toolchain_list_output
+            .split('\n')
+            .any(|line| line.starts_with(version))
+        {
+            // if toolchain is installed, add the component directly
+            let mut cmd = cmd!(rustup, "component", "add");
+            let comp_args = components
+                .iter()
+                .filter_map(|c| (!c.is_profile).then_some(&c.name));
+            info!(
+                "{}",
+                t!(
+                    "install_toolchain_components",
+                    list = comp_args
+                        .clone()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                )
+            );
+
+            cmd.args(comp_args);
+            utils::execute(cmd)
+        } else {
+            // otherwise install the toolchain with the components
+            self.install_toolchain_with_components(config, components, false)
+        }
     }
 
     pub(crate) fn remove_components(
@@ -202,6 +174,10 @@ impl ToolchainInstaller {
         config: &UninstallConfiguration,
         components: &[ToolchainComponent],
     ) -> Result<()> {
+        if components.is_empty() || components.iter().all(|c| c.is_profile) {
+            return Ok(());
+        }
+
         let rustup_bin = config.cargo_bin().join(RUSTUP);
         if !rustup_bin.is_file() {
             // rustup not installed, perhaps user already remove it manually?
@@ -251,6 +227,34 @@ impl ToolchainInstaller {
         (progress.stop)(&spinner, t!("rust_toolchain_uninstalled").to_string());
         Ok(())
     }
+}
+
+fn ensure_rustup_dist_server_env(
+    manifest: &ToolkitManifest,
+    insecure: bool,
+    use_offline_server: bool,
+) -> Result<()> {
+    if use_offline_server && manifest.rust.offline_dist_server.is_some() {
+        let local_server = manifest
+            .offline_dist_server()?
+            .unwrap_or_else(|| unreachable!("already checked in if condition"));
+        info!(
+            "{}",
+            t!("use_offline_dist_server", url = local_server.as_str())
+        );
+        std::env::set_var(RUSTUP_DIST_SERVER, local_server.as_str());
+    } else {
+        let mut server: Url = default_rustup_dist_server().clone();
+        if server.scheme() == "https" && insecure {
+            warn!("{}", t!("insecure_http_override"));
+            // the old scheme is `https` and new scheme is `http`, meaning that this
+            // is guaranteed to be `Ok`.
+            server.set_scheme("http").unwrap();
+        }
+        std::env::set_var(RUSTUP_DIST_SERVER, server.as_str());
+    }
+
+    Ok(())
 }
 
 fn ensure_rustup(config: &InstallConfiguration, insecure: bool) -> Result<PathBuf> {

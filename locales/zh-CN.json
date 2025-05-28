@@ -156,5 +156,6 @@
     "no_toolchain_installed": "未安装工具链",
     "no_check_runner_installed": "未安装检查运行器工具链 '%{name}'，重新安装规则集可能解决此问题",
     "no_rule_set_installed": "未安装规则集，check 命令需要至少一个规则集才能运行。请检查可用工具选项，确认您的设备是否支持规则集安装",
-    "unable_to_run_check": "无法执行检查，可能是规则集未正确安装"
+    "unable_to_run_check": "无法执行检查，可能是规则集未正确安装",
+    "use_offline_dist_server": "尝试使用 rustup 本地服务器: '%{url}'"
 }
