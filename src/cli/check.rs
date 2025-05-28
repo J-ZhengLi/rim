@@ -2,7 +2,7 @@ use super::{ExecStatus, ManagerSubcommands};
 use crate::core::check;
 use anyhow::Result;
 
-/// Execute `install` command.
+/// Execute `check` command.
 pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<ExecStatus> {
     let ManagerSubcommands::Check { extra_args } = subcommand else {
         return Ok(ExecStatus::default());
