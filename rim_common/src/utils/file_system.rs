@@ -219,7 +219,7 @@ where
 pub fn set_exec_permission<P: AsRef<Path>>(path: P) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
     // 设置文件权限为可执行
-    let metadata = std::fs::metadata(path)?;
+    let metadata = std::fs::metadata(path.as_ref())?;
     let mut permissions = metadata.permissions();
     permissions.set_mode(0o755); // rwxr-xr-x
     std::fs::set_permissions(path, permissions)?;
