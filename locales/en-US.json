@@ -161,5 +161,7 @@
     "no_toolchain_installed": "no toolchain was installed",
     "no_check_runner_installed": "the check runner toolchain '%{name}' was not installed, maybe re-installing the rule-set will fix this problem",
     "no_rule_set_installed": "no rule-set was installed, the `check` command requires at least one rule-set to work, check the available tools option to see if your device support rule-set installation",
-    "unable_to_run_check": "unable to perform check, maybe the rule-set wasn't installed properly"
+    "unable_to_run_check": "unable to perform check, maybe the rule-set wasn't installed properly",
+    "use_offline_dist_server": "attempt to use offline dist server at: '%{url}'",
+    "program_does_not_exits": "unable to execute command because the program '%{program}' does not exist in the PATH variable"
 }
