@@ -7,6 +7,7 @@ ENDPOINT='https://obs.cn-north-4.myhuaweicloud.com'
 
 CACHE_DIR="`dirname $0`/cache"
 echo "cache will be stored at: $CACHE_DIR"
+mkdir -p "$CACHE_DIR"
 
 OS=`uname -s`
 ARCH=`uname -m`
@@ -19,7 +20,7 @@ extract_file() {
     case "$archive" in
         *.tar.xz|*.txz|*.tar.gz|*.tgz|*.tar)
             [[ $strip_components -gt 0 ]] && stript_opt=" --strip-components=$strip_components" || stript_opt=""
-            tar -qxf "$archive" -C "$output_dir"$stript_opt
+            tar -xf "$archive" -C "$output_dir"$stript_opt
             ;;
         *.zip)
             local temp="$CACHE_DIR/unzip_temp"
@@ -51,7 +52,7 @@ download_and_install_obsutil() {
         "Linux-x86_64")
             obsutil_url='https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_amd64.tar.gz'
             ;;
-        "Linux-arm64")
+        "Linux-aarch64")
             obsutil_url='https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_arm64.tar.gz'
             ;;
         "Darwin-x86_64")
@@ -71,7 +72,7 @@ download_and_install_obsutil() {
     local obsutil_archive_name=`basename $obsutil_url`
     local obsutil_archive="$CACHE_DIR/$obsutil_archive_name"
     echo "downloading obsutil archive from remote server"
-    [[ -f $obsutil_archive ]] || curl -Lso $obsutil_archive $obsutil_url
+    [[ -f "$obsutil_archive" ]] || curl -Lso $obsutil_archive $obsutil_url
 
     # extract obsutil archive
     local obsutil_path="$CACHE_DIR/obsutil"
