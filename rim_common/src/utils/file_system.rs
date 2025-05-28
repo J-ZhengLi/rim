@@ -216,7 +216,7 @@ where
 /// Set file permissions (executable)
 /// rwxr-xr-x: 0o755
 #[cfg(not(windows))]
-pub fn set_exec_permission(path: &Path) -> Result<()> {
+pub fn set_exec_permission<P: AsRef<Path>>(path: P) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
     // 设置文件权限为可执行
     let metadata = std::fs::metadata(path)?;
@@ -227,7 +227,7 @@ pub fn set_exec_permission(path: &Path) -> Result<()> {
 }
 
 #[cfg(windows)]
-pub fn set_exec_permission(_path: &Path) -> Result<()> {
+pub fn set_exec_permission<P: AsRef<Path>>(_path: P) -> Result<()> {
     Ok(())
 }
 

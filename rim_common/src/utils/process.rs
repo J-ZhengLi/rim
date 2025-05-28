@@ -1,8 +1,11 @@
 use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::{env, io};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
+
+use super::set_exec_permission;
 
 /// Convenient macro to run a [`Command`].
 ///
@@ -95,6 +98,18 @@ pub fn execute(cmd: Command) -> Result<()> {
 /// - When `log_output` is `true`,
 ///   this will redirect the command output using [`os_pipe`] and log them using [`log`] interface.
 pub fn execute_command(mut cmd: Command, expect_success: bool, log_output: bool) -> Result<i32> {
+    // ensure the program can be executed.
+    // NB: sometime the program might only be a name not a path,
+    // therefore we need to trace back to its path and set exec bit if it has none.
+    let program_name = cmd.get_program();
+    let Some(program_full_path) = program_path(program_name) else {
+        bail!(t!(
+            "program_does_not_exits",
+            program = program_name.to_string_lossy()
+        ));
+    };
+    set_exec_permission(program_full_path)?;
+
     let (mut child, cmd_content) = if log_output {
         let (mut reader, stdout) = os_pipe::pipe()?;
         let stderr = stdout.try_clone()?;
@@ -161,9 +176,14 @@ fn output_to_log<R: io::Read>(from: &mut R) {
 }
 
 /// Check if a command/program exist in the `PATH`.
-pub fn cmd_exist<S: AsRef<str>>(cmd: S) -> bool {
+pub fn cmd_exist<S: AsRef<Path>>(cmd: S) -> bool {
+    program_path(cmd).is_some()
+}
+
+/// Return the full path of a program if it exists in the `PATH` variable
+pub fn program_path<P: AsRef<Path>>(program: P) -> Option<PathBuf> {
     let path = env::var_os("PATH").unwrap_or_default();
     env::split_paths(&path)
-        .map(|p| p.join(cmd.as_ref()))
-        .any(|p| p.exists())
+        .map(|p| p.join(program.as_ref()))
+        .find(|p| p.exists())
 }
