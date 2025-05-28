@@ -61,11 +61,18 @@ jobs:
       - name: run build job (linux gnu)
         if: contains(matrix.build-target, 'linux')
         run: |
-          bash ci/run.sh ${{ matrix.name }}
+          bash ci/scripts/run.sh ${{ matrix.name }}
 
       - name: run build job (windows)
         if: contains(matrix.build-target, 'windows')
         run: cargo dev dist --target ${{ matrix.build-target }} --for ${{ matrix.dist-targets }}
+
+      # - name: upload release to OBS
+      #   env:
+      #     ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+      #     SECURITY_KEY_ID: ${{ secrets.SECURITY_KEY_ID }}
+      #   run: |
+      #     bash ci/scripts/upload-release.sh
 
       - name: upload release
         uses: ncipollo/release-action@v1

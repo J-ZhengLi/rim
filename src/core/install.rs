@@ -265,10 +265,6 @@ impl<'a> InstallConfiguration<'a> {
         &mut self,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        if components.is_empty() || components.iter().all(|c| c.is_profile) {
-            return Ok(());
-        }
-
         ToolchainInstaller::init(&*self).add_components(self, components)?;
 
         self.install_record
