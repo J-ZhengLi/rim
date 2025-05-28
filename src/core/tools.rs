@@ -312,17 +312,36 @@ fn install_dir_with_bin_(
 fn install_rule_set(path: &PathExt<'_>, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
     let src_dir = path.single()?;
 
-    // make a directory to store it under `tools`
-    let dest_root = config.tools_dir().join("ruleset");
-    // make a runner directory to store the runner toolchain.
-    // (since we are using a dedicated toolchain with customized clippy, the runner
-    // should be the only directory under `ruleset`. If we use `cargo-dylint` in the future
-    // we'll need another directory to store custom lints)
-    let runner_dir = dest_root.join("runner");
-    utils::copy_as(src_dir, &runner_dir)?;
-
     if !config.toolchain_is_installed {
         bail!(t!("no_toolchain_installed"));
+    }
+    if !src_dir.is_dir() {
+        bail!(
+            "incorrect rule set package format, it should be an existing directory, got: {}",
+            src_dir.display()
+        );
+    }
+
+    // we're basically installing a separated toolchain contains
+    // our customized clippy and "hides" it.
+    // Step 1: Make a `ruleset` dir under `tools`
+    let ruleset_dir = config.tools_dir().join("ruleset");
+    utils::ensure_dir(&ruleset_dir)?;
+
+    // Step 2: Copy the folder `path` as `ruleset/runner`
+    // (Because we are using clippy, which is in the runner toolchain, therefore
+    // we don't need additional rule set files. If we use dylint, make sure to
+    // create another folder called `lints` to store custom lints)
+    let runner_dir = ruleset_dir.join("runner");
+    utils::copy_as(src_dir, &runner_dir)?;
+
+    // Step 3: the binaries in runner toolchain sometimes missing
+    // the execution permission, and we have to fix that
+    let bin_dir = runner_dir.join("bin");
+    for file in utils::walk_dir(&bin_dir, false)? {
+        if utils::is_executable(&file) {
+            utils::set_exec_permission(&file)?;
+        }
     }
 
     let path_to_rustup = config.cargo_bin().join(exe!("rustup"));
