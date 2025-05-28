@@ -98,7 +98,12 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     // However, it is not ideal when passing `--yes` when the user just want a quick install,
     // and might gets annoying when the user is doing a 'quick install' on WSL. (a VSCode
     // window will pop open on Windows)
-    if !g_opts.yes_to_all && common::confirm(t!("question_try_demo"), true)? {
+    let ask_to_try_demo = !g_opts.yes_to_all;
+    // trying the demo requires desktop environment, make sure the user has it before asking them
+    if utils::has_desktop_environment()
+        && ask_to_try_demo
+        && common::confirm(t!("question_try_demo"), true)?
+    {
         try_it::try_it(Some(&install_dir))?;
     }
 
