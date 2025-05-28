@@ -67,18 +67,18 @@ jobs:
         if: contains(matrix.build-target, 'windows')
         run: cargo dev dist --target ${{ matrix.build-target }} --for ${{ matrix.dist-targets }}
 
-      # - name: upload release to OBS
-      #   env:
-      #     ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
-      #     SECURITY_KEY_ID: ${{ secrets.SECURITY_KEY_ID }}
-      #   run: |
-      #     bash ci/scripts/upload-release.sh
+      - name: upload release to OBS
+        env:
+          ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+          SECURITY_KEY_ID: ${{ secrets.SECURITY_KEY_ID }}
+        run: |
+          bash ci/scripts/upload-release.sh dist/ obs://rust-mirror/installer/latest
 
-      - name: upload release
+      - name: github release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.event.inputs.tag }}
           allowUpdates: true
           generateReleaseNotes: true
-          artifacts: "./dist/*"
+          artifacts: "./dist/**/*"
           prerelease: true
