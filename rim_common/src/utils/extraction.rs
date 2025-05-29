@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use flate2::read::GzDecoder;
 use sevenz_rust::{Password, SevenZReader};
 use std::ffi::OsStr;
@@ -303,46 +303,15 @@ impl<T: Sized> ExtractHelper<'_, T> {
         #[cfg(unix)]
         archive.set_preserve_permissions(true);
 
-        let entries = archive.entries()?;
-
         // Init progress bar, use spinner because the length of entries cannot be retrieved.
-        // NB: DO NOT consume the entries, like collect it into a vec or something,
-        // as it will corrupt the contents within it, causing data loss in some of the files:
-        // https://github.com/J-ZhengLi/rim/issues/161
         let bar = self.start_progress_bar(Style::Spinner {
-            auto_tick_duration: None,
+            auto_tick_duration: Some(std::time::Duration::from_millis(100)),
         })?;
 
-        for (idx, mut entry) in entries.into_iter().filter_map(|e| e.ok()).enumerate() {
-            let entry_path = entry.path()?;
-            let out_path = self.output_dir.join(&entry_path);
-
-            if entry.header().entry_type().is_dir() {
-                ensure_dir(&out_path).with_context(|| {
-                    format!(
-                        "failed to create directory when extracting '{}'",
-                        self.file_path.display()
-                    )
-                })?;
-            } else {
-                ensure_parent_dir(&out_path).with_context(|| {
-                    format!(
-                        "failed to create directory when extracting '{}'",
-                        self.file_path.display()
-                    )
-                })?;
-
-                let mut out_file = std::fs::File::create(&out_path)?;
-                std::io::copy(&mut entry, &mut out_file)?;
-            }
-
-            // Update progress bar
-            self.update_progress_bar(&bar, Some(u64::try_from(idx)? + 1));
-        }
+        archive.unpack(self.output_dir)?;
 
         // Stop progress bar's progress
         self.end_progress_bar(&bar);
-
         Ok(())
     }
 }

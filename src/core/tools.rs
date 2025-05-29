@@ -192,7 +192,10 @@ impl<'a> Tool<'a> {
             ToolKind::Executables => {
                 let mut res = vec![];
                 for exe in self.path.iter() {
-                    res.push(utils::copy_into(exe, config.cargo_bin())?);
+                    let dest_exe = utils::copy_into(exe, config.cargo_bin())?;
+                    // double make sure each executable can be executed
+                    utils::set_exec_permission(&dest_exe)?;
+                    res.push(dest_exe);
                 }
                 res
             }

@@ -1,6 +1,5 @@
 use std::path::Path;
 use std::path::PathBuf;
-use std::thread;
 
 use anyhow::{Context, Result};
 use rim_common::types::Proxy;
@@ -220,17 +219,13 @@ impl ToolchainInstaller {
         let spinner = (progress.start)(
             t!("uninstalling_rust_toolchain").to_string(),
             utils::Style::Spinner {
-                auto_tick_duration: None,
+                auto_tick_duration: Some(std::time::Duration::from_millis(100)),
             },
         )?;
 
         let rustup = config.cargo_bin().join(RUSTUP);
-        let handle = thread::spawn(move || run!(rustup, "self", "uninstall", "-y"));
-        while !handle.is_finished() {
-            (progress.update)(&spinner, None);
-        }
+        run!(rustup, "self", "uninstall", "-y")?;
 
-        handle.join().unwrap()?;
         (progress.stop)(&spinner, t!("rust_toolchain_uninstalled").to_string());
         Ok(())
     }
