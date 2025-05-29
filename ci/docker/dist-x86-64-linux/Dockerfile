@@ -29,7 +29,7 @@ ENV PATH="$PATH:/root/.cargo/bin"
 ENV EDITION community
 
 ENV CARGO_NET_GIT_FETCH_WITH_CLI true
-ENV SCRIPT "cargo dev dist"
+ENV SCRIPT "cargo dev dist --gui"
 RUN mkdir /scripts && touch /scripts/command.sh && chmod +x /scripts/command.sh
 RUN echo 'pwd && ls -al' >> /scripts/command.sh
 RUN echo 'sh -x -c "$SCRIPT"' >> /scripts/command.sh

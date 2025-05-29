@@ -20,14 +20,20 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name: dist-aarch64-linux-gnu
+          # Linux GUI binaries are built in docker container with lower glibc dependency
+          # but the CLI binaries are built directly with musl target
+          # Note: We have to build both GUI and CLI binaries in the same environment so
+          # that we can include both of them in the offline package. But we cannot relying
+          # on docker to build the musl targeted CLI binaries because most of the non-musl
+          # targeted docker container out there lack the configuration to build musl binaries.
+          - name: dist-aarch64-linux
             os: ubuntu-22.04-arm
-            build-target: aarch64-unknown-linux-gnu
+            build-target: aarch64-unknown-linux-musl
             dist-targets: aarch64-unknown-linux-gnu
 
-          - name: dist-x86-64-linux-gnu
+          - name: dist-x86-64-linux
             os: ubuntu-22.04
-            build-target: x86_64-unknown-linux-gnu
+            build-target: x86_64-unknown-linux-musl
             dist-targets: x86_64-unknown-linux-gnu
 
           - name: dist-windows-msvc
@@ -39,18 +45,21 @@ jobs:
       - name: checkout the source code
         uses: actions/checkout@v4
 
+      - name: install dependencies (Linux)
+        if: contains(matrix.build-target, 'linux')
+        run: |
+          bash ci/scripts/install-tauri-deps.sh
+          sudo apt-get install -y musl-tools
+
       - name: setup NodeJS
         uses: actions/setup-node@v4
-        if: contains(matrix.build-target, 'windows')
         with:
           node-version: lts/*
 
       - name: install pnpm
-        if: contains(matrix.build-target, 'windows')
         run: npm i -g pnpm
 
       - name: install Rust
-        if: contains(matrix.build-target, 'windows')
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.build-target }}
@@ -61,7 +70,10 @@ jobs:
       - name: run build job (linux gnu)
         if: contains(matrix.build-target, 'linux')
         run: |
-          bash ci/scripts/run.sh ${{ matrix.name }}
+          # build CLI binary with musl first. Then use docker to build the GUI binary,
+          # which will automatically collects the previous CLI binary when packing offline package,
+          cargo dev dist --cli -b --target ${{ matrix.build-target }} --for ${{ matrix.dist-targets }}
+          bash ci/scripts/build-in-docker.sh ${{ matrix.name }}
 
       - name: run build job (windows)
         if: contains(matrix.build-target, 'windows')
