@@ -40,6 +40,8 @@ impl EnvConfig for InstallConfiguration<'_> {
                     })?;
                 }
             }
+        } else {
+            info!("{}", t!("skip_env_modification"));
         }
 
         // Update vars for current process, this is a MUST to ensure this installation
@@ -73,6 +75,7 @@ impl Uninstallation for UninstallConfiguration<'_> {
     // This is basically removing the section marked with `rustup config section` in shell profiles.
     fn remove_rustup_env_vars(&self) -> Result<()> {
         if GlobalOpts::get().no_modify_env() {
+            info!("{}", t!("skip_env_modification"));
             return Ok(());
         }
         remove_all_config_section()
@@ -87,21 +90,20 @@ impl Uninstallation for UninstallConfiguration<'_> {
 
 fn remove_section_or_warn_<F>(path: &Path, to_remove_sum: &str, operation: F) -> Result<()>
 where
-    F: FnOnce(String) -> Option<String>,
+    F: FnOnce(String) -> SubStringStatus,
 {
     let content = utils::read_to_string("rc", path)?;
-    if operation(content)
-        .and_then(|s| utils::write_file(path, &s, false).ok())
-        .is_none()
-    {
-        warn!(
-            "{}",
-            t!(
-                "unix_remove_env_fail_warn",
-                path = path.display(),
-                val = to_remove_sum
-            )
-        );
+    if let SubStringStatus::Removed(removed) = operation(content) {
+        if let Err(err) = utils::write_file(path, &removed, false) {
+            warn!(
+                "{}\n{err}",
+                t!(
+                    "unix_remove_env_fail_warn",
+                    path = path.display(),
+                    val = to_remove_sum
+                )
+            );
+        }
     }
     Ok(())
 }
@@ -123,10 +125,21 @@ fn remove_all_config_section() -> Result<()> {
     Ok(())
 }
 
-fn remove_sub_string_between(input: String, start: &str, end: &str) -> Option<String> {
+enum SubStringStatus {
+    /// Wraps the string after removing specific sub-string.
+    Removed(String),
+    /// The sub-string does not exists.
+    NotExists,
+}
+
+fn remove_sub_string_between(input: String, start: &str, end: &str) -> SubStringStatus {
     // TODO: this might not be an optimized solution.
-    let start_pos = input.lines().position(|line| line == start)?;
-    let end_pos = input.lines().position(|line| line == end)?;
+    let Some(start_pos) = input.lines().position(|line| line == start) else {
+        return SubStringStatus::NotExists;
+    };
+    let Some(end_pos) = input.lines().position(|line| line == end) else {
+        return SubStringStatus::NotExists;
+    };
     assert!(
         end_pos >= start_pos,
         "Interal Error: Failed deleting sub string, the start pos is larger than end pos"
@@ -139,7 +152,7 @@ fn remove_sub_string_between(input: String, start: &str, end: &str) -> Option<St
         .join("\n")
         .trim_end()
         .to_string();
-    Some(result)
+    SubStringStatus::Removed(result)
 }
 
 /// Get the enclosing string between two desired **lines**.
@@ -549,7 +562,17 @@ mod tests {
     use super::{
         rc_content_with_path,
         shell::{self, UnixShell},
+        SubStringStatus,
     };
+
+    impl SubStringStatus {
+        fn expect_removed(self) -> String {
+            match self {
+                Self::NotExists => panic!("a specific sub-string does not exists"),
+                Self::Removed(val) => val,
+            }
+        }
+    }
 
     #[test]
     fn remove_labeled_section() {
@@ -574,7 +597,7 @@ export RUSTUP_UPDATE_ROOT='https://example.com/rustup'
             shell::RC_FILE_SECTION_START,
             shell::RC_FILE_SECTION_END,
         )
-        .unwrap();
+        .expect_removed();
         assert_eq!(
             new,
             "\
@@ -603,7 +626,7 @@ export RUSTUP_HOME='/home/.rustup'
             shell::RC_FILE_SECTION_START,
             shell::RC_FILE_SECTION_END,
         )
-        .unwrap();
+        .expect_removed();
         assert_eq!(
             new,
             r#"

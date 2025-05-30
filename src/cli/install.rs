@@ -21,6 +21,7 @@ use super::common::{
 use super::{ExecStatus, Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
+use colored::Colorize;
 use rim_common::utils;
 
 /// Perform installer actions.
@@ -108,9 +109,9 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     }
 
     #[cfg(unix)]
-    if let Some(cmd) = crate::core::os::unix::source_command() {
-        if !g_opts.quiet {
-            println!("\n{}", t!("linux_source_hint", cmd = cmd));
+    if !(g_opts.quiet || g_opts.no_modify_env()) {
+        if let Some(cmd) = crate::core::os::unix::source_command() {
+            println!("\n{}", t!("linux_source_hint", cmd = cmd).yellow());
         }
     }
 

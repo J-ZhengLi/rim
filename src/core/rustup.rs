@@ -7,6 +7,7 @@ use rim_common::types::ToolkitManifest;
 use rim_common::utils;
 use url::Url;
 
+use super::check::RUNNER_TOOLCHAIN_NAME;
 use super::components::ToolchainComponent;
 use super::default_rustup_dist_server;
 use super::directories::RimDir;
@@ -213,8 +214,18 @@ impl ToolchainInstaller {
         Ok(())
     }
 
-    // Rustup self uninstall all the components and toolchains.
-    pub(crate) fn remove_self(&self, config: &UninstallConfiguration) -> Result<()> {
+    /// Uninstall rust toolchain.
+    ///
+    /// This will try to uninstall everything that `rustup` installed,
+    /// meaning that anything else will be kept, such as the third-party tools with-in cargo/bin,
+    /// or the links of this current binary.
+    ///
+    /// Note: We cannot use `rustup self install` anymore because it removes everything in
+    /// `cargo/bin` as well, which is not acceptable because it may contains other binaries/link
+    /// that we stored that are not part of the rust toolchain.
+    pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {
+        info!("{}", t!("uninstalling_rust_toolchain"));
+
         let progress = utils::CliProgress::new(GlobalOpts::get().quiet);
         let spinner = (progress.start)(
             t!("uninstalling_rust_toolchain").to_string(),
@@ -223,8 +234,51 @@ impl ToolchainInstaller {
             },
         )?;
 
-        let rustup = config.cargo_bin().join(RUSTUP);
-        run!(rustup, "self", "uninstall", "-y")?;
+        // remove rustup home:
+        // We want to keep the linked check runner toolchain folder presented,
+        // until user choose to remove the ruleset themselves.
+        let rustup_dir = config.rustup_home();
+        let mut remove_empty_rustup_home = true;
+        for entry in utils::walk_dir(rustup_dir, false)? {
+            if entry.ends_with("toolchains") {
+                // we want to delete all rust toolchain except the one we installed
+                // for ruleset check runner
+                for sub_entry in utils::walk_dir(&entry, false)? {
+                    if sub_entry.ends_with(RUNNER_TOOLCHAIN_NAME) {
+                        remove_empty_rustup_home = false;
+                        continue;
+                    }
+                    utils::remove(sub_entry)?;
+                }
+            } else {
+                utils::remove(entry)?;
+            }
+        }
+        if remove_empty_rustup_home {
+            utils::remove(rustup_dir)?;
+        }
+
+        // remove cargo home:
+        // walk cargo home and do some special treatment for the bin dir,
+        // while deleting everything else
+        let cargo_dir = config.cargo_home();
+        let rustup_bin = config.cargo_bin().join(RUSTUP);
+        for entry in utils::walk_dir(cargo_dir, false)? {
+            if entry.ends_with("bin") {
+                // in this bin dir, remove rustup and its proxies only
+                // remove proxies first, then remove rustup itself.
+                let proxies_to_rm = utils::walk_dir(&entry, false)?
+                    .into_iter()
+                    .filter(|p| matches!(p.read_link(), Ok(link) if link.ends_with(RUSTUP)));
+                for link in proxies_to_rm {
+                    utils::remove(link)?;
+                }
+                utils::remove(&rustup_bin)?;
+                continue;
+            }
+
+            utils::remove(entry)?;
+        }
 
         (progress.stop)(&spinner, t!("rust_toolchain_uninstalled").to_string());
         Ok(())

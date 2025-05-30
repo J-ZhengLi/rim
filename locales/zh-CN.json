@@ -21,7 +21,7 @@
     "install_finish_info": "Rust 安装成功!",
 
     "uninstalling_tool_info": "正在卸载 '%{name}'",
-    "unix_remove_env_fail_warn": "无法从文件：'%{path}' 中删除环境配置内容。这可能意味着它已被删除，请尝试从该文件中手动删除以下内容（如果有的话）： \n\n%{val}\n",
+    "unix_remove_env_fail_warn": "无法从文件：'%{path}' 中删除环境配置内容，请尝试从该文件中手动删除以下内容（如果有的话）： \n\n%{val}\n",
     "unix_add_path_fail_warn": "无法将路径 '%{val}' 添加至文件 '%{rc_path}' 中的 PATH 配置内，这可能由于该路径已经存在。",
     "windows_not_modify_path_warn": "注册表值 'HKEY_CURRENT_USER\\Environment\\PATH' 不存在或不合法，跳过 PATH 变量修改.",
     "remove_vscode_shortcut_warn": "无法移除 VSCode 快捷方式 '%{path}'",
@@ -65,6 +65,7 @@
     "conflicts_with": "与 '%{name}' 冲突",
 
     "uninstall_confirmation": "是否确认卸载以下组件: \n\n%{list}\n",
+    "uninstall_self_confirmation": "是否确认卸载 %{vendor}-manager",
     "uninstall_all_confirmation": "是否确认卸载 %{vendor}-manager 及以下组件: \n\n%{list}\n",
     "uninstall_unknown_tool_warn": "跳过卸载未知工具: %{tool}",
     "uninstalling_third_party_tools": "正在卸载第三方工具",
@@ -158,5 +159,6 @@
     "no_rule_set_installed": "未安装规则集，check 命令需要至少一个规则集才能运行。请检查可用工具选项，确认您的设备是否支持规则集安装",
     "unable_to_run_check": "无法执行检查，可能是规则集未正确安装",
     "use_offline_dist_server": "尝试使用 rustup 本地服务器: '%{url}'",
-    "program_does_not_exits": "无法运行指定命令，应用程序 '%{program}' 不在 PATH 变量中"
+    "program_does_not_exits": "无法运行指定命令，应用程序 '%{program}' 不在 PATH 变量中",
+    "skip_env_modification": "跳过环境变量修改步骤"
 }
