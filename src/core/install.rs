@@ -105,16 +105,20 @@ impl<'a> InstallConfiguration<'a> {
             self.manifest.write_to_dir(install_dir)?;
         }
 
-        // Create a copy of this binary
+        // rename this installer to 'xxx-manager' and copy it into installer dir
         let self_exe = std::env::current_exe()?;
-        // promote this installer to manager
         let id = &build_config().identifier;
-        let manager_name = format!("{id}-manager");
-
-        // Add this manager to the `PATH` environment
-        let manager_exe = install_dir.join(exe!(manager_name));
+        let manager_name = exe!(format!("{id}-manager"));
+        let manager_exe = install_dir.join(&manager_name);
         utils::copy_as(self_exe, &manager_exe)?;
-        add_to_path(install_dir)?;
+
+        // soft-link this binary into cargo bin, so it will be in th PATH
+        // Note: we are creating to symlinks binary, one have the fullname,
+        // and one with shorter name (rim)
+        let link_full = self.cargo_bin().join(manager_name);
+        let link_short = self.cargo_bin().join(exe!(env!("CARGO_PKG_NAME")));
+        utils::create_link(&manager_exe, link_full)?;
+        utils::create_link(&manager_exe, link_short)?;
 
         #[cfg(windows)]
         // Create registry entry to add this program into "installed programs".

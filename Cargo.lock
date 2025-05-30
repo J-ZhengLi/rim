@@ -3674,6 +3674,7 @@ dependencies = [
  "cfg-if",
  "chrono",
  "clap",
+ "colored",
  "dirs 5.0.1",
  "env_proxy",
  "glob",

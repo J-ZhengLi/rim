@@ -264,7 +264,17 @@ impl<'a> Tool<'a> {
                 utils::remove(self.path.single()?)?;
             }
             ToolKind::Crate => uninstall_crate(self.name(), &self.path, config)?,
-            ToolKind::RuleSet | ToolKind::Unknown => {
+            ToolKind::RuleSet => {
+                utils::remove(self.path.single()?)?;
+                // make sure the linked toolchain under rustup home is "unlinked"
+                utils::remove(
+                    config
+                        .rustup_home()
+                        .join("toolchains")
+                        .join(RUNNER_TOOLCHAIN_NAME),
+                )?;
+            }
+            ToolKind::Unknown => {
                 utils::remove(self.path.single()?)?;
             }
         }

@@ -38,7 +38,8 @@ install_on_fedora() {
         wget \
         file \
         libappindicator-gtk3-devel \
-        librsvg2-devel
+        librsvg2-devel \
+        perl
     sudo dnf group install "C Development Tools and Libraries"
 }
 
