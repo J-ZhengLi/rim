@@ -10,7 +10,7 @@ use super::{
     rustup::ToolchainInstaller,
     tools::ToolWithDeps,
 };
-use crate::core::tools::Tool;
+use crate::core::{tools::Tool, GlobalOpts};
 
 /// Contains definition of uninstallation steps.
 pub(crate) trait Uninstallation {
@@ -69,7 +69,7 @@ impl<'a> UninstallConfiguration<'a> {
 
         // Remove rust toolchain via rustup.
         if self.install_record.rust.is_some() {
-            if let Err(e) = ToolchainInstaller::init(&self).remove_self(&self) {
+            if let Err(e) = ToolchainInstaller::init(&self).uninstall(&self) {
                 // if user has manually uninstall rustup, this will fails,
                 // then we can assume it has been removed.
                 // TODO: add an error type to indicate `rustup` cannot be found
@@ -80,13 +80,17 @@ impl<'a> UninstallConfiguration<'a> {
         }
         self.inc_progress(40.0)?;
 
-        // remove all env configuration.
-        info!("{}", t!("uninstall_env_config"));
-        self.remove_rustup_env_vars()?;
-        self.inc_progress(10.0)?;
-
         // remove the manager binary itself or update install record
         if remove_self {
+            // remove all env configuration.
+            if !GlobalOpts::get().no_modify_env() {
+                info!("{}", t!("uninstall_env_config"));
+                self.remove_rustup_env_vars()?;
+                self.inc_progress(10.0)?;
+            } else {
+                info!("{}", t!("skip_env_modification"));
+            }
+
             info!("{}", t!("uninstall_self"));
             self.remove_self()?;
         } else {

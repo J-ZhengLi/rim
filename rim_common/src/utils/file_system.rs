@@ -262,12 +262,14 @@ pub fn is_executable<P: AsRef<Path>>(path: P) -> bool {
 
 /// Delete a file or directory (recursively) from disk.
 pub fn remove<P: AsRef<Path>>(src: P) -> Result<()> {
-    if src.as_ref().is_file() {
-        fs::remove_file(&src)
-            .with_context(|| format!("unable to remove file '{}'", src.as_ref().display()))?;
+    if !src.as_ref().exists() {
+        return Ok(());
     } else if src.as_ref().is_dir() {
         fs::remove_dir_all(&src)
             .with_context(|| format!("unable to remove directory '{}'", src.as_ref().display()))?;
+    } else {
+        fs::remove_file(&src)
+            .with_context(|| format!("unable to remove file '{}'", src.as_ref().display()))?;
     }
     Ok(())
 }
@@ -333,6 +335,48 @@ pub fn make_temp_file(prefix: &str, root: Option<&Path>) -> Result<NamedTempFile
 /// Try getting the extension of a `path` as `str`.
 pub fn extension_str(path: &Path) -> Option<&str> {
     path.extension().and_then(|ext| ext.to_str())
+}
+
+/// Creates a new link on the filesystem.
+///
+/// If the link already exists, it will simply get updated.
+///
+/// This function will attempt to create a symbolic link at first,
+/// and will fallback to create hard-link if that fails.
+///
+/// # Error
+/// Return error if
+/// 1. The link exists and cannot be removed.
+/// 2. [`fs::hard_link`] failes, meaning that the `original` is likely a
+///    directory or doesn't exists at all.
+pub fn create_link<P, Q>(original: P, link: Q) -> Result<()>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    remove(&link)?;
+
+    let create_sym_link = || -> Result<()> {
+        cfg_if::cfg_if! {
+            if #[cfg(unix)] {
+                Ok(std::os::unix::fs::symlink(&original, &link)?)
+            } else if #[cfg(windows)] {
+                if original.as_ref().is_dir() {
+                    Ok(std::os::windows::fs::symlink_dir(&original, &link)?)
+                } else {
+                    Ok(std::os::windows::fs::symlink_file(&original, &link)?)
+                }
+            } else {
+                bail!("not supported, use hard-link directly");
+            }
+        }
+    };
+
+    if create_sym_link().is_err() {
+        debug!("unable to create symbolic link, creating hard link instead");
+        fs::hard_link(original, link).context("unable to create hard link")?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

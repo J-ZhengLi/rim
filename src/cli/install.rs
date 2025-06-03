@@ -9,10 +9,7 @@ use crate::cli::common::{self, Confirm};
 use crate::cli::GlobalOpts;
 use crate::components::Component;
 use crate::core::install::InstallConfiguration;
-use crate::core::{
-    default_cargo_registry, default_rustup_dist_server, default_rustup_update_root,
-    get_toolkit_manifest, try_it, ToolkitManifestExt,
-};
+use crate::core::{default_cargo_registry, get_toolkit_manifest, try_it, ToolkitManifestExt};
 use crate::default_install_dir;
 
 use super::common::{
@@ -75,16 +72,8 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
 
     InstallConfiguration::new(&install_dir, &manifest)?
         .with_cargo_registry(registry_name, registry_value)
-        .with_rustup_dist_server(
-            rustup_dist_server
-                .clone()
-                .unwrap_or_else(|| default_rustup_dist_server().clone()),
-        )
-        .with_rustup_update_root(
-            rustup_update_root
-                .clone()
-                .unwrap_or_else(|| default_rustup_update_root().clone()),
-        )
+        .with_rustup_dist_server(rustup_dist_server.clone())
+        .with_rustup_update_root(rustup_update_root.clone())
         .insecure(*insecure)
         .install(user_opt.components)?;
 
@@ -108,9 +97,10 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     }
 
     #[cfg(unix)]
-    if let Some(cmd) = crate::core::os::unix::source_command() {
-        if !g_opts.quiet {
-            println!("\n{}", t!("linux_source_hint", cmd = cmd));
+    if !(g_opts.quiet || g_opts.no_modify_env()) {
+        if let Some(cmd) = crate::core::os::unix::source_command() {
+            use colored::Colorize;
+            println!("\n{}", t!("linux_source_hint", cmd = cmd).yellow());
         }
     }
 

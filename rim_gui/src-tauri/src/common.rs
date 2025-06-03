@@ -112,11 +112,9 @@ pub(crate) fn install_toolkit_in_new_thread(
         let progress = utils::Progress::new(&pos_cb);
 
         // TODO: Use continuous progress
-        let mut config = InstallConfiguration::new(&install_dir, &manifest)?
-            .with_progress_indicator(Some(progress));
-        if let Some(server) = rustup_dist_server {
-            config = config.with_rustup_dist_server(server);
-        }
+        let config = InstallConfiguration::new(&install_dir, &manifest)?
+            .with_progress_indicator(Some(progress))
+            .with_rustup_dist_server(rustup_dist_server);
         if is_update {
             config.update(components_list)?;
         } else {

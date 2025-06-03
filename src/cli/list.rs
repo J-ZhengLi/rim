@@ -111,11 +111,7 @@ pub(crate) fn list_components(
             } else {
                 String::new()
             };
-            writeln!(
-                &mut stdout,
-                "{}{version}{installed_suffix}",
-                comp.display_name
-            )?;
+            writeln!(&mut stdout, "{}{version}{installed_suffix}", comp.name)?;
         }
     }
     Ok(())
