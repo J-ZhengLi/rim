@@ -3674,6 +3674,7 @@ dependencies = [
  "cfg-if",
  "chrono",
  "clap",
+ "colored",
  "dirs 5.0.1",
  "env_proxy",
  "glob",
@@ -3729,8 +3730,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "rim-test-macro",
+ "rim_common",
  "snapbox",
  "tempfile",
+ "url",
 ]
 
 [[package]]

@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate rim_common;
+
 use std::fmt::Write;
 
 pub use rim_test_macro::rim_test;

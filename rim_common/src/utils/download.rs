@@ -108,6 +108,7 @@ impl DownloadOpt<ProgressBar> {
     }
     /// Consume self, and download from given `Url` to `Path`.
     pub async fn download(self, url: &Url, path: &Path) -> Result<()> {
+        debug!("ready to download from '{}'", url.as_str());
         if url.scheme() == "file" {
             fs::copy(
                 url.to_file_path()

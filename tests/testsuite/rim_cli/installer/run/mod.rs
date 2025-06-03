@@ -1,61 +1,19 @@
-use env::consts::EXE_SUFFIX;
-use std::env;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::OnceLock;
+use std::path::Path;
 
-use super::INSTALLER_PROCESS;
-use rim_common::utils::Extractable;
-use rim_test_support::prelude::*;
-
-// Clear the mocked server once to make sure it's always up-to-date
-static CLEAR_OBSCURE_MOCKED_SERVER_ONCE: OnceLock<()> = OnceLock::new();
-
-fn mocked_dist_server() -> &'static str {
-    static DIST_SERVER: OnceLock<String> = OnceLock::new();
-    DIST_SERVER.get_or_init(|| {
-        let rustup_server = env::current_exe()
-            .unwrap()
-            .parent() // strip deps
-            .unwrap()
-            .with_file_name("mocked")
-            .join("rustup-server");
-        CLEAR_OBSCURE_MOCKED_SERVER_ONCE.get_or_init(|| {
-            _ = std::fs::remove_dir_all(&rustup_server);
-        });
-        if !rustup_server.is_dir() {
-            // make sure the template file exists
-            let templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("resources")
-                .join("templates");
-            let template = templates_dir.join("channel-rust.template");
-            Extractable::load(&template, Some("gz"))
-                .unwrap()
-                .extract_to(&templates_dir)
-                .unwrap();
-            // generate now
-            Command::new("cargo")
-                .args(&["dev", "mock-rustup-server"])
-                .status()
-                .unwrap();
-        }
-        url::Url::from_directory_path(rustup_server)
-            .unwrap()
-            .to_string()
-    })
-}
+use rim_common::{build_config, exe};
+use rim_test_support::{prelude::*, project::ProcessBuilder};
 
 #[rim_test]
 fn insecure_installation() {
-    let root = INSTALLER_PROCESS.root();
-    INSTALLER_PROCESS
+    let process = ProcessBuilder::installer_process();
+    let root = process.root();
+    process
         .command()
         .arg("-y")
         .arg("--insecure")
         .arg("--no-modify-env")
         .arg("--prefix")
         .arg(root)
-        .args(["--rustup-dist-server", mocked_dist_server()])
         .assert()
         .success();
 
@@ -73,9 +31,7 @@ fn check_installation(root: &Path, expect_rust_success: bool) {
     assert!(root.join("temp").is_dir());
     assert!(root.join(".fingerprint.toml").is_file());
     assert!(root.join("toolset-manifest.toml").is_file());
-    assert!(root
-        .join(format!("xuanwu-rust-manager{EXE_SUFFIX}"))
-        .is_file());
+    assert!(root.join(exe!(build_config().app_name())).is_file());
 
     if expect_rust_success {
         assert!(rustup_home.join("downloads").is_dir());

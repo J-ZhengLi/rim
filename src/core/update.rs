@@ -73,8 +73,8 @@ impl UpdateOpt {
         #[cfg(feature = "gui")]
         let cli = "";
 
-        let id = &build_config().identifier;
-        let src_name = exe!(format!("{id}-manager{cli}"));
+        let app_name = &build_config().app_name();
+        let src_name = exe!(format!("{app_name}{cli}"));
         let latest_version = &latest_manager_release(self.insecure).await?.version;
         let download_url = parse_download_url(&format!(
             "manager/archive/{latest_version}/{}/{src_name}",
@@ -91,7 +91,7 @@ impl UpdateOpt {
             .prefix("manager-download_")
             .tempdir_in(self.temp_dir())?;
         // dest file don't need the `-cli` suffix to confuse users
-        let dest_name = exe!(format!("{}-manager", &build_config().identifier));
+        let dest_name = exe!(app_name);
         let newer_manager = temp_root.path().join(dest_name);
         utils::DownloadOpt::new("latest manager", GlobalOpts::get().quiet)
             .download(&download_url, &newer_manager)

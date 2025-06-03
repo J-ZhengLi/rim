@@ -50,6 +50,11 @@ impl BuildConfig {
         })
     }
 
+    /// The application name, which should be the name of this binary after installation.
+    pub fn app_name(&self) -> String {
+        format!("{}-manager", self.identifier)
+    }
+
     overridden!(rustup_dist_server(&self) -> &Url);
     overridden!(rustup_update_root(&self) -> &Url);
     overridden!(rim_dist_server(&self) -> &Url);

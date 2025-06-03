@@ -46,8 +46,8 @@ pub struct InstallConfiguration<'a> {
     /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the default location
     /// defined by [`default_install_dir`].
     pub install_dir: PathBuf,
-    pub rustup_dist_server: Url,
-    pub rustup_update_root: Url,
+    pub rustup_dist_server: Option<Url>,
+    pub rustup_update_root: Option<Url>,
     /// Indicates whether the rust toolchain was already installed,
     /// useful when installing third-party tools.
     pub toolchain_is_installed: bool,
@@ -77,8 +77,8 @@ impl<'a> InstallConfiguration<'a> {
             // Note: `InstallationRecord::load_from_dir` creates `install_dir` if it does not exist
             install_record: InstallationRecord::load_from_dir(install_dir)?,
             cargo_registry: Some((reg_name.into(), reg_url.into())),
-            rustup_dist_server: super::default_rustup_dist_server().clone(),
-            rustup_update_root: super::default_rustup_update_root().clone(),
+            rustup_dist_server: None,
+            rustup_update_root: None,
             toolchain_is_installed: false,
             progress_indicator: None,
             manifest,
@@ -105,16 +105,21 @@ impl<'a> InstallConfiguration<'a> {
             self.manifest.write_to_dir(install_dir)?;
         }
 
-        // Create a copy of this binary
+        // rename this installer to 'xxx-manager' and copy it into installer dir
         let self_exe = std::env::current_exe()?;
-        // promote this installer to manager
-        let id = &build_config().identifier;
-        let manager_name = format!("{id}-manager");
-
-        // Add this manager to the `PATH` environment
-        let manager_exe = install_dir.join(exe!(manager_name));
+        let manager_name = exe!(build_config().app_name());
+        let manager_exe = install_dir.join(&manager_name);
         utils::copy_as(self_exe, &manager_exe)?;
-        add_to_path(install_dir)?;
+
+        // soft-link this binary into cargo bin, so it will be in th PATH
+        // Note: we are creating two symlinks binary, one have the fullname,
+        // and one with shorter name (rim)
+        let link_full = self.cargo_bin().join(manager_name);
+        let link_short = self.cargo_bin().join(exe!(env!("CARGO_PKG_NAME")));
+        utils::create_link(&manager_exe, &link_full)
+            .with_context(|| format!("unable to create a link as '{}'", link_full.display()))?;
+        utils::create_link(&manager_exe, &link_short)
+            .with_context(|| format!("unable to create a link as '{}'", link_short.display()))?;
 
         #[cfg(windows)]
         // Create registry entry to add this program into "installed programs".
@@ -153,8 +158,8 @@ impl<'a> InstallConfiguration<'a> {
             Some((name.to_string(), value.to_string()))
         }
     );
-    setter!(with_rustup_dist_server(self.rustup_dist_server, Url));
-    setter!(with_rustup_update_root(self.rustup_update_root, Url));
+    setter!(with_rustup_dist_server(self.rustup_dist_server, Option<Url>));
+    setter!(with_rustup_update_root(self.rustup_update_root, Option<Url>));
     setter!(with_progress_indicator(self.progress_indicator, Option<utils::Progress<'a>>));
     setter!(insecure(self.insecure, bool));
 
@@ -169,8 +174,20 @@ impl<'a> InstallConfiguration<'a> {
         let rustup_home = self.rustup_home().to_str().unwrap().to_string();
 
         let mut env_vars = HashMap::from([
-            (RUSTUP_DIST_SERVER, self.rustup_dist_server.to_string()),
-            (RUSTUP_UPDATE_ROOT, self.rustup_update_root.to_string()),
+            (
+                RUSTUP_DIST_SERVER,
+                self.rustup_dist_server
+                    .as_ref()
+                    .unwrap_or_else(|| super::default_rustup_dist_server())
+                    .to_string(),
+            ),
+            (
+                RUSTUP_UPDATE_ROOT,
+                self.rustup_update_root
+                    .as_ref()
+                    .unwrap_or_else(|| super::default_rustup_update_root())
+                    .to_string(),
+            ),
             (CARGO_HOME, cargo_home),
             (RUSTUP_HOME, rustup_home),
         ]);
@@ -244,6 +261,7 @@ impl<'a> InstallConfiguration<'a> {
 
         ToolchainInstaller::init(&*self)
             .insecure(self.insecure)
+            .rustup_dist_server(self.rustup_dist_server.clone())
             .install(self, components)?;
         add_to_path(self.cargo_bin())?;
         self.toolchain_is_installed = true;

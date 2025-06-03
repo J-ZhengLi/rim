@@ -36,10 +36,10 @@ jobs:
     
     - name: formatting check
       run: cargo fmt --all --check
-    - name: build
-      run: cargo build --workspace --exclude rim-gui --verbose
     - name: clippy check
       run: cargo clippy --no-deps --workspace --exclude rim-gui -- -D warnings
+    - name: build
+      run: cargo build --workspace --exclude rim-gui --verbose
     - name: run tests
       run: cargo test --workspace --exclude rim-gui --verbose
       env:

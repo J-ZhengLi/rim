@@ -23,7 +23,7 @@
     "install_finish_info": "Rust is successfully installed!",
 
     "uninstalling_tool_info": "uninstalling '%{name}'",
-    "unix_remove_env_fail_warn": "unable to remove the desired content from file: '%{path}'. This could mean it was already removed, please try manually removing the following content from that file if there's any: \n\n%{val}\n",
+    "unix_remove_env_fail_warn": "unable to remove the desired content from file: '%{path}', please try manually removing the following content from that file if there's any: \n\n%{val}\n",
     "unix_add_path_fail_warn": "unable to add path '%{val}' to rc file '%{rc_path}' as it might already exists.",
     "unix_remove_path_fail_warn": "unable to remove path '%{val}' from rc file '%{rc_path}' as it might have already removed.",
     "windows_not_modify_path_warn": "the registry key HKEY_CURRENT_USER\\Environment\\PATH is not a string, skip modifying the PATH variable.",
@@ -70,7 +70,8 @@
     "conflicts_with": "conflict with '%{name}'",
 
     "uninstall_confirmation": "Are you sure you want to uninstall the following components: \n\n%{list}\n",
-    "uninstall_all_confirmation": "Are you sure you want to uninstall %{vendor}-manager and the following components: \n\n%{list}\n",
+    "uninstall_self_confirmation": "Are you sure you want to uninstall %{app}",
+    "uninstall_all_confirmation": "Are you sure you want to uninstall %{app} and the following components: \n\n%{list}\n",
     "uninstall_unknown_tool_warn": "no suitable method for uninstalling tool '%{tool}', skipping",
     "uninstalling_third_party_tools": "Uninstalling third-party tools",
     "uninstalling_for": "Uninstalling '%{name}'",
@@ -163,5 +164,6 @@
     "no_rule_set_installed": "no rule-set was installed, the `check` command requires at least one rule-set to work, check the available tools option to see if your device support rule-set installation",
     "unable_to_run_check": "unable to perform check, maybe the rule-set wasn't installed properly",
     "use_offline_dist_server": "attempt to use offline dist server at: '%{url}'",
-    "program_does_not_exits": "unable to execute command because the program '%{program}' does not exist in the PATH variable"
+    "program_does_not_exits": "unable to execute command because the program '%{program}' does not exist in the PATH variable",
+    "skip_env_modification": "skip modifying environment variables as requested"
 }

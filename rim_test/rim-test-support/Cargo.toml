@@ -7,4 +7,6 @@ edition = "2021"
 anyhow.workspace = true
 tempfile.workspace = true
 rim-test-macro = { path = "../rim-test-macro" }
+rim_common = { path = "../../rim_common" }
 snapbox = { version = "0.6.20", features = ["dir"] }
+url.workspace = true

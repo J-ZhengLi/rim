@@ -18,8 +18,16 @@ pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<ExecStatus> {
 
     // Ask confirmation
     let prompt = if !keep_self {
-        let id = &build_config().identifier;
-        t!("uninstall_all_confirmation", vendor = id, list = installed)
+        let app_name = &build_config().app_name();
+        if installed.trim().is_empty() {
+            t!("uninstall_self_confirmation", app = app_name)
+        } else {
+            t!(
+                "uninstall_all_confirmation",
+                app = app_name,
+                list = installed
+            )
+        }
     } else {
         t!("uninstall_confirmation", list = installed)
     };
