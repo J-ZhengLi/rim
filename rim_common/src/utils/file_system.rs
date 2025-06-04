@@ -218,10 +218,6 @@ where
 #[cfg(not(windows))]
 pub fn set_exec_permission<P: AsRef<Path>>(path: P) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
-    debug!(
-        "setting execute permission for file '{}'",
-        path.as_ref().display()
-    );
     fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
     Ok(())
 }

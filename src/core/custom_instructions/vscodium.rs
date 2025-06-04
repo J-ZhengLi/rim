@@ -22,7 +22,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     VSCODE.install(path, config)
 }
 
-pub(super) fn uninstall<T: RimDir>(config: T) -> Result<()> {
+pub(super) fn uninstall<T: RimDir + Copy>(config: T) -> Result<()> {
     VSCODE.uninstall(config)
 }
 

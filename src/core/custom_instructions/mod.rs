@@ -15,7 +15,7 @@ macro_rules! declare_instructions {
             }
         }
 
-        pub(crate) fn uninstall<T: $crate::core::directories::RimDir>(tool: &str, config: T) -> anyhow::Result<()> {
+        pub(crate) fn uninstall<T: $crate::core::directories::RimDir + Copy>(tool: &str, config: T) -> anyhow::Result<()> {
             match tool.replace('-', "_").as_str() {
                 $(
                     stringify!($name) => $name::uninstall(config),

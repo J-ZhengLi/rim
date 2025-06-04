@@ -11,9 +11,6 @@ fn insecure_installation() {
         .command()
         .arg("-y")
         .arg("--insecure")
-        .arg("--no-modify-env")
-        .arg("--prefix")
-        .arg(root)
         .assert()
         .success();
 
@@ -39,5 +36,64 @@ fn check_installation(root: &Path, expect_rust_success: bool) {
         assert!(rustup_home.join("toolchains").is_dir());
         assert!(rustup_home.join("update-hashes").is_dir());
         assert!(rustup_home.join("settings.toml").is_file());
+    }
+}
+
+#[cfg(unix)]
+#[rim_test]
+fn env_and_path_configured() {
+    use rim_common::utils;
+    use rim_test_support::project::{local_rustup_update_root, mocked_dist_server};
+
+    let process = ProcessBuilder::installer_process();
+    let root = process.root();
+    let res = process.command().arg("-y").assert().success();
+    println!("{}", String::from_utf8_lossy(&res.get_output().stdout));
+
+    let default_env_script = root.join("env");
+    let fish_env_script = root.join("env.sh");
+
+    if default_env_script.exists() {
+        let content = utils::read_to_string("", default_env_script).unwrap();
+        let template = include_str!("../../../../../resources/templates/env.sh");
+
+        assert_eq!(
+            content,
+            format!(
+                "{template}
+export RUSTUP_DIST_SERVER=\"{}\"
+export RUSTUP_UPDATE_ROOT=\"{}\"
+export CARGO_HOME=\"{}\"
+export RUSTUP_HOME=\"{}\"
+add_to_path \"{}\"
+",
+                mocked_dist_server(),
+                local_rustup_update_root(),
+                root.join("cargo").display(),
+                root.join("rustup").display(),
+                root.join("cargo").join("bin").display(),
+            )
+        );
+    } else if fish_env_script.exists() {
+        let content = utils::read_to_string("", fish_env_script).unwrap();
+        let template = include_str!("../../../../../resources/templates/env.fish");
+
+        assert_eq!(
+            content,
+            format!(
+                "{template}
+set -Ux RUSTUP_DIST_SERVER \"{}\"
+set -Ux RUSTUP_UPDATE_ROOT \"{}\"
+set -Ux CARGO_HOME \"{}\"
+set -Ux RUSTUP_HOME \"{}\"
+add_to_path \"{}\"
+",
+                mocked_dist_server(),
+                local_rustup_update_root(),
+                root.join("cargo").display(),
+                root.join("rustup").display(),
+                root.join("cargo").join("bin").display(),
+            )
+        );
     }
 }

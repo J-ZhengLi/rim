@@ -241,7 +241,7 @@ impl<'a> Tool<'a> {
     }
 
     /// Remove a tool from user's machine.
-    pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
+    pub(crate) fn uninstall<T: RimDir + Copy>(&self, config: T) -> Result<()> {
         match self.kind {
             ToolKind::CargoTool => {
                 cargo_install_or_uninstall(
@@ -256,7 +256,7 @@ impl<'a> Tool<'a> {
                 }
             }
             ToolKind::Custom => custom_instructions::uninstall(self.name(), config)?,
-            ToolKind::DirWithBin => uninstall_dir_with_bin_(self.path.single()?)?,
+            ToolKind::DirWithBin => uninstall_dir_with_bin_(config, self.path.single()?)?,
             ToolKind::Plugin => Plugin::uninstall(self.path.single()?)?,
             ToolKind::Installer => {
                 // TODO: some installer have uninstall functionality but some may not,
@@ -318,7 +318,7 @@ fn install_dir_with_bin_(
 ) -> Result<PathBuf> {
     let dir = move_to_tools(config, name, path)?;
     let bin_dir_after_move = dir.join("bin");
-    super::os::add_to_path(&bin_dir_after_move)?;
+    super::os::add_to_path(config, &bin_dir_after_move)?;
     Ok(dir)
 }
 
@@ -432,10 +432,10 @@ fn uninstall_crate<T: RimDir>(name: &str, path: &PathExt<'_>, config: T) -> Resu
 
 /// Uninstalling a tool with bin folder is as simple as removing the directory,
 /// and removing the `bin` dir from `PATH`.
-fn uninstall_dir_with_bin_(tool_path: &Path) -> Result<()> {
+fn uninstall_dir_with_bin_<T: RimDir + Copy>(config: T, tool_path: &Path) -> Result<()> {
     // Remove from `PATH` at first.
     let bin_dir = tool_path.join("bin");
-    super::os::remove_from_path(&bin_dir)?;
+    super::os::remove_from_path(config, &bin_dir)?;
 
     fs::remove_dir_all(tool_path)?;
 

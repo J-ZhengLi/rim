@@ -113,15 +113,26 @@ impl ProcessBuilder {
     }
 
     /// Returns a new test [`Command`] to run test process.
+    ///
+    /// Some arguments are pre-configured to avoid messing with the environment
+    /// (until we have a method to create an isolated test environment),
+    /// or to avoid sending web requests, they are:
+    ///
+    /// 1. `--no-modify-env`: to prevent changing environment for the host machine
+    /// 2. **Installer Mode** `--prefx`: to limit the installation in the tests directory only
+    /// 3. **Installer Mode** `--rustup-update-root` & `--rustup-dist-server`: that pointing
+    ///    to local server to avoid sending web requests.
     pub fn command(&self) -> Command {
         let base = Command::new(&self.executable);
 
         if !self.is_manager {
-            base.args(["--rustup-update-root", local_rustup_update_root().as_str()])
+            base.arg("--prefix")
+                .arg(self.root())
+                .arg("--no-modify-env")
+                .args(["--rustup-update-root", local_rustup_update_root().as_str()])
                 .args(["--rustup-dist-server", mocked_dist_server().as_str()])
         } else {
-            // manager does not have this arg
-            base
+            base.arg("--no-modify-env")
         }
     }
 

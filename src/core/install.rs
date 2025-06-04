@@ -17,10 +17,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest};
 use rim_common::{build_config, utils};
 use std::collections::HashSet;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use url::Url;
 
@@ -163,7 +160,7 @@ impl<'a> InstallConfiguration<'a> {
     setter!(with_progress_indicator(self.progress_indicator, Option<utils::Progress<'a>>));
     setter!(insecure(self.insecure, bool));
 
-    pub(crate) fn env_vars(&self) -> Result<HashMap<&'static str, String>> {
+    pub(crate) fn env_vars(&self) -> Result<Vec<(&'static str, String)>> {
         let cargo_home = self
             .cargo_home()
             .to_str()
@@ -173,7 +170,7 @@ impl<'a> InstallConfiguration<'a> {
         // converted to string with the `cargo_home` variable.
         let rustup_home = self.rustup_home().to_str().unwrap().to_string();
 
-        let mut env_vars = HashMap::from([
+        let mut env_vars = Vec::from([
             (
                 RUSTUP_DIST_SERVER,
                 self.rustup_dist_server
@@ -195,13 +192,13 @@ impl<'a> InstallConfiguration<'a> {
         // Add proxy settings if has
         if let Some(proxy) = &self.manifest.proxy {
             if let Some(url) = &proxy.http {
-                env_vars.insert("http_proxy", url.to_string());
+                env_vars.push(("http_proxy", url.to_string()));
             }
             if let Some(url) = &proxy.https {
-                env_vars.insert("https_proxy", url.to_string());
+                env_vars.push(("https_proxy", url.to_string()));
             }
             if let Some(s) = &proxy.no_proxy {
-                env_vars.insert("no_proxy", s.to_string());
+                env_vars.push(("no_proxy", s.to_string()));
             }
         }
 
@@ -263,7 +260,7 @@ impl<'a> InstallConfiguration<'a> {
             .insecure(self.insecure)
             .rustup_dist_server(self.rustup_dist_server.clone())
             .install(self, components)?;
-        add_to_path(self.cargo_bin())?;
+        add_to_path(&*self, self.cargo_bin())?;
         self.toolchain_is_installed = true;
 
         // Add the rust info to the fingerprint.

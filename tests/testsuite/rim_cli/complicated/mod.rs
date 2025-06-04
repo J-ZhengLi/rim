@@ -20,9 +20,6 @@ fn uninstall_toolkit_kept_rim_links() {
         .command()
         .arg("-y")
         .arg("--insecure")
-        .arg("--no-modify-env")
-        .arg("--prefix")
-        .arg(root)
         .assert()
         .success();
 

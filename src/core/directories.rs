@@ -45,4 +45,8 @@ pub(crate) trait RimDir {
     fn crates_dir(&self) -> &Path {
         get_path_and_create!(CRATES_DIR, self.install_dir().join("crates"))
     }
+
+    fn backup_dir(&self) -> &Path {
+        get_path_and_create!(BACKUP_DIR, self.install_dir().join("backup"))
+    }
 }

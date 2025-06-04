@@ -21,8 +21,6 @@
     "install_finish_info": "Rust 安装成功!",
 
     "uninstalling_tool_info": "正在卸载 '%{name}'",
-    "unix_remove_env_fail_warn": "无法从文件：'%{path}' 中删除环境配置内容，请尝试从该文件中手动删除以下内容（如果有的话）： \n\n%{val}\n",
-    "unix_add_path_fail_warn": "无法将路径 '%{val}' 添加至文件 '%{rc_path}' 中的 PATH 配置内，这可能由于该路径已经存在。",
     "windows_not_modify_path_warn": "注册表值 'HKEY_CURRENT_USER\\Environment\\PATH' 不存在或不合法，跳过 PATH 变量修改.",
     "remove_vscode_shortcut_warn": "无法移除 VSCode 快捷方式 '%{path}'",
     "remove_path_fail_warn": "文件或文件夹 '%{path}' 删除失败, 请尝试手动删除。",

@@ -14,7 +14,7 @@ impl EnvConfig for InstallConfiguration<'_> {
         info!("{}", t!("install_env_config"));
 
         for (key, val) in self.env_vars()? {
-            set_env_var(key, val.encode_utf16().collect())?;
+            super::set_env_var(key, val.encode_utf16().collect())?;
         }
         update_env();
 
@@ -191,30 +191,6 @@ pub(crate) mod rustup {
             Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Some(Vec::new())),
             Err(e) => Err(anyhow!(e)),
         }
-    }
-
-    /// Set the environment variable `key` with a given `value`.
-    ///
-    /// This will modify the environment permanently for current user,
-    /// as well as for current running process.
-    pub(super) fn set_env_var(key: &str, val: Vec<u16>) -> Result<()> {
-        // Set for current process
-        env::set_var(key, OsString::from_wide(&val));
-        set_persist_env_var(key, val)?;
-
-        Ok(())
-    }
-
-    /// Remove a environment variable with given `key`
-    ///
-    /// This will modify the environment permanently for current user,
-    /// as well as for current running process.
-    pub(super) fn unset_env_var(key: &str) -> Result<()> {
-        // Delete for current process
-        env::remove_var(key);
-        set_persist_env_var(key, vec![])?;
-
-        Ok(())
     }
 
     /// Set or remove env var using windows api.
