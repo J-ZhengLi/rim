@@ -112,27 +112,56 @@ impl ProcessBuilder {
         self.root.path()
     }
 
+    /// Return the path to a mocked home directory under temporary test folder
+    pub fn home_dir(&self) -> PathBuf {
+        let home = self.root().join("home");
+        std::fs::create_dir_all(&home).unwrap();
+        home
+    }
+
+    /// Return the default installation directory of rim
+    pub fn default_install_dir(&self) -> PathBuf {
+        self.home_dir().join("rust")
+    }
+
     /// Returns a new test [`Command`] to run test process.
     ///
-    /// Some arguments are pre-configured to avoid messing with the environment
+    /// The command is pre-configured to avoid messing with the environment
     /// (until we have a method to create an isolated test environment),
-    /// or to avoid sending web requests, they are:
+    /// or to avoid sending web requests, some configurations are:
     ///
-    /// 1. `--no-modify-env`: to prevent changing environment for the host machine
-    /// 2. **Installer Mode** `--prefx`: to limit the installation in the tests directory only
-    /// 3. **Installer Mode** `--rustup-update-root` & `--rustup-dist-server`: that pointing
+    /// 1. `$HOME`: to avoid messing with the actual home environment
+    /// 2. **Installer Mode** `--rustup-update-root` & `--rustup-dist-server`: that pointing
     ///    to local server to avoid sending web requests.
     pub fn command(&self) -> Command {
-        let base = Command::new(&self.executable);
+        // used to override `HOME`, this is to ensure that the test program doesn't change
+        // the actual environment
+        let home_dir = &self.home_dir();
+        #[cfg(unix)]
+        let home_env = "HOME";
+        #[cfg(windows)]
+        let home_env = "USERPROFILE";
+
+        // To avoid rustup throwing error regarding mismatched home env
+        // we should set the env vars for this perticular process as well
+        env::set_var(home_env, home_dir);
+
+        #[cfg(unix)]
+        let base = Command::new(&self.executable).env(home_env, home_dir);
+        // On Windows, env vars are directly added, which make it a bit
+        // harder to rollback after running the tests (rustup also struggle with this).
+        // So it might be better to disable env modification until we figure out
+        // a clever way to do it.
+        #[cfg(windows)]
+        let base = Command::new(&self.executable)
+            .env(home_env, home_dir)
+            .arg("--no-modify-env");
 
         if !self.is_manager {
-            base.arg("--prefix")
-                .arg(self.root())
-                .arg("--no-modify-env")
-                .args(["--rustup-update-root", local_rustup_update_root().as_str()])
+            base.args(["--rustup-update-root", local_rustup_update_root().as_str()])
                 .args(["--rustup-dist-server", mocked_dist_server().as_str()])
         } else {
-            base.arg("--no-modify-env")
+            base
         }
     }
 

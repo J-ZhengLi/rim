@@ -38,7 +38,9 @@ impl EnvConfig for InstallConfiguration<'_> {
             if GlobalOpts::get().no_modify_env() {
                 info!("{}", t!("skip_env_modification"));
             } else {
-                ensure_env_config_in_rcs(self, &sh, sh.update_rcs().iter())?;
+                let rcs = sh.update_rcs();
+                create_rc_backup(&rcs, self.backup_dir())?;
+                ensure_env_config_in_rcs(self, &sh, rcs.iter())?;
             }
         }
 
@@ -53,23 +55,29 @@ impl EnvConfig for InstallConfiguration<'_> {
 }
 
 /// In case we mess up the user environment
-fn create_backup_for_rc(path: &Path, backup_dir: &Path) -> Result<()> {
-    if !path.is_file() {
-        return Ok(());
-    }
-    // Safe to unwrap as long as the path is one of the `sh.update_rcs()`
-    let rc_filename = path.file_name().unwrap();
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or_default();
-    let mut backup_filename = rc_filename.to_os_string();
-    backup_filename.push("_");
-    backup_filename.push(timestamp.to_string());
-    backup_filename.push(".bak");
-    let backup_path = backup_dir.join(backup_filename);
+fn create_rc_backup(rc_files: &[PathBuf], backup_dir: &Path) -> Result<()> {
+    let rc_bak_dir = backup_dir.join("HOME");
+    utils::ensure_dir(&rc_bak_dir)?;
 
-    utils::copy_as(path, backup_path)
+    for path in rc_files {
+        if !path.is_file() {
+            continue;
+        }
+
+        // Safe to unwrap as long as the path is one of the `sh.update_rcs()`
+        let rc_filename = path.file_name().unwrap();
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or_default();
+        let mut backup_filename = rc_filename.to_os_string();
+        backup_filename.push(format!("_{timestamp}"));
+        let backup_path = rc_bak_dir.join(backup_filename);
+
+        utils::copy_as(path, backup_path)?;
+    }
+
+    Ok(())
 }
 
 impl Uninstallation for UninstallConfiguration<'_> {
@@ -197,8 +205,6 @@ where
     let script_path = config.install_dir().join(sh.env_script().name);
     let source_cmd = sh.source_string(utils::path_to_str(&script_path)?);
     for rc in rc_files {
-        create_backup_for_rc(rc, config.backup_dir())?;
-
         let mut rc_content = utils::read_to_string("rc", rc).unwrap_or_default();
         remove_legacy_config_section(&mut rc_content);
         if update_content(&mut rc_content, &source_cmd, false) {

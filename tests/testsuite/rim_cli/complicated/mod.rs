@@ -15,7 +15,7 @@ macro_rules! assert_files {
 fn uninstall_toolkit_kept_rim_links() {
     let process = ProcessBuilder::installer_process();
     // install rust
-    let root = process.root();
+    let root = process.default_install_dir();
     process
         .command()
         .arg("-y")

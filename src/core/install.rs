@@ -130,17 +130,26 @@ impl<'a> InstallConfiguration<'a> {
     }
 
     pub fn install(mut self, components: Vec<Component>) -> Result<()> {
-        let (tc_components, tools) = split_components(components);
-        reject_conflicting_tools(&tools)?;
+        let inner_ = || {
+            let (tc_components, tools) = split_components(components);
+            reject_conflicting_tools(&tools)?;
 
-        self.setup()?;
-        self.config_env_vars()?;
-        self.config_cargo()?;
-        // This step taking cares of requirements, such as `MSVC`, also third-party app such as `VS Code`.
-        self.install_tools(&tools)?;
-        self.install_rust(&tc_components)?;
-        self.install_tools_late(&tools)?;
-        Ok(())
+            self.setup()?;
+            self.config_env_vars()?;
+            self.config_cargo()?;
+            // This step taking cares of requirements, such as `MSVC`, also third-party app such as `VS Code`.
+            self.install_tools(&tools)?;
+            self.install_rust(&tc_components)?;
+            self.install_tools_late(&tools)?;
+            Ok(())
+        };
+
+        let install_result = inner_();
+        if install_result.is_err() {
+            // TODO: revert changes
+        }
+
+        install_result
     }
 
     pub(crate) fn inc_progress(&self, val: f32) -> Result<()> {
