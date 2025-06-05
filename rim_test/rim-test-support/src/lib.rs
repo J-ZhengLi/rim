@@ -9,7 +9,7 @@ pub use snapbox::str;
 pub use snapbox::utils::current_dir;
 
 pub mod paths;
-pub mod project;
+pub mod process;
 
 pub mod prelude {
     pub use crate::rim_test;

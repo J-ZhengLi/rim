@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use rim_common::{build_config, exe};
-use rim_test_support::{prelude::*, project::ProcessBuilder};
+use rim_test_support::{prelude::*, process::ProcessBuilder};
 
 #[rim_test]
 fn insecure_installation() {
@@ -43,7 +43,7 @@ fn check_installation(root: &Path, expect_rust_success: bool) {
 #[rim_test]
 fn env_and_path_configured() {
     use rim_common::utils;
-    use rim_test_support::project::{local_rustup_update_root, mocked_dist_server};
+    use rim_test_support::process::{local_rustup_update_root, mocked_dist_server};
 
     let process = ProcessBuilder::installer_process();
     let root = process.root();

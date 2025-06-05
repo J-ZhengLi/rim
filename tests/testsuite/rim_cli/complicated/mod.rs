@@ -1,7 +1,7 @@
 //! Tests here use both `installer` and `manager`
 
 use rim_common::{build_config, exe, utils};
-use rim_test_support::{project::ProcessBuilder, rim_test};
+use rim_test_support::{process::ProcessBuilder, rim_test};
 
 macro_rules! assert_files {
     ($($root:ident.$bin:expr),+) => {

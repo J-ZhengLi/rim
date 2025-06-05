@@ -1,6 +1,6 @@
 use rim_test_support::file;
 use rim_test_support::prelude::*;
-use rim_test_support::project::ProcessBuilder;
+use rim_test_support::process::ProcessBuilder;
 
 #[rim_test]
 fn case() {
