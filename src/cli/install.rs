@@ -98,10 +98,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
 
     #[cfg(unix)]
     if !(g_opts.quiet || g_opts.no_modify_env()) {
-        if let Some(cmd) = crate::core::os::unix::source_command() {
-            use colored::Colorize;
-            println!("\n{}", t!("linux_source_hint", cmd = cmd).yellow());
-        }
+        common::show_source_hint(&install_dir);
     }
 
     Ok(ExecStatus::new_executed())

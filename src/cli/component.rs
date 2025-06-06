@@ -93,6 +93,20 @@ fn install_components(components: &[String], insecure: bool) -> Result<()> {
     config.install_tools(&tools)?;
 
     info!("{}", t!("task_success"));
+
+    // notify user that they might need to source the current shell again
+    #[cfg(unix)]
+    {
+        use rim_common::types::ToolKind;
+        let g_opts = crate::core::GlobalOpts::get();
+        if !(g_opts.quiet || g_opts.no_modify_env())
+            && tools.iter().any(|(_, info)| {
+                matches!(info.kind(), Some(ToolKind::DirWithBin | ToolKind::Custom))
+            })
+        {
+            common::show_source_hint(&config.install_dir);
+        }
+    }
     Ok(())
 }
 

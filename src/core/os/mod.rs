@@ -9,6 +9,7 @@ pub(crate) mod unix;
 #[cfg(windows)]
 pub(crate) mod windows;
 
+use super::directories::RimDir;
 use anyhow::Result;
 use std::path::Path;
 
@@ -17,12 +18,12 @@ use std::path::Path;
 /// Note this will do nothing if either
 /// [`no_modify_path`](crate::core::GlobalOpts::no_modify_path) or
 /// [`no_modify_env`](crate::core::GlobalOpts::no_modify_env) return `true`.
-pub(crate) fn add_to_path(path: &Path) -> Result<()> {
+pub(crate) fn add_to_path<R: RimDir + Copy>(_config: R, path: &Path) -> Result<()> {
     #[cfg(windows)]
     windows::add_to_path(path)?;
 
     #[cfg(unix)]
-    unix::add_to_path(path)?;
+    unix::add_to_path(_config, path)?;
 
     Ok(())
 }
@@ -32,12 +33,12 @@ pub(crate) fn add_to_path(path: &Path) -> Result<()> {
 /// Note this will do nothing if either
 /// [`no_modify_path`](GlobalOpts::no_modify_path) or [`no_modify_env`](GlobalOpts::no_modify_env)
 /// was set to true, or if the path is not in the `PATH` variable.
-pub(crate) fn remove_from_path(path: &Path) -> Result<()> {
+pub(crate) fn remove_from_path<R: RimDir + Copy>(_config: R, path: &Path) -> Result<()> {
     #[cfg(windows)]
     windows::remove_from_path(path)?;
 
     #[cfg(not(windows))]
-    unix::remove_from_path(path)?;
+    unix::remove_from_path(_config, path)?;
 
     Ok(())
 }

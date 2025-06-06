@@ -275,7 +275,7 @@ impl ToolchainInstaller {
                 // remove proxies first, then remove rustup itself.
                 let proxies_to_rm = utils::walk_dir(&entry, false)?
                     .into_iter()
-                    .filter(|p| matches!(p.read_link(), Ok(link) if link.ends_with(RUSTUP)));
+                    .filter(|p| utils::is_link_of(p, &rustup_bin).unwrap_or_default());
                 for link in proxies_to_rm {
                     utils::remove(link)?;
                 }

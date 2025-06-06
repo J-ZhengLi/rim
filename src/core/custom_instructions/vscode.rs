@@ -32,7 +32,7 @@ impl VSCodeInstaller<'_> {
 
         // Step 2: Add the `bin/` folder to path
         let bin_dir = vscode_dir.join("bin");
-        add_to_path(&bin_dir)?;
+        add_to_path(config, &bin_dir)?;
 
         // Step 2.5: Make sure the executables have execute permission
         // (depending on the build, sometimes they don't...)
@@ -114,14 +114,14 @@ Keywords=vscode;
         Ok(vec![vscode_dir])
     }
 
-    pub(crate) fn uninstall<T: RimDir>(&self, config: T) -> Result<()> {
+    pub(crate) fn uninstall<T: RimDir + Copy>(&self, config: T) -> Result<()> {
         use crate::core::os::remove_from_path;
 
         // We've added a path for VSCode at `<InstallDir>/tools/vscode/bin`, try removing it from `PATH`.
         let mut vscode_path = config.tools_dir().to_path_buf();
         vscode_path.push(self.tool_name);
         vscode_path.push("bin");
-        remove_from_path(&vscode_path)?;
+        remove_from_path(config, &vscode_path)?;
 
         // TODO: Remove desktop shortcut and `%USERPROFILE%/.vscode`.
         // We need to see if the shortcut has the correct target before removing it,
@@ -165,7 +165,7 @@ pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<
     VSCODE.install(path, config)
 }
 
-pub(super) fn uninstall<T: RimDir>(config: T) -> Result<()> {
+pub(super) fn uninstall<T: RimDir + Copy>(config: T) -> Result<()> {
     VSCODE.uninstall(config)
 }
 

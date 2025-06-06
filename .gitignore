@@ -13,8 +13,7 @@ example_project/
 resources/packages/*
 resources/vendor/*
 # Template file with long text (*.template files are compressed, which is fine)
-resources/templates/*
-!resources/templates/*.template
+resources/templates/channel-rust
 
 # Release artifacts
 /dist/

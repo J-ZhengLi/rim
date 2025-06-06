@@ -23,9 +23,6 @@
     "install_finish_info": "Rust is successfully installed!",
 
     "uninstalling_tool_info": "uninstalling '%{name}'",
-    "unix_remove_env_fail_warn": "unable to remove the desired content from file: '%{path}', please try manually removing the following content from that file if there's any: \n\n%{val}\n",
-    "unix_add_path_fail_warn": "unable to add path '%{val}' to rc file '%{rc_path}' as it might already exists.",
-    "unix_remove_path_fail_warn": "unable to remove path '%{val}' from rc file '%{rc_path}' as it might have already removed.",
     "windows_not_modify_path_warn": "the registry key HKEY_CURRENT_USER\\Environment\\PATH is not a string, skip modifying the PATH variable.",
     "remove_vscode_shortcut_warn": "unable to remove shortcut file '%{path}'",
     "remove_path_fail_warn": "unable to remove '%{path}', please try manually removing it.",

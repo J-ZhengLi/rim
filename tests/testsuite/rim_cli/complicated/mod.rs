@@ -1,7 +1,7 @@
 //! Tests here use both `installer` and `manager`
 
 use rim_common::{build_config, exe, utils};
-use rim_test_support::{project::ProcessBuilder, rim_test};
+use rim_test_support::{process::ProcessBuilder, rim_test};
 
 macro_rules! assert_files {
     ($($root:ident.$bin:expr),+) => {
@@ -15,14 +15,11 @@ macro_rules! assert_files {
 fn uninstall_toolkit_kept_rim_links() {
     let process = ProcessBuilder::installer_process();
     // install rust
-    let root = process.root();
+    let root = process.default_install_dir();
     process
         .command()
         .arg("-y")
         .arg("--insecure")
-        .arg("--no-modify-env")
-        .arg("--prefix")
-        .arg(root)
         .assert()
         .success();
 
@@ -59,6 +56,7 @@ fn uninstall_toolkit_kept_rim_links() {
     assert!(status.success());
 
     let all_bin = utils::walk_dir(&cargo_bin_dir, false).unwrap();
+    println!("all bin: {all_bin:?}");
     assert_eq!(all_bin.len(), 2);
     assert_files!(
         cargo_bin_dir."rim",

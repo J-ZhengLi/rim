@@ -423,6 +423,15 @@ pub fn pause() -> Result<()> {
     Ok(())
 }
 
+#[cfg(unix)]
+pub fn show_source_hint(install_dir: &std::path::Path) {
+    if let Some(path) = crate::core::os::unix::env_script_path(install_dir) {
+        use colored::Colorize;
+        let cmd = format!(". \"{}\"", path.display());
+        println!("\n{}", t!("linux_source_hint", cmd = cmd).yellow());
+    }
+}
+
 fn readline() -> Result<String> {
     let mut input_buf = String::new();
     io::stdin()
