@@ -137,24 +137,24 @@ impl ProcessBuilder {
         // used to override `HOME`, this is to ensure that the test program doesn't change
         // the actual environment
         let home_dir = &self.home_dir();
-        #[cfg(unix)]
-        let home_env = "HOME";
-        #[cfg(windows)]
-        let home_env = "USERPROFILE";
 
         // To avoid rustup throwing error regarding mismatched home env
-        // we should set the env vars for this perticular process as well
-        env::set_var(home_env, home_dir);
+        // we should set the env vars for this particular process as well
+        env::set_var("HOME", home_dir);
+        // Set %USERPROFILE% on windows just to make sure
+        #[cfg(windows)]
+        env::set_var("USERPROFILE", home_dir);
 
         #[cfg(unix)]
-        let base = Command::new(&self.executable).env(home_env, home_dir);
+        let base = Command::new(&self.executable).env("HOME", home_dir);
         // On Windows, env vars are directly added, which make it a bit
         // harder to rollback after running the tests (rustup also struggle with this).
         // So it might be better to disable env modification until we figure out
         // a clever way to do it.
         #[cfg(windows)]
         let base = Command::new(&self.executable)
-            .env(home_env, home_dir)
+            .env("HOME", home_dir)
+            .env("USERPROFILE", home_dir)
             .arg("--no-modify-env");
 
         if !self.is_manager {

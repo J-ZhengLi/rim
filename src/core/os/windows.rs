@@ -14,7 +14,7 @@ impl EnvConfig for InstallConfiguration<'_> {
         info!("{}", t!("install_env_config"));
 
         for (key, val) in self.env_vars()? {
-            super::set_env_var(key, val.encode_utf16().collect())?;
+            set_env_var(key, val.encode_utf16().collect())?;
         }
         update_env();
 
@@ -46,9 +46,18 @@ impl Uninstallation for UninstallConfiguration<'_> {
         // So, let's remove what we can, and **hopefully** that will only left us
         // this binary, and its parent directory (aka.`install_dir`)
         for entry in utils::walk_dir(&self.install_dir, true)?.iter().rev() {
+            // ignore the main file of this program so that `self_delete` can work properly.
+            // NOTE: If we don't do this, the `current_exe` will be delete early, because it has
+            // other hard-linked files, and the OS thought it would be fine as long as those linked
+            // file exists. Then, when the `self_delete` will attempt to delete the current_exe
+            // which no longer exists, causing `no such file or directory` error
+            if entry == &current_exe {
+                continue;
+            }
             if utils::remove(entry).is_err() {
-                if entry == &current_exe || entry == &self.install_dir {
-                    // we'll deal with these two later
+                if entry.is_dir() {
+                    // this means that the directory contains files that are in used,
+                    // which should emit warnings on those files already.
                     continue;
                 }
                 warn!("{}", t!("unable_to_remove", path = entry.display()));
@@ -56,9 +65,12 @@ impl Uninstallation for UninstallConfiguration<'_> {
         }
 
         // remove current exe
-        self_replace::self_delete()?;
-        // remove parent dir, which should be empty by now, and should be very quick to remove.
-        // but if for some reason it fails, well it's too late then, the `self` binary is gone now.
+        if self_replace::self_delete().is_err() {
+            warn!("{}", t!("unable_to_remove", path = current_exe.display()))
+        }
+        // remove parent dir, which should be very quick to remove.
+        // but if for some reason it fails, well it's too late then,
+        // the `self` binary might be gone now.
         _ = utils::remove(&self.install_dir);
         Ok(())
     }
@@ -191,6 +203,30 @@ pub(crate) mod rustup {
             Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Some(Vec::new())),
             Err(e) => Err(anyhow!(e)),
         }
+    }
+
+    /// Set the environment variable `key` with a given `value`.
+    ///
+    /// This will modify the environment permanently for current user,
+    /// as well as for current running process.
+    pub(super) fn set_env_var(key: &str, val: Vec<u16>) -> Result<()> {
+        // Set for current process
+        env::set_var(key, OsString::from_wide(&val));
+        set_persist_env_var(key, val)?;
+
+        Ok(())
+    }
+
+    /// Remove a environment variable with given `key`
+    ///
+    /// This will modify the environment permanently for current user,
+    /// as well as for current running process.
+    pub(super) fn unset_env_var(key: &str) -> Result<()> {
+        // Delete for current process
+        env::remove_var(key);
+        set_persist_env_var(key, vec![])?;
+
+        Ok(())
     }
 
     /// Set or remove env var using windows api.

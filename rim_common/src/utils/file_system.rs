@@ -9,13 +9,25 @@ use tempfile::NamedTempFile;
 
 /// Get a path to user's "home" directory.
 ///
+/// The home directory is determined by a combination of ways
+/// with a fallback order:
+///
+/// 1. The `HOME` environment variable
+/// 2. The `USERPROFILE` environment variable (Windows only)
+/// 3. The [`home_dir`](dirs::home_dir) function of the `dirs` crate
+///
 /// # Panic
 ///
 /// Will panic if such directory cannot be determined,
 /// which could be the result of missing certain environment variable at runtime,
 /// check [`dirs::home_dir`] for more information.
 pub fn home_dir() -> PathBuf {
-    dirs::home_dir().expect("home directory cannot be determined.")
+    let base = env::var_os("HOME").filter(|oss| !oss.is_empty());
+    #[cfg(windows)]
+    let base = base.or_else(|| env::var_os("USERPROFILE").filter(|oss| !oss.is_empty()));
+
+    base.map(PathBuf::from)
+        .unwrap_or_else(|| dirs::home_dir().expect("home directory cannot be determined."))
 }
 
 /// Wrapper to [`std::fs::read_to_string`] but with additional error context.
@@ -373,6 +385,41 @@ where
         fs::hard_link(original, link).context("unable to create hard link")?;
     }
     Ok(())
+}
+
+/// Checks if `maybe_link` is a (symbolic or hard) link to the `source`.
+pub fn is_link_of<P, Q>(maybe_link: P, source: Q) -> Result<bool>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    if maybe_link.as_ref() == source.as_ref() {
+        // same file, return false
+        Ok(false)
+    } else if maybe_link
+        .as_ref()
+        .read_link()
+        .map(|p| {
+            if p.is_relative() {
+                let p_abs = maybe_link.as_ref().with_file_name(p).canonicalize().ok();
+                let s_abs = source.as_ref().canonicalize().ok();
+                p_abs.is_some() && p_abs == s_abs
+            } else {
+                p == source.as_ref()
+            }
+        })
+        .unwrap_or_default()
+    {
+        // sym link to source, return true
+        Ok(true)
+    } else {
+        // check if the two files are hard-linked, which means that they have same file id,
+        // but not in the exact same path.
+        let maybe_link_fid = file_id::get_file_id(maybe_link)?;
+        let source_fid = file_id::get_file_id(source)?;
+
+        Ok(maybe_link_fid == source_fid)
+    }
 }
 
 #[cfg(test)]

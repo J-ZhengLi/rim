@@ -423,6 +423,7 @@ pub fn pause() -> Result<()> {
     Ok(())
 }
 
+#[cfg(unix)]
 pub fn show_source_hint(install_dir: &std::path::Path) {
     if let Some(path) = crate::core::os::unix::env_script_path(install_dir) {
         use colored::Colorize;

@@ -6,7 +6,8 @@ use rim_test_support::{prelude::*, process::ProcessBuilder};
 #[rim_test]
 fn default_installation_dir() {
     let process = ProcessBuilder::installer_process();
-    process.command().arg("-y").assert().success();
+    let res = process.command().arg("-y").assert().success();
+    println!("{}", String::from_utf8_lossy(&res.get_output().stdout));
 
     check_installation(&process.default_install_dir());
 }

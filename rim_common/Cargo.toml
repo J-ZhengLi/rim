@@ -10,6 +10,7 @@ chrono.workspace = true
 dirs.workspace = true
 env_proxy = "0.4.1"
 fern.workspace = true
+file-id = "0.2"
 flate2 = "1"
 indexmap.workspace = true
 indicatif = "0.17"

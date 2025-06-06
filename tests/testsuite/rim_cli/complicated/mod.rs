@@ -56,6 +56,7 @@ fn uninstall_toolkit_kept_rim_links() {
     assert!(status.success());
 
     let all_bin = utils::walk_dir(&cargo_bin_dir, false).unwrap();
+    println!("all bin: {all_bin:?}");
     assert_eq!(all_bin.len(), 2);
     assert_files!(
         cargo_bin_dir."rim",

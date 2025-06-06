@@ -2,11 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{bail, Result};
 use clap::Subcommand;
-use rim_common::types::{ToolInfo, ToolInfoDetails, ToolKind, ToolkitManifest};
+use rim_common::types::{ToolInfo, ToolInfoDetails, ToolkitManifest};
 
 use crate::{
     components::{split_components, Component},
-    core::GlobalOpts,
     fingerprint::InstallationRecord,
     AppInfo, InstallConfiguration, ToolkitManifestExt, UninstallConfiguration,
 };
@@ -98,7 +97,8 @@ fn install_components(components: &[String], insecure: bool) -> Result<()> {
     // notify user that they might need to source the current shell again
     #[cfg(unix)]
     {
-        let g_opts = GlobalOpts::get();
+        use rim_common::types::ToolKind;
+        let g_opts = crate::core::GlobalOpts::get();
         if !(g_opts.quiet || g_opts.no_modify_env())
             && tools.iter().any(|(_, info)| {
                 matches!(info.kind(), Some(ToolKind::DirWithBin | ToolKind::Custom))
