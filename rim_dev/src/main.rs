@@ -24,7 +24,7 @@ Commands:
     dist, d         Generate release binaries
     run-manager     Run in manager mode
     vendor          Download packages for offline package build
-    mock-rustup-server
+    mock-server
                     Generate a mocked rustup dist server
 "#;
 
@@ -39,9 +39,9 @@ Options:
     -h, -help       Print this help message
 "#;
 const MOCK_HELP: &str = r#"
-Generate a mocked rustup dist server
+Generate a mocked rustup dist server and rim dist server
 
-Usage: cargo dev mock-rustup-server [OPTIONS]
+Usage: cargo dev mock-server [OPTIONS]
 
 Options:
         --root      Specify another directory for generated files
@@ -103,7 +103,10 @@ impl DevCmd {
                 all_targets,
                 clear,
             } => vendor::vendor(mode, name, targets, all_targets, clear)?,
-            Self::Mock { root } => server::generate_rustup_server_files(root)?,
+            Self::Mock { root } => {
+                server::generate_rim_server_files()?;
+                server::generate_rustup_server_files(root)?
+            }
         }
         Ok(())
     }
@@ -220,7 +223,7 @@ fn main() -> Result<ExitCode> {
                 args: extra_args,
             }
         }
-        "mock-rustup-server" => match args.next().as_deref() {
+        "mock-server" => match args.next().as_deref() {
             Some("-r" | "--root") => DevCmd::Mock {
                 root: Some(args.next().expect("missing arg value for 'root'").into()),
             },

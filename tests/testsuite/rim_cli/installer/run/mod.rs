@@ -1,11 +1,11 @@
 use std::path::Path;
 
 use rim_common::{build_config, exe};
-use rim_test_support::{prelude::*, process::ProcessBuilder};
+use rim_test_support::{prelude::*, process::TestProcess};
 
 #[rim_test]
 fn default_installation_dir() {
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let res = process.command().arg("-y").assert().success();
     println!("{}", String::from_utf8_lossy(&res.get_output().stdout));
 
@@ -14,7 +14,7 @@ fn default_installation_dir() {
 
 #[rim_test]
 fn custom_installation_dir() {
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let install_dir = process.root().join("install_prefix");
     process
         .command()
@@ -55,7 +55,7 @@ fn env_and_path_configured() {
     use rim_common::utils;
     use rim_test_support::process::{local_rustup_update_root, mocked_dist_server};
 
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let root = process.default_install_dir();
     let res = process.command().arg("-y").assert().success();
     println!("{}", String::from_utf8_lossy(&res.get_output().stdout));
@@ -77,7 +77,7 @@ export CARGO_HOME=\"{}\"
 export RUSTUP_HOME=\"{}\"
 add_to_path \"{}\"
 ",
-                mocked_dist_server(),
+                mocked_dist_server().rustup,
                 local_rustup_update_root(),
                 root.join("cargo").display(),
                 root.join("rustup").display(),
@@ -98,7 +98,7 @@ set -Ux CARGO_HOME \"{}\"
 set -Ux RUSTUP_HOME \"{}\"
 add_to_path \"{}\"
 ",
-                mocked_dist_server(),
+                mocked_dist_server().rustup,
                 local_rustup_update_root(),
                 root.join("cargo").display(),
                 root.join("rustup").display(),
@@ -111,7 +111,7 @@ add_to_path \"{}\"
 #[cfg(target_os = "linux")]
 #[rim_test]
 fn rc_files_are_created() {
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     process.command().arg("-y").assert().success();
 
     let possible_bash_rcs = [".profile", ".bash_profile", ".bash_login", ".bashrc"]
@@ -142,7 +142,7 @@ fn installation_removes_legacy_config_section() {
     use rim_common::utils;
 
     let mut num_rc_checked = 0;
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let possible_bash_rcs = [".profile", ".bash_profile", ".bash_login", ".bashrc"]
         .map(|rc| process.home_dir().join(rc));
     let legacy_content = r#"

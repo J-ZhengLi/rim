@@ -103,10 +103,15 @@ impl InstallationRecord {
 
     /// Adds installation record for Rust toolchain
     pub(crate) fn add_rust_record(&mut self, version: &str, components: &[ToolchainComponent]) {
-        self.rust = Some(RustRecord {
-            version: version.to_string(),
-            components: components.iter().map(|tc| tc.name.clone()).collect(),
-        });
+        let entry = self.rust.get_or_insert_with(RustRecord::default);
+        entry.version = version.to_string();
+
+        for component in components.iter().filter(|c| !c.is_profile) {
+            if entry.components.iter().any(|c| c == &component.name) {
+                continue;
+            }
+            entry.components.push(component.name.clone());
+        }
     }
 
     pub(crate) fn add_tool_record(&mut self, name: &str, record: ToolRecord) {

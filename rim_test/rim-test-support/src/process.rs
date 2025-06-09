@@ -43,10 +43,14 @@ pub fn local_rustup_update_root() -> &'static Url {
         Url::from_file_path(rustup_update_root).unwrap()
     })
 }
-// Clear the mocked server once to make sure it's always up-to-date
-static CLEAR_OBSCURE_MOCKED_SERVER_ONCE: OnceLock<()> = OnceLock::new();
-pub fn mocked_dist_server() -> &'static Url {
-    static DIST_SERVER: OnceLock<Url> = OnceLock::new();
+
+pub struct MockedServer {
+    pub rustup: Url,
+    pub rim: Url,
+}
+
+pub fn mocked_dist_server() -> &'static MockedServer {
+    static DIST_SERVER: OnceLock<MockedServer> = OnceLock::new();
     DIST_SERVER.get_or_init(|| {
         let rustup_server = env::current_exe()
             .unwrap()
@@ -54,10 +58,8 @@ pub fn mocked_dist_server() -> &'static Url {
             .unwrap()
             .with_file_name("mocked")
             .join("rustup-server");
-        CLEAR_OBSCURE_MOCKED_SERVER_ONCE.get_or_init(|| {
-            _ = std::fs::remove_dir_all(&rustup_server);
-        });
-        if !rustup_server.is_dir() {
+        let rim_server = rustup_server.with_file_name("rim-server");
+        if !(rustup_server.is_dir() && rim_server.is_dir()) {
             // make sure the template file exists
             let templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
@@ -71,26 +73,30 @@ pub fn mocked_dist_server() -> &'static Url {
                 .unwrap();
             // generate now
             std::process::Command::new("cargo")
-                .args(["dev", "mock-rustup-server"])
+                .args(["dev", "mock-server"])
                 .status()
                 .unwrap();
         }
-        url::Url::from_directory_path(rustup_server).unwrap()
+
+        MockedServer {
+            rim: Url::from_directory_path(rim_server).unwrap(),
+            rustup: Url::from_directory_path(rustup_server).unwrap(),
+        }
     })
 }
 
-pub struct ProcessBuilder {
+pub struct TestProcess {
     root: TempDir,
     executable: PathBuf,
     is_manager: bool,
 }
 
-impl ProcessBuilder {
+impl TestProcess {
     /// Generate installer test process
-    pub fn installer_process() -> ProcessBuilder {
+    pub fn installer() -> TestProcess {
         let name = &format!("installer-cli{EXE_SUFFIX}");
         let (root, executable) = ensure_bin(name);
-        ProcessBuilder {
+        TestProcess {
             root,
             executable,
             is_manager: false,
@@ -98,10 +104,10 @@ impl ProcessBuilder {
     }
 
     /// Generate manager test process
-    pub fn manager_process() -> ProcessBuilder {
+    pub fn manager() -> TestProcess {
         let name = &format!("manager-cli{EXE_SUFFIX}");
         let (root, executable) = ensure_bin(name);
-        ProcessBuilder {
+        TestProcess {
             root,
             executable,
             is_manager: true,
@@ -159,7 +165,7 @@ impl ProcessBuilder {
 
         if !self.is_manager {
             base.args(["--rustup-update-root", local_rustup_update_root().as_str()])
-                .args(["--rustup-dist-server", mocked_dist_server().as_str()])
+                .args(["--rustup-dist-server", mocked_dist_server().rustup.as_str()])
         } else {
             base
         }

@@ -11,7 +11,7 @@ use std::{
 use super::consts::*;
 use crate::error::Result;
 use rim::{
-    cli::{ExecutableCommand, ManagerSubcommands},
+    cli::{ComponentCommand, ExecutableCommand, ManagerSubcommands},
     components::Component,
     update::UpdateCheckBlocker,
     AppInfo, InstallConfiguration, UninstallConfiguration,
@@ -377,9 +377,22 @@ impl From<&rim::cli::Installer> for SharedConfigs {
 
 impl From<&rim::cli::Manager> for SharedConfigs {
     fn from(value: &rim::cli::Manager) -> Self {
-        Self {
-            rustup_dist_server: value.rustup_dist_server.clone(),
-        }
+        let rustup_dist_server = value.command.as_ref().and_then(|cmd| match cmd {
+            ManagerSubcommands::Component {
+                command:
+                    ComponentCommand::Install {
+                        rustup_dist_server, ..
+                    },
+            }
+            | ManagerSubcommands::Install {
+                rustup_dist_server, ..
+            }
+            | ManagerSubcommands::Update {
+                rustup_dist_server, ..
+            } => rustup_dist_server.clone(),
+            _ => None,
+        });
+        Self { rustup_dist_server }
     }
 }
 

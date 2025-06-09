@@ -46,7 +46,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
 
     if *list_components {
         // print a list of available components then return, don't do anything else
-        super::list::list_components(false, Some(&manifest))?;
+        super::list::list_components(false, false, Some(&manifest))?;
         return Ok(ExecStatus::new_executed().no_pause(true));
     }
 

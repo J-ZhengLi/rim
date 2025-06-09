@@ -289,7 +289,10 @@ impl<'a> InstallConfiguration<'a> {
         &mut self,
         components: &[ToolchainComponent],
     ) -> Result<()> {
-        ToolchainInstaller::init(&*self).add_components(self, components)?;
+        ToolchainInstaller::init(&*self)
+            .insecure(self.insecure)
+            .rustup_dist_server(self.rustup_dist_server.clone())
+            .add_components(self, components)?;
 
         self.install_record
             .add_rust_record(&self.manifest.rust.channel, components);

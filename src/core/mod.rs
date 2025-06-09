@@ -200,7 +200,7 @@ impl Mode {
             // fallback to installer mode
             Ok(_) => Self::installer(installer_callback),
             Err(_) => match utils::lowercase_program_name() {
-                Some(s) if s.contains("manager") => Self::manager(manager_callback),
+                Some(s) if s.contains("manager") || s == "rim" => Self::manager(manager_callback),
                 // fallback to installer mode
                 _ => Self::installer(installer_callback),
             },

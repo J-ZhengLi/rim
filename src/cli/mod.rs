@@ -14,7 +14,6 @@ use anyhow::{anyhow, bail, Result};
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand, ValueHint};
 use common::handle_user_choice;
-use component::ComponentCommand;
 use rim_common::utils;
 use std::{
     path::{Path, PathBuf},
@@ -24,6 +23,7 @@ use url::Url;
 
 // Re-exports
 pub use common::pause;
+pub use component::ComponentCommand;
 
 /// Receive a list of function calls, that waits to be executed,
 /// if any of them returning [`ExecStatus`] which the `executed` flag is `true`,
@@ -270,9 +270,6 @@ pub struct Manager {
     /// uninstallation.
     #[arg(long, conflicts_with = "no_modify_path")]
     no_modify_env: bool,
-    /// Specify another server to download Rust toolchain.
-    #[arg(hide = true, long, value_name = "URL", value_hint = ValueHint::Url)]
-    pub rustup_dist_server: Option<Url>,
 
     /// Specify another language to display
     #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
@@ -361,6 +358,9 @@ pub enum ManagerSubcommands {
         insecure: bool,
         #[arg(value_name = "VERSION")]
         version: String,
+        /// Specify another server to download Rust toolchain components.
+        #[arg(long, value_name = "URL", value_hint = ValueHint::Url)]
+        rustup_dist_server: Option<Url>,
     },
     /// Update toolkit and/or this installation manager
     ///
@@ -387,6 +387,9 @@ pub enum ManagerSubcommands {
         /// a and b, but also other components that were selected by default will get updated.
         #[arg(short, long, value_delimiter = ',')]
         component: Option<Vec<String>>,
+        /// Specify another server to download Rust toolchain components.
+        #[arg(long, value_name = "URL", value_hint = ValueHint::Url)]
+        rustup_dist_server: Option<Url>,
     },
     /// Display a list of toolkits or components
     List {
@@ -493,7 +496,7 @@ impl ManagerSubcommands {
                             2 t!("skip_ssl_check") => { true }
                         }
                     );
-                    Some(Self::Update { insecure, toolkit_only: false, manager_only: false, component: None })
+                    Some(Self::Update { insecure, toolkit_only: false, manager_only: false, component: None, rustup_dist_server: None })
                 },
                 3 t!("uninstall") => { Some(Self::Uninstall { keep_self: false }) },
                 4 t!("list_option") => {
@@ -523,13 +526,13 @@ impl ManagerSubcommands {
             t!("choose_an_option"), 1,
             {
                 1 t!("update_all") => {
-                    Self::Update { insecure, toolkit_only: false, manager_only: false, component }
+                    Self::Update { insecure, toolkit_only: false, manager_only: false, component, rustup_dist_server: None }
                 },
                 2 t!("update_self_only") => {
-                    Self::Update { insecure, toolkit_only: false, manager_only: true, component }
+                    Self::Update { insecure, toolkit_only: false, manager_only: true, component, rustup_dist_server: None }
                 },
                 3 t!("update_toolkit_only") => {
-                    Self::Update { insecure, toolkit_only: true, manager_only: false, component }
+                    Self::Update { insecure, toolkit_only: true, manager_only: false, component, rustup_dist_server: None}
                 },
                 4 t!("back") => { return Ok(false) }
             }
@@ -570,7 +573,7 @@ impl ManagerSubcommands {
                         info!("{}", t!("no_component_selected"));
                         return Ok(false);
                     }
-                    Self::Component { command: ComponentCommand::Install { insecure, components } }
+                    Self::Component { command: ComponentCommand::Install { insecure, components, rustup_dist_server: None } }
                 },
                 2 t!("remove") => {
                     let components = component::collect_components_to_remove()?;
