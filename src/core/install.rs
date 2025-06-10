@@ -69,10 +69,18 @@ impl RimDir for &InstallConfiguration<'_> {
 impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolkitManifest) -> Result<Self> {
         let (reg_name, reg_url) = super::default_cargo_registry();
+        let install_record = if InstallationRecord::exists()? {
+            // TODO: handle existing record, maybe we want to enter manager mode directly?
+            InstallationRecord::load_from_config_dir()?
+        } else {
+            InstallationRecord {
+                install_dir: install_dir.to_path_buf(),
+                ..Default::default()
+            }
+        };
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
-            // Note: `InstallationRecord::load_from_dir` creates `install_dir` if it does not exist
-            install_record: InstallationRecord::load_from_dir(install_dir)?,
+            install_record,
             cargo_registry: Some((reg_name.into(), reg_url.into())),
             rustup_dist_server: None,
             rustup_update_root: None,
@@ -87,8 +95,8 @@ impl<'a> InstallConfiguration<'a> {
     /// This is suitable for first-time installation.
     pub fn setup(&mut self) -> Result<()> {
         let install_dir = &self.install_dir;
-
         info!("{}", t!("install_init", dir = install_dir.display()));
+        utils::ensure_dir(install_dir)?;
 
         // Create a copy of the manifest which is later used for component management.
         // NB: This `setup` function only gets called during the first installation,
@@ -578,7 +586,7 @@ fn reject_conflicting_tools(tools: &ToolMap) -> Result<()> {
 /// Get the default installation directory,
 /// which is a directory under [`home_dir`](utils::home_dir).
 pub fn default_install_dir() -> PathBuf {
-    utils::home_dir().join(DEFAULT_FOLDER_NAME)
+    rim_common::dirs::home_dir().join(DEFAULT_FOLDER_NAME)
 }
 
 #[cfg(test)]
@@ -600,10 +608,6 @@ mod tests {
         config.setup().unwrap();
 
         assert!(config.install_record.name.is_none());
-        assert!(install_root
-            .path()
-            .join(InstallationRecord::FILENAME)
-            .is_file());
     }
 
     #[test]

@@ -3,6 +3,7 @@ use rim_common::{build_config, utils};
 use snapbox::cmd::Command;
 use std::env;
 use std::path::{Path, PathBuf};
+use std::process::Command as StdCommand;
 use std::sync::OnceLock;
 use tempfile::TempDir;
 use url::Url;
@@ -88,7 +89,14 @@ pub fn mocked_dist_server() -> &'static MockedServer {
 pub struct TestProcess {
     root: TempDir,
     executable: PathBuf,
-    is_manager: bool,
+    kind: TestProcessKind,
+}
+
+#[derive(Clone, Copy)]
+enum TestProcessKind {
+    Manager,
+    Installer,
+    Combined,
 }
 
 impl TestProcess {
@@ -99,7 +107,7 @@ impl TestProcess {
         TestProcess {
             root,
             executable,
-            is_manager: false,
+            kind: TestProcessKind::Installer,
         }
     }
 
@@ -110,8 +118,14 @@ impl TestProcess {
         TestProcess {
             root,
             executable,
-            is_manager: true,
+            kind: TestProcessKind::Manager,
         }
+    }
+
+    pub fn combined() -> TestProcess {
+        let mut res = Self::installer();
+        res.kind = TestProcessKind::Combined;
+        res
     }
 
     pub fn root(&self) -> &Path {
@@ -144,13 +158,6 @@ impl TestProcess {
         // the actual environment
         let home_dir = &self.home_dir();
 
-        // To avoid rustup throwing error regarding mismatched home env
-        // we should set the env vars for this particular process as well
-        env::set_var("HOME", home_dir);
-        // Set %USERPROFILE% on windows just to make sure
-        #[cfg(windows)]
-        env::set_var("USERPROFILE", home_dir);
-
         #[cfg(unix)]
         let base = Command::new(&self.executable).env("HOME", home_dir);
         // On Windows, env vars are directly added, which make it a bit
@@ -163,12 +170,27 @@ impl TestProcess {
             .env("USERPROFILE", home_dir)
             .arg("--no-modify-env");
 
-        if !self.is_manager {
+        if !matches!(self.kind, TestProcessKind::Manager) {
             base.args(["--rustup-update-root", local_rustup_update_root().as_str()])
                 .args(["--rustup-dist-server", mocked_dist_server().rustup.as_str()])
         } else {
             base
         }
+    }
+
+    /// Return an `std::process::Command` that invokes the manager after installation,
+    /// this only works in combined test process.
+    pub fn rim_command(&self, program: &Path) -> StdCommand {
+        if !matches!(self.kind, TestProcessKind::Combined) {
+            panic!("rim command only works on test process with combined kind");
+        }
+
+        let mut base = StdCommand::new(program);
+        let home_dir = self.home_dir();
+        base.env("HOME", &home_dir);
+        #[cfg(windows)]
+        base.env("USERPROFILE", &home_dir);
+        base
     }
 
     /// Consume self and keep all temporary files.

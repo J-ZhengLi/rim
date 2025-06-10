@@ -5,7 +5,7 @@ use rim_test_support::{
     process::{mocked_dist_server, TestProcess},
     rim_test,
 };
-use std::{path::Path, process::Command as StdCommand};
+use std::path::Path;
 
 macro_rules! assert_files {
     ($($root:ident.$bin:expr),+) => {
@@ -17,7 +17,7 @@ macro_rules! assert_files {
 
 #[rim_test]
 fn uninstall_toolkit_kept_rim_links() {
-    let process = super::default_install();
+    let process = super::default_install(true);
     let root = process.default_install_dir();
 
     let cargo_bin_dir = root.join("cargo").join("bin");
@@ -46,7 +46,8 @@ fn uninstall_toolkit_kept_rim_links() {
 
     // uninstall toolkit
     let rim = root.join(exe!(rim_name));
-    let status = StdCommand::new(&rim)
+    let status = process
+        .rim_command(&rim)
         .args(["-y", "--no-modify-env", "uninstall", "--keep-self"])
         .status()
         .unwrap();
@@ -61,7 +62,8 @@ fn uninstall_toolkit_kept_rim_links() {
     );
 
     // uninstall self
-    let status = StdCommand::new(rim)
+    let status = process
+        .rim_command(&rim)
         .args(["-y", "--no-modify-env", "uninstall"])
         .status()
         .unwrap();
@@ -71,39 +73,54 @@ fn uninstall_toolkit_kept_rim_links() {
 
 #[rim_test]
 fn uninstall_using_linked_rim() {
-    let process = super::default_install();
+    let process = super::default_install(true);
     let install_dir = process.default_install_dir();
 
     let rim = install_dir.join("cargo").join("bin").join(exe!("rim"));
-    let status = StdCommand::new(rim)
+    let status = process
+        .rim_command(&rim)
         .args(["-y", "--no-modify-env", "uninstall"])
         .status()
         .unwrap();
     assert!(status.success());
-    assert!(!install_dir.exists() || utils::walk_dir(&install_dir, false).unwrap().is_empty());
     assert!(process.root().exists());
+
+    #[cfg(unix)]
+    {
+        // on windows, these file won't be deleted right away,
+        // so we ignore the residual files for this test
+        assert!(!install_dir.exists() || utils::walk_dir(&install_dir, true).unwrap().is_empty());
+    }
 }
 
 #[rim_test]
 fn uninstall_using_linked_manager() {
-    let process = super::default_install();
+    let process = super::default_install(true);
     let install_dir = process.default_install_dir();
 
     let rim = install_dir
         .join("cargo")
         .join("bin")
         .join(exe!(build_config().app_name()));
-    let status = StdCommand::new(rim)
+    let status = process
+        .rim_command(&rim)
         .args(["-y", "--no-modify-env", "uninstall"])
         .status()
         .unwrap();
     assert!(status.success());
-    assert!(!install_dir.exists() || utils::walk_dir(&install_dir, false).unwrap().is_empty());
     assert!(process.root().exists());
+
+    #[cfg(unix)]
+    {
+        // on windows, these file won't be deleted right away,
+        // so we ignore the residual files for this test
+        assert!(!install_dir.exists() || utils::walk_dir(&install_dir, true).unwrap().is_empty());
+    }
 }
 
-fn list_component_output(rim: &Path) -> String {
-    let list_comp_output = StdCommand::new(&rim)
+fn list_component_output(process: &TestProcess, rim: &Path) -> String {
+    let list_comp_output = process
+        .rim_command(&rim)
         .args(["list", "component"])
         .output()
         .unwrap();
@@ -112,9 +129,9 @@ fn list_component_output(rim: &Path) -> String {
         .to_string()
 }
 
-fn add_or_rm_component(rim: &Path, comp: &str, remove: bool) {
+fn add_or_rm_component(process: &TestProcess, rim: &Path, comp: &str, remove: bool) {
     let op = if remove { "remove" } else { "add" };
-    let mut cmd = StdCommand::new(&rim);
+    let mut cmd = process.rim_command(&rim);
     cmd.args(["component", op, comp]);
     if !remove {
         cmd.args(["--rustup-dist-server", mocked_dist_server().rustup.as_str()]);
@@ -125,11 +142,11 @@ fn add_or_rm_component(rim: &Path, comp: &str, remove: bool) {
 
 #[rim_test]
 fn manage_components_using_linked_rim() {
-    let process = super::default_install();
+    let process = super::default_install(true);
     let install_dir = process.default_install_dir();
     let rim = install_dir.join("cargo").join("bin").join(exe!("rim"));
 
-    let output = list_component_output(&rim);
+    let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
         "Basic (installed)
@@ -138,9 +155,9 @@ rust-docs"
     );
 
     // add more components
-    add_or_rm_component(&rim, "llvm-tools", false);
-    add_or_rm_component(&rim, "rust-docs", false);
-    let output = list_component_output(&rim);
+    add_or_rm_component(&process, &rim, "llvm-tools", false);
+    add_or_rm_component(&process, &rim, "rust-docs", false);
+    let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
         "Basic (installed)
@@ -149,8 +166,8 @@ rust-docs (installed)"
     );
 
     // remove middle
-    add_or_rm_component(&rim, "llvm-tools", true);
-    let output = list_component_output(&rim);
+    add_or_rm_component(&process, &rim, "llvm-tools", true);
+    let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
         "Basic (installed)
@@ -161,7 +178,7 @@ llvm-tools"
 
 #[rim_test]
 fn install_with_specific_components() {
-    let process = TestProcess::installer();
+    let process = TestProcess::combined();
     let list_res = process
         .command()
         .arg("--list-components")
@@ -191,7 +208,7 @@ rust-docs"
         .join("cargo")
         .join("bin")
         .join(exe!("rim"));
-    let installed_components = list_component_output(&rim);
+    let installed_components = list_component_output(&process, &rim);
     assert_eq!(
         installed_components,
         "Basic (installed)
@@ -202,12 +219,13 @@ llvm-tools"
 
 #[rim_test]
 fn linked_rim_install_then_update() {
-    let process = super::default_install();
+    let process = super::default_install(true);
     let install_dir = process.default_install_dir();
     let rim = install_dir.join("cargo").join("bin").join(exe!("rim"));
 
     // list all toolkit
-    let list_output = StdCommand::new(&rim)
+    let list_output = process
+        .rim_command(&rim)
         .env("RIM_DIST_SERVER", mocked_dist_server().rim.as_str())
         .args(["list", "toolkit"])
         .output()
@@ -216,14 +234,15 @@ fn linked_rim_install_then_update() {
     assert!(String::from_utf8_lossy(&list_output.stdout)
         .trim()
         .ends_with(
-            "Custom Rust Distribution stable-1.87.0
-Custom Rust Distribution stable-1.86.0
-Custom Rust Distribution stable-1.82.0
-Custom Rust Distribution stable-1.81.0"
+            "Test-only Toolkit stable-1.87.0
+Test-only Toolkit stable-1.86.0
+Test-only Toolkit stable-1.82.0
+Test-only Toolkit stable-1.81.0"
         ),);
 
     // TODO: install old toolchain, but `manager install` is not implemented yet
-    let output = StdCommand::new(rim)
+    let output = process
+        .rim_command(&rim)
         .args(["-y", "--no-modify-env"])
         // the version must one of the `VERSIONS` in `rim_dev/mocked/server.rs`
         .args([

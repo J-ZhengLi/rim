@@ -60,7 +60,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
 
     command.execute()?;
 
-    Ok(ExecStatus::new_executed())
+    Ok(ExecStatus::new_executed().no_pause(true))
 }
 
 fn install_components(
@@ -121,7 +121,7 @@ fn install_components(
 }
 
 fn uninstall_components(components: &[String]) -> Result<()> {
-    let record = InstallationRecord::load_from_install_dir()?;
+    let record = InstallationRecord::load_from_config_dir()?;
 
     // make a set out of components to:
     // 1. remove duplicates; 2. search faster;
@@ -218,7 +218,7 @@ pub(super) fn collect_components_to_add() -> Result<Vec<String>> {
 /// 4. convert list of indexes into list of names then return it.
 pub(super) fn collect_components_to_remove() -> Result<Vec<String>> {
     // step 1: load installed component names
-    let record = InstallationRecord::load_from_install_dir()?;
+    let record = InstallationRecord::load_from_config_dir()?;
     // we need to convert these records to `Component`
     let mut all_installed_comps = record
         .installed_toolchain_components()

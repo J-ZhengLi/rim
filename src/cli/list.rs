@@ -48,7 +48,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     let sub_cmd = command.unwrap_or_default();
     sub_cmd.execute(*installed)?;
 
-    Ok(ExecStatus::new_executed())
+    Ok(ExecStatus::new_executed().no_pause(true))
 }
 
 /// Ask user about list options, return a `bool` indicates whether the user wishs to continue.
@@ -71,7 +71,7 @@ pub(crate) fn list_components(
     manifest: Option<&ToolkitManifest>,
 ) -> Result<()> {
     let mut components = if check_record {
-        let fp = InstallationRecord::load_from_install_dir()?;
+        let fp = InstallationRecord::load_from_config_dir()?;
         components::all_components_from_installation(&fp)?
     } else {
         vec![]

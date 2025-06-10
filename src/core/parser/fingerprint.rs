@@ -1,83 +1,54 @@
 use anyhow::{anyhow, Context, Result};
+use rim_common::dirs::rim_config_dir;
 use rim_common::types::{TomlParser, ToolKind, ToolkitManifest};
 use rim_common::utils;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::collections::HashSet;
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::components::ToolchainComponent;
-use crate::AppInfo;
-
-/// Load fingerprint file just to get the list of installed tools.
-pub(crate) fn installed_tools(root: &Path) -> Result<HashMap<String, ToolRecord>> {
-    Ok(InstallationRecord::load_from_dir(root)?.tools)
-}
 
 /// Holds Installation record.
 ///
 /// This tracks what tools/components we have installed, and where they are installed.
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct InstallationRecord {
+    #[serde(alias = "root")]
+    pub install_dir: PathBuf,
     /// Name of the bundle, such as `my-rust-stable`
     pub name: Option<String>,
     pub version: Option<String>,
     pub edition: Option<String>,
-    pub root: PathBuf,
     pub rust: Option<RustRecord>,
     #[serde(default)]
     pub tools: HashMap<String, ToolRecord>,
 }
 
 impl TomlParser for InstallationRecord {
-    const FILENAME: &'static str = ".fingerprint.toml";
-
-    /// Load fingerprint from a given root.
-    ///
-    /// This will create one and return the default if it doesn't exist.
-    fn load_from_dir<P: AsRef<Path>>(root: P) -> Result<InstallationRecord>
-    where
-        Self: Sized + serde::de::DeserializeOwned,
-    {
-        utils::ensure_dir(root.as_ref())?;
-
-        let fp_path = root.as_ref().join(Self::FILENAME);
-        if fp_path.is_file() {
-            let raw = utils::read_to_string("installation fingerprint", &fp_path)?;
-            Self::from_str(&raw)
-        } else {
-            let default = InstallationRecord {
-                root: root.as_ref().to_path_buf(),
-                ..Default::default()
-            };
-            default.write()?;
-            Ok(default)
-        }
-    }
+    const FILENAME: &'static str = ".install-record.toml";
 }
 
 impl InstallationRecord {
-    /// Used to detect whether a fingerprint file exists in parent directory.
+    /// Used to detect whether a fingerprint file exists in config dir.
     ///
     /// This is useful when you want to know it without causing
     /// the program to panic using [`get_installed_dir`](AppInfo::get_installed_dir).
     pub fn exists() -> Result<bool> {
-        let parent_dir = utils::parent_dir_of_cur_exe()?;
-        Ok(parent_dir.join(Self::FILENAME).is_file())
+        Ok(rim_config_dir().join(Self::FILENAME).is_file())
     }
 
-    /// Load installation record from a presumed install directory,
-    /// which is typically the parent directory of the current executable.
-    // TODO: Cache the result using a `Cell` or `RwLock` or combined.
-    pub(crate) fn load_from_install_dir() -> Result<Self> {
-        let root = AppInfo::get_installed_dir();
-        Self::load_from_dir(root)
+    /// Load installation record from [`rim_config_dir`].
+    pub(crate) fn load_from_config_dir() -> Result<Self> {
+        Self::load_from_dir(rim_config_dir()).with_context(|| {
+            t!(
+                "install_record_not_found",
+                path = rim_config_dir().join(Self::FILENAME).display()
+            )
+        })
     }
 
     pub(crate) fn write(&self) -> Result<()> {
-        let path = self.root.join(Self::FILENAME);
+        let path = rim_config_dir().join(Self::FILENAME);
         let content = self
             .to_toml()
             .context("unable to serialize installation fingerprint")?;
@@ -288,7 +259,10 @@ mod tests {
     #[test]
     fn create_local_install_info() {
         let install_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target");
-        let mut fp = InstallationRecord::load_from_dir(&install_dir).unwrap();
+        let mut fp = InstallationRecord {
+            install_dir: install_dir.clone(),
+            ..Default::default()
+        };
         let rust_components = vec![
             ToolchainComponent::new("rustfmt"),
             ToolchainComponent::new("cargo"),
@@ -302,7 +276,7 @@ mod tests {
 
         let v0 = format!(
             "\
-root = {QUOTE}{}{QUOTE}
+install_dir = {QUOTE}{}{QUOTE}
 
 [rust]
 version = \"stable\"
@@ -330,7 +304,7 @@ root = '/path/to/something'"#;
         assert_eq!(expected.name.unwrap(), "rust bundle (experimental)");
         assert_eq!(expected.version.unwrap(), "0.1");
         assert_eq!(expected.edition.unwrap(), "professional");
-        assert_eq!(expected.root, PathBuf::from("/path/to/something"));
+        assert_eq!(expected.install_dir, PathBuf::from("/path/to/something"));
     }
 
     #[test]
@@ -388,12 +362,12 @@ c = { paths = ['some/other/path'] }"#;
     #[test]
     fn do_not_ser_use_cargo() {
         let record = InstallationRecord {
-            root: "/some/path".into(),
+            install_dir: "/some/path".into(),
             tools: HashMap::from([("a".into(), ToolRecord::cargo_tool())]),
             ..Default::default()
         };
         let ser = record.to_toml().unwrap();
-        let expected = r#"root = "/some/path"
+        let expected = r#"install_dir = "/some/path"
 
 [tools.a]
 kind = "cargo-tool"

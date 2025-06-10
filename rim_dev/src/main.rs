@@ -85,6 +85,12 @@ impl DevCmd {
             } => dist::dist(mode, binary_only, name, build_target, dist_targets)?,
             Self::RunManager { no_gui, args } => {
                 println!("running manager with args: {args:?}");
+                // replace home env to prevent modifying the actually environment
+                let home = mocked::mocked_home();
+                std::env::set_var("HOME", home);
+                #[cfg(windows)]
+                std::env::set_var("USERPROFILE", home);
+
                 // a mocked server is needed to run most of function in manager
                 server::generate_rim_server_files()?;
 

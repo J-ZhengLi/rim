@@ -3,6 +3,8 @@ use std::path::Path;
 use rim_common::{build_config, exe};
 use rim_test_support::{prelude::*, process::TestProcess};
 
+use crate::rim_cli::default_install;
+
 #[rim_test]
 fn default_installation_dir() {
     let process = TestProcess::installer();
@@ -35,10 +37,8 @@ fn check_installation(root: &Path) {
     assert!(root.join("env").is_file());
     assert!(cargo_home.is_dir());
     assert!(cargo_home.join("bin").is_dir());
-    assert!(cargo_home.join("config.toml").is_file());
     assert!(rustup_home.is_dir());
     assert!(root.join("temp").is_dir());
-    assert!(root.join(".fingerprint.toml").is_file());
     assert!(root.join("toolset-manifest.toml").is_file());
     assert!(root.join(exe!(build_config().app_name())).is_file());
 
@@ -182,4 +182,33 @@ export CARGO_HOME=/path/to/cargo
     assert!(backup_files
         .iter()
         .all(|f| { std::fs::read_to_string(f).unwrap() == legacy_content }));
+}
+
+#[rim_test]
+fn install_record_created() {
+    let process = default_install(false);
+
+    let mut config_dir = process.home_dir();
+    cfg_if::cfg_if! {
+        if #[cfg(target_os = "linux")] {
+            config_dir.push(".config")
+        } else if #[cfg(windows)] {
+            config_dir.push("AppData");
+            config_dir.push("Roaming");
+        } else if #[cfg(target_os = "macos")] {
+            config_dir.push("Library");
+            config_dir.push("Application Support");
+        } else {
+            dirs::config_dir().expect(
+                "unable to determine config directory, maybe your OS is not supported"
+            );
+        }
+    }
+    config_dir.push("rim");
+    let record = config_dir.join(".install-record.toml");
+    assert!(record.is_file());
+
+    let record_content = std::fs::read_to_string(record).unwrap();
+    println!("record content: {record_content}");
+    assert!(record_content.contains(&format!("{}", process.default_install_dir().display())));
 }

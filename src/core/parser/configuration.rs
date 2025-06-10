@@ -3,11 +3,9 @@
 
 use anyhow::Result;
 use chrono::{NaiveDateTime, Utc};
-use rim_common::types::TomlParser;
+use rim_common::{dirs::rim_config_dir, types::TomlParser};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display, time::Duration};
-
-use crate::AppInfo;
 
 /// Default update check timeout is 1440 minutes (1 day)
 const DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES: u64 = 1440;
@@ -38,7 +36,7 @@ impl Default for Configuration {
 }
 
 impl TomlParser for Configuration {
-    const FILENAME: &'static str = "config.toml";
+    const FILENAME: &'static str = "configuration.toml";
 }
 
 impl Configuration {
@@ -55,18 +53,17 @@ impl Configuration {
         self
     }
 
-    /// Try loading from installation.
+    /// Try loading from [`rim_config_dir`].
     ///
     /// This guarantee to return a [`VersionSkip`] object,
     /// even if the file does not exists, the default will got returned.
-    pub fn load_from_install_dir() -> Self {
-        let install_dir = AppInfo::get_installed_dir();
-        Self::load_from_dir(install_dir).unwrap_or_default()
+    pub fn load_from_config_dir() -> Self {
+        Self::load_from_dir(rim_config_dir()).unwrap_or_default()
     }
 
-    pub fn write_to_install_dir(&self) -> Result<()> {
-        let install_dir = AppInfo::get_installed_dir();
-        self.write_to_dir(install_dir)
+    /// Write the configuration to [`rim_config_dir`].
+    pub fn write(&self) -> Result<()> {
+        self.write_to_dir(rim_config_dir())
     }
 
     pub fn update_skipped<T: AsRef<str>>(&self, target: UpdateTarget, version: T) -> bool {

@@ -6,7 +6,7 @@ use super::{
     components::ToolchainComponent,
     dependency_handler::DependencyHandler,
     directories::RimDir,
-    parser::fingerprint::{installed_tools, InstallationRecord, ToolRecord},
+    parser::fingerprint::{InstallationRecord, ToolRecord},
     rustup::ToolchainInstaller,
     tools::ToolWithDeps,
 };
@@ -47,9 +47,9 @@ impl RimDir for &UninstallConfiguration<'_> {
 
 impl<'a> UninstallConfiguration<'a> {
     pub fn init(progress: Option<Progress<'a>>) -> Result<Self> {
-        let install_record = InstallationRecord::load_from_install_dir()?;
+        let install_record = InstallationRecord::load_from_config_dir()?;
         Ok(Self {
-            install_dir: install_record.root.clone(),
+            install_dir: install_record.install_dir.clone(),
             install_record,
             progress_indicator: progress,
         })
@@ -65,7 +65,7 @@ impl<'a> UninstallConfiguration<'a> {
     pub fn uninstall(mut self, remove_self: bool) -> Result<()> {
         // remove all tools.
         info!("{}", t!("uninstalling_third_party_tools"));
-        self.remove_tools(installed_tools(&self.install_dir)?, 40.0)?;
+        self.remove_tools(InstallationRecord::load_from_config_dir()?.tools, 40.0)?;
 
         // Remove rust toolchain via rustup.
         if self.install_record.rust.is_some() {
@@ -93,6 +93,7 @@ impl<'a> UninstallConfiguration<'a> {
 
             info!("{}", t!("uninstall_self"));
             self.remove_self()?;
+            info!("{}", t!("uninstall_self_residual_info"));
         } else {
             self.install_record.remove_toolkit_meta();
             self.install_record.write()?;
