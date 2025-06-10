@@ -43,8 +43,7 @@ pub(crate) fn run(extra_args: &[String]) -> Result<()> {
             bail!(t!("no_rule_set_installed"));
         }
 
-        let installed_toolchains_output = cmd!(rustup, "toolchain", "list").output()?;
-        let installed_toolchains = String::from_utf8(installed_toolchains_output.stdout)?;
+        let installed_toolchains = utils::command_output(cmd!(rustup, "toolchain", "list"))?;
         if installed_toolchains.contains(RUNNER_TOOLCHAIN_NAME) {
             toolchain_override = format!("+{RUNNER_TOOLCHAIN_NAME}");
         } else {

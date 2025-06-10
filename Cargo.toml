@@ -62,6 +62,9 @@ tokio.workspace = true
 [dev-dependencies]
 rim-test-support = { version = "0.1.0", path = "rim_test/rim-test-support" }
 
+[build-dependencies]
+rim_common = { path = "rim_common" }
+
 [target."cfg(windows)".dependencies]
 winreg = "0.52.0"
 winapi = { version = "0.3", features = ["winuser", "winbase"] }

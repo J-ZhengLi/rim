@@ -8,6 +8,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     io::{self, BufRead, Write},
+    sync::OnceLock,
 };
 
 use anyhow::{Context, Result};
@@ -539,4 +540,9 @@ impl<'c, I: IntoIterator<Item = &'c Component>> ComponentListBuilder<'c, I> {
             })
             .collect()
     }
+}
+
+pub(crate) fn version() -> &'static str {
+    static VERSION_INFO: OnceLock<String> = OnceLock::new();
+    VERSION_INFO.get_or_init(|| rim_common::get_version_info!())
 }

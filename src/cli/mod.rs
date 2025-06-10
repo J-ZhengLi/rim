@@ -136,7 +136,10 @@ impl ExecStatus {
 // NOTE: If you changed anything in this struct, or any other child types that related to
 // this struct, make sure the README doc is updated as well,
 #[derive(Parser, Default, Debug)]
-#[command(version, about)]
+#[command(
+    version = common::version(),
+    about
+)]
 pub struct Installer {
     /// Enable verbose output
     #[arg(short, long, conflicts_with = "quiet")]
@@ -240,7 +243,10 @@ impl PathOrUrl {
 // NOTE: If you changed anything in this struct, or any other child types that related to
 // this struct, make sure the README doc is updated as well,
 #[derive(Parser, Debug, Clone)]
-#[command(version, about)]
+#[command(
+    version = common::version(),
+    about
+)]
 pub struct Manager {
     /// Enable verbose output
     #[arg(short, long, conflicts_with = "quiet")]

@@ -5,6 +5,7 @@ extern crate rust_i18n;
 
 pub mod types;
 pub mod utils;
+pub mod version_info;
 
 use types::BuildConfig;
 
