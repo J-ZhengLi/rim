@@ -139,6 +139,28 @@ impl TestProcess {
         home
     }
 
+    /// Return the path to a mocked config dir under temporary test folder
+    pub fn config_dir(&self) -> PathBuf {
+        let mut config_dir = self.home_dir();
+
+        #[cfg(target_os = "linux")]
+        {
+            config_dir.push(".config");
+        }
+        #[cfg(windows)]
+        {
+            config_dir.push("AppData");
+            config_dir.push("Roaming");
+        }
+        #[cfg(target_os = "macos")]
+        {
+            config_dir.push("Library");
+            config_dir.push("Application Support");
+        }
+        config_dir.push("rim");
+        config_dir
+    }
+
     /// Return the default installation directory of rim
     pub fn default_install_dir(&self) -> PathBuf {
         self.home_dir().join("rust")
@@ -189,7 +211,7 @@ impl TestProcess {
         let home_dir = self.home_dir();
         base.env("HOME", &home_dir);
         #[cfg(windows)]
-        base.env("USERPROFILE", &home_dir);
+        base.env("USERPROFILE", &home_dir).arg("--no-modify-env");
         base
     }
 

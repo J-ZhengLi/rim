@@ -63,8 +63,6 @@ impl Uninstallation for UninstallConfiguration<'_> {
 
         do_remove_from_programs(uninstall_entry())?;
         remove_from_path(&self.install_dir)?;
-        // remove persist config files
-        _ = utils::remove(rim_common::dirs::rim_config_dir());
 
         // remove current exe
         if self_replace::self_delete().is_err() {

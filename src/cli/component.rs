@@ -60,7 +60,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
 
     command.execute()?;
 
-    Ok(ExecStatus::new_executed().no_pause(true))
+    Ok(ExecStatus::new_executed())
 }
 
 fn install_components(

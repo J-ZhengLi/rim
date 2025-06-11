@@ -214,22 +214,38 @@ impl Mode {
 
 /// Some settings are different
 fn handle_migration() -> Result<()> {
-    // the configs were stored alongside with current exe
-    let old_config_dir = utils::parent_dir_of_cur_exe()?;
-    let config_dir = rim_common::dirs::rim_config_dir();
+    fn migrate_config_file(old_name: &str, new_name: &str) -> Result<()> {
+        // the configs were stored under install_dir, the only way to find it without reading the
+        // install-record is to check for `<current_exe_dir>/.fingerprint.toml`, or
+        // `<current_exe_dir>/../../.fingerprint.toml` since this could be a link under cargo/bin
+        let mut old_file = utils::parent_dir_of_cur_exe()?.join(old_name);
+        if !old_file.exists() {
+            old_file.pop();
+            old_file.pop();
+            old_file.pop();
+            old_file.push(old_name);
+        };
+        let new_file = rim_common::dirs::rim_config_dir().join(new_name);
+        match (old_file.is_file(), new_file.is_file()) {
+            (true, false) => utils::move_to(&old_file, &new_file, true),
+            (true, true) => {
+                warn!(
+                    "{}",
+                    t!(
+                        "duplicated_config_files",
+                        first = new_file.display(),
+                        second = old_file.display()
+                    )
+                );
+                Ok(())
+            }
+            (false, _) => Ok(()),
+        }
+    }
 
     // Migrate the old config files (rim <= 0.8.0) to the new config_dir
-    let old_rec = old_config_dir.join(".fingerprint.toml");
-    let new_rec = config_dir.join(InstallationRecord::FILENAME);
-    if old_rec.is_file() && !new_rec.is_file() {
-        utils::move_to(&old_rec, &new_rec, true)?;
-    }
-
-    let old_config = old_config_dir.join("config.toml");
-    let new_config = config_dir.join(Configuration::FILENAME);
-    if old_config.is_file() && !new_config.is_file() {
-        utils::move_to(&old_config, &new_config, true)?;
-    }
+    migrate_config_file(".fingerprint.toml", InstallationRecord::FILENAME)?;
+    migrate_config_file("config.toml", Configuration::FILENAME)?;
 
     Ok(())
 }

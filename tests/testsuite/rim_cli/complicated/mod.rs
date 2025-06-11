@@ -19,6 +19,7 @@ macro_rules! assert_files {
 fn uninstall_toolkit_kept_rim_links() {
     let process = super::default_install(true);
     let root = process.default_install_dir();
+    let config_dir = process.config_dir();
 
     let cargo_bin_dir = root.join("cargo").join("bin");
     let all_bin = utils::walk_dir(&cargo_bin_dir, false).unwrap();
@@ -48,7 +49,7 @@ fn uninstall_toolkit_kept_rim_links() {
     let rim = root.join(exe!(rim_name));
     let status = process
         .rim_command(&rim)
-        .args(["-y", "--no-modify-env", "uninstall", "--keep-self"])
+        .args(["-y", "uninstall", "--keep-self"])
         .status()
         .unwrap();
     assert!(status.success());
@@ -60,15 +61,17 @@ fn uninstall_toolkit_kept_rim_links() {
         cargo_bin_dir."rim",
         cargo_bin_dir.rim_name
     );
+    assert!(config_dir.join("install-record.toml").is_file());
 
     // uninstall self
     let status = process
         .rim_command(&rim)
-        .args(["-y", "--no-modify-env", "uninstall"])
+        .args(["-y", "uninstall"])
         .status()
         .unwrap();
     assert!(status.success());
     assert!(!cargo_bin_dir.exists());
+    assert!(!config_dir.exists());
 }
 
 #[rim_test]
@@ -79,11 +82,12 @@ fn uninstall_using_linked_rim() {
     let rim = install_dir.join("cargo").join("bin").join(exe!("rim"));
     let status = process
         .rim_command(&rim)
-        .args(["-y", "--no-modify-env", "uninstall"])
+        .args(["-y", "uninstall"])
         .status()
         .unwrap();
     assert!(status.success());
     assert!(process.root().exists());
+    assert!(!process.config_dir().exists());
 
     #[cfg(unix)]
     {
@@ -104,11 +108,12 @@ fn uninstall_using_linked_manager() {
         .join(exe!(build_config().app_name()));
     let status = process
         .rim_command(&rim)
-        .args(["-y", "--no-modify-env", "uninstall"])
+        .args(["-y", "uninstall"])
         .status()
         .unwrap();
     assert!(status.success());
     assert!(process.root().exists());
+    assert!(!process.config_dir().exists());
 
     #[cfg(unix)]
     {
@@ -132,7 +137,7 @@ fn list_component_output(process: &TestProcess, rim: &Path) -> String {
 fn add_or_rm_component(process: &TestProcess, rim: &Path, comp: &str, remove: bool) {
     let op = if remove { "remove" } else { "add" };
     let mut cmd = process.rim_command(&rim);
-    cmd.args(["component", op, comp]);
+    cmd.args(["-y", "component", op, comp]);
     if !remove {
         cmd.args(["--rustup-dist-server", mocked_dist_server().rustup.as_str()]);
     }
@@ -243,9 +248,9 @@ Test-only Toolkit stable-1.81.0"
     // TODO: install old toolchain, but `manager install` is not implemented yet
     let output = process
         .rim_command(&rim)
-        .args(["-y", "--no-modify-env"])
         // the version must one of the `VERSIONS` in `rim_dev/mocked/server.rs`
         .args([
+            "-y",
             "install",
             "--rustup-dist-server",
             mocked_dist_server().rustup.as_str(),
@@ -256,4 +261,42 @@ Test-only Toolkit stable-1.81.0"
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr)
         .contains("not yet implemented: install dist with version '1.86.0'"),);
+}
+
+#[rim_test]
+fn configs_migration() {
+    let process = super::default_install(true);
+    let config_dir = process.config_dir();
+    let install_dir = process.default_install_dir();
+
+    // pretend this was installed using old rim
+    let old_rec_path = install_dir.join(".fingerprint.toml");
+    let new_rec_path = config_dir.join("install-record.toml");
+    assert!(new_rec_path.is_file());
+    utils::move_to(&new_rec_path, &old_rec_path, true).unwrap();
+    assert!(!new_rec_path.exists());
+    assert!(old_rec_path.is_file());
+
+    // when running rim again, the file should be moved to the new location
+    // if it's not done already.
+    let rim = install_dir.join("cargo").join("bin").join(exe!("rim"));
+    let list_output = list_component_output(&process, &rim);
+    assert!(!old_rec_path.exists());
+    assert!(new_rec_path.is_file());
+    assert_eq!(
+        list_output,
+        "Basic (installed)
+llvm-tools
+rust-docs"
+    );
+
+    // if there are duplicated config files, this program should acknowledge that
+    utils::write_file(&old_rec_path, "", false).unwrap();
+    let list_output = list_component_output(&process, &rim);
+    assert_eq!(
+        list_output,
+        "Basic (installed)
+llvm-tools
+rust-docs"
+    );
 }

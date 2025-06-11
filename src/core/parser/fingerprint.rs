@@ -25,7 +25,7 @@ pub struct InstallationRecord {
 }
 
 impl TomlParser for InstallationRecord {
-    const FILENAME: &'static str = ".install-record.toml";
+    const FILENAME: &'static str = "install-record.toml";
 }
 
 impl InstallationRecord {

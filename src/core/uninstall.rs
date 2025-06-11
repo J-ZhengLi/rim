@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rim_common::utils::Progress;
+use rim_common::utils::{self, Progress};
 use std::{collections::HashMap, path::PathBuf};
 
 use super::{
@@ -93,6 +93,13 @@ impl<'a> UninstallConfiguration<'a> {
 
             info!("{}", t!("uninstall_self"));
             self.remove_self()?;
+            // remove persist config files
+            utils::remove(rim_common::dirs::rim_config_dir())?;
+            println!(
+                "whats going on: {} exists: {}",
+                rim_common::dirs::rim_config_dir().display(),
+                rim_common::dirs::rim_config_dir().exists()
+            );
             info!("{}", t!("uninstall_self_residual_info"));
         } else {
             self.install_record.remove_toolkit_meta();

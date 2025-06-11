@@ -162,5 +162,6 @@
     "install_record_not_found": "找不到安装记录 '%{path}'，请尝试重新安装该程序修复此问题。",
     "install_dir_is_root": "程序已安装，但安装目录似乎为空或处于根目录，请尝试重新安装该程序以解决问题。",
     "install_dir_is_os_dir": "程序已安装，但其安装目录位于系统专用路径 '%{path}'，建议检查或重新安装。",
-    "uninstall_self_residual_info": "卸载已完成，某些文件将在系统重启后彻底移除。"
+    "uninstall_self_residual_info": "卸载已完成，某些文件将在系统重启后彻底移除。",
+    "duplicated_config_files": "检查到以下重复配置文件:\n1. %{first}\n2. %{second}\n将读取第一个文件"
 }

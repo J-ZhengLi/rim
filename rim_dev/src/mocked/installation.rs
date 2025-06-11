@@ -77,7 +77,7 @@ paths = ['{0}/tools/mingw64']
     }
 
     fn generate_meta_files(&self) -> Result<()> {
-        let fingerprint_path = rim_common::dirs::rim_config_dir().join(".install-record.toml");
+        let fingerprint_path = rim_common::dirs::rim_config_dir().join("install-record.toml");
         let manifest_path = super::install_dir().join("toolset-manifest.toml");
 
         // don't write if the path already exists

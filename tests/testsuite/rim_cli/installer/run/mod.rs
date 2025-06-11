@@ -188,24 +188,8 @@ export CARGO_HOME=/path/to/cargo
 fn install_record_created() {
     let process = default_install(false);
 
-    let mut config_dir = process.home_dir();
-    cfg_if::cfg_if! {
-        if #[cfg(target_os = "linux")] {
-            config_dir.push(".config")
-        } else if #[cfg(windows)] {
-            config_dir.push("AppData");
-            config_dir.push("Roaming");
-        } else if #[cfg(target_os = "macos")] {
-            config_dir.push("Library");
-            config_dir.push("Application Support");
-        } else {
-            dirs::config_dir().expect(
-                "unable to determine config directory, maybe your OS is not supported"
-            );
-        }
-    }
-    config_dir.push("rim");
-    let record = config_dir.join(".install-record.toml");
+    let config_dir = process.config_dir();
+    let record = config_dir.join("install-record.toml");
     assert!(record.is_file());
 
     let record_content = std::fs::read_to_string(record).unwrap();
