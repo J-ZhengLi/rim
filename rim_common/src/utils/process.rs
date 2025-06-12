@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::{env, io};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 
 use super::set_exec_permission;
 
@@ -88,6 +88,20 @@ macro_rules! cmd {
 /// Convenient function to execute a command to finish while logging its output.
 pub fn execute(cmd: Command) -> Result<()> {
     execute_command(cmd, true, true).map(|_| ())
+}
+
+/// Covenient function to execute a command to finish then collect its output.
+pub fn command_output(mut cmd: Command) -> Result<String> {
+    let inner_ = |cmd: &mut Command| -> Result<String> {
+        let output = cmd.output()?;
+        if !output.status.success() {
+            bail!("{}", String::from_utf8_lossy(&output.stderr));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).trim().into())
+    };
+
+    inner_(&mut cmd)
+        .with_context(|| format!("failed when executing command: {}", cmd_to_string(cmd)))
 }
 
 /// Execute a command.

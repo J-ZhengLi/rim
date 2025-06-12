@@ -3,8 +3,10 @@ extern crate log;
 #[macro_use]
 extern crate rust_i18n;
 
+pub mod dirs;
 pub mod types;
 pub mod utils;
+pub mod version_info;
 
 use types::BuildConfig;
 

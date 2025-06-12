@@ -151,8 +151,8 @@ impl ToolchainInstaller {
 
         // check if toolchain is installed
         let version = &config.manifest.rust.channel;
-        let mut toolchain_list_cmd = cmd!(rustup, "toolchain", "list");
-        let toolchain_list_output = String::from_utf8(toolchain_list_cmd.output()?.stdout)?;
+        let toolchain_list_cmd = cmd!(rustup, "toolchain", "list");
+        let toolchain_list_output = utils::command_output(toolchain_list_cmd)?;
         if toolchain_list_output
             .split('\n')
             .any(|line| line.starts_with(version))

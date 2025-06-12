@@ -169,7 +169,7 @@ async fn check_manager_update(app: &AppHandle) -> Result<Duration> {
                 show_update_notification_popup(app, UpdateTarget::Manager, &current, &latest, None)
                     .await?;
             }
-            Configuration::load_from_install_dir()
+            Configuration::load_from_config_dir()
                 .update
                 .duration_until_next_run(UpdateTarget::Manager)
         }
@@ -195,7 +195,7 @@ async fn check_toolkit_update(app: &AppHandle) -> Result<Duration> {
                 )
                 .await?;
             }
-            Configuration::load_from_install_dir()
+            Configuration::load_from_config_dir()
                 .update
                 .duration_until_next_run(UpdateTarget::Toolkit)
         }
@@ -371,9 +371,9 @@ fn skip_version(app: AppHandle, target: UpdateTarget, version: String) -> Result
     notification::close(app, label.into());
 
     log::info!("skipping version: '{version}' for '{target}'");
-    Configuration::load_from_install_dir()
+    Configuration::load_from_config_dir()
         .skip_update(target, version)
-        .write_to_install_dir()?;
+        .write()?;
     Ok(())
 }
 

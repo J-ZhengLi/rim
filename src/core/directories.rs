@@ -1,16 +1,5 @@
 use std::path::Path;
 
-/// Declare a statically allocated `OnceLock` path, and create that directory if it does not exists.
-macro_rules! get_path_and_create {
-    ($path_ident:ident, $init:expr) => {{
-        static $path_ident: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
-        let __path__ = $path_ident.get_or_init(|| $init);
-        rim_common::utils::ensure_dir(__path__)
-            .expect("unable to create one of the directory under installation folder");
-        __path__
-    }};
-}
-
 pub(crate) trait RimDir {
     /// The installation root, i.e. `rust/`
     fn install_dir(&self) -> &Path;

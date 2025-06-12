@@ -195,11 +195,11 @@ impl UpdateCheckBlocker {
 pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
     info!("{}", t!("checking_manager_updates"));
 
-    let mut updates_checker = Configuration::load_from_install_dir();
+    let mut updates_checker = Configuration::load_from_config_dir();
     // we mark it first then check, it sure seems pretty weird, but it sure preventing
     // infinite loop running in a background thread.
     updates_checker.update.mark_checked(UpdateTarget::Manager);
-    updates_checker.write_to_install_dir()?;
+    updates_checker.write()?;
 
     let latest_version = match latest_manager_release(insecure).await {
         Ok(release) => release.version.clone(),
@@ -235,11 +235,11 @@ pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
 /// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
 /// status of updates checker.
 pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePayload>> {
-    let mut update_checker = Configuration::load_from_install_dir();
+    let mut update_checker = Configuration::load_from_config_dir();
     // we mark it first then check, it sure seems pretty weird, but it sure preventing
     // infinite loop running in a background thread.
     update_checker.update.mark_checked(UpdateTarget::Toolkit);
-    update_checker.write_to_install_dir()?;
+    update_checker.write()?;
 
     let mutex = match toolkit::Toolkit::installed(false).await {
         Ok(Some(installed)) => installed,

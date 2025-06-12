@@ -38,9 +38,6 @@ impl Uninstallation for UninstallConfiguration<'_> {
     }
 
     fn remove_self(&self) -> Result<()> {
-        do_remove_from_programs(uninstall_entry())?;
-        remove_from_path(&self.install_dir)?;
-
         let current_exe = current_exe()?;
         // On windows, we cannot delete an executable that is currently running.
         // So, let's remove what we can, and **hopefully** that will only left us
@@ -63,6 +60,9 @@ impl Uninstallation for UninstallConfiguration<'_> {
                 warn!("{}", t!("unable_to_remove", path = entry.display()));
             }
         }
+
+        do_remove_from_programs(uninstall_entry())?;
+        remove_from_path(&self.install_dir)?;
 
         // remove current exe
         if self_replace::self_delete().is_err() {

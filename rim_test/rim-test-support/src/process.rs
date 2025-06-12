@@ -1,8 +1,8 @@
-use env::consts::EXE_SUFFIX;
 use rim_common::{build_config, utils};
 use snapbox::cmd::Command;
 use std::env;
 use std::path::{Path, PathBuf};
+use std::process::Command as StdCommand;
 use std::sync::OnceLock;
 use tempfile::TempDir;
 use url::Url;
@@ -43,10 +43,14 @@ pub fn local_rustup_update_root() -> &'static Url {
         Url::from_file_path(rustup_update_root).unwrap()
     })
 }
-// Clear the mocked server once to make sure it's always up-to-date
-static CLEAR_OBSCURE_MOCKED_SERVER_ONCE: OnceLock<()> = OnceLock::new();
-pub fn mocked_dist_server() -> &'static Url {
-    static DIST_SERVER: OnceLock<Url> = OnceLock::new();
+
+pub struct MockedServer {
+    pub rustup: Url,
+    pub rim: Url,
+}
+
+pub fn mocked_dist_server() -> &'static MockedServer {
+    static DIST_SERVER: OnceLock<MockedServer> = OnceLock::new();
     DIST_SERVER.get_or_init(|| {
         let rustup_server = env::current_exe()
             .unwrap()
@@ -54,10 +58,8 @@ pub fn mocked_dist_server() -> &'static Url {
             .unwrap()
             .with_file_name("mocked")
             .join("rustup-server");
-        CLEAR_OBSCURE_MOCKED_SERVER_ONCE.get_or_init(|| {
-            _ = std::fs::remove_dir_all(&rustup_server);
-        });
-        if !rustup_server.is_dir() {
+        let rim_server = rustup_server.with_file_name("rim-server");
+        if !(rustup_server.is_dir() && rim_server.is_dir()) {
             // make sure the template file exists
             let templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .parent()
@@ -71,41 +73,56 @@ pub fn mocked_dist_server() -> &'static Url {
                 .unwrap();
             // generate now
             std::process::Command::new("cargo")
-                .args(["dev", "mock-rustup-server"])
+                .args(["dev", "mock-server"])
                 .status()
                 .unwrap();
         }
-        url::Url::from_directory_path(rustup_server).unwrap()
+
+        MockedServer {
+            rim: Url::from_directory_path(rim_server).unwrap(),
+            rustup: Url::from_directory_path(rustup_server).unwrap(),
+        }
     })
 }
 
-pub struct ProcessBuilder {
+pub struct TestProcess {
     root: TempDir,
     executable: PathBuf,
-    is_manager: bool,
+    kind: TestProcessKind,
 }
 
-impl ProcessBuilder {
+#[derive(Clone, Copy)]
+enum TestProcessKind {
+    Manager,
+    Installer,
+    Combined,
+}
+
+impl TestProcess {
     /// Generate installer test process
-    pub fn installer_process() -> ProcessBuilder {
-        let name = &format!("installer-cli{EXE_SUFFIX}");
-        let (root, executable) = ensure_bin(name);
-        ProcessBuilder {
+    pub fn installer() -> TestProcess {
+        let (root, executable) = ensure_bin();
+        TestProcess {
             root,
             executable,
-            is_manager: false,
+            kind: TestProcessKind::Installer,
         }
     }
 
     /// Generate manager test process
-    pub fn manager_process() -> ProcessBuilder {
-        let name = &format!("manager-cli{EXE_SUFFIX}");
-        let (root, executable) = ensure_bin(name);
-        ProcessBuilder {
+    pub fn manager() -> TestProcess {
+        let (root, executable) = ensure_bin();
+        TestProcess {
             root,
             executable,
-            is_manager: true,
+            kind: TestProcessKind::Manager,
         }
+    }
+
+    pub fn combined() -> TestProcess {
+        let mut res = Self::installer();
+        res.kind = TestProcessKind::Combined;
+        res
     }
 
     pub fn root(&self) -> &Path {
@@ -117,6 +134,28 @@ impl ProcessBuilder {
         let home = self.root().join("home");
         std::fs::create_dir_all(&home).unwrap();
         home
+    }
+
+    /// Return the path to a mocked config dir under temporary test folder
+    pub fn config_dir(&self) -> PathBuf {
+        let mut config_dir = self.home_dir();
+
+        #[cfg(target_os = "linux")]
+        {
+            config_dir.push(".config");
+        }
+        #[cfg(windows)]
+        {
+            config_dir.push("AppData");
+            config_dir.push("Roaming");
+        }
+        #[cfg(target_os = "macos")]
+        {
+            config_dir.push("Library");
+            config_dir.push("Application Support");
+        }
+        config_dir.push("rim");
+        config_dir
     }
 
     /// Return the default installation directory of rim
@@ -137,16 +176,16 @@ impl ProcessBuilder {
         // used to override `HOME`, this is to ensure that the test program doesn't change
         // the actual environment
         let home_dir = &self.home_dir();
-
-        // To avoid rustup throwing error regarding mismatched home env
-        // we should set the env vars for this particular process as well
-        env::set_var("HOME", home_dir);
-        // Set %USERPROFILE% on windows just to make sure
-        #[cfg(windows)]
-        env::set_var("USERPROFILE", home_dir);
+        let mode = if let TestProcessKind::Manager = self.kind {
+            "manager"
+        } else {
+            "installer"
+        };
 
         #[cfg(unix)]
-        let base = Command::new(&self.executable).env("HOME", home_dir);
+        let base = Command::new(&self.executable)
+            .env("HOME", home_dir)
+            .env("MODE", mode);
         // On Windows, env vars are directly added, which make it a bit
         // harder to rollback after running the tests (rustup also struggle with this).
         // So it might be better to disable env modification until we figure out
@@ -155,14 +194,30 @@ impl ProcessBuilder {
         let base = Command::new(&self.executable)
             .env("HOME", home_dir)
             .env("USERPROFILE", home_dir)
+            .env("MODE", mode)
             .arg("--no-modify-env");
 
-        if !self.is_manager {
+        if !matches!(self.kind, TestProcessKind::Manager) {
             base.args(["--rustup-update-root", local_rustup_update_root().as_str()])
-                .args(["--rustup-dist-server", mocked_dist_server().as_str()])
+                .args(["--rustup-dist-server", mocked_dist_server().rustup.as_str()])
         } else {
             base
         }
+    }
+
+    /// Return an `std::process::Command` that invokes the manager after installation,
+    /// this only works in combined test process.
+    pub fn rim_command(&self, program: &Path) -> StdCommand {
+        if !matches!(self.kind, TestProcessKind::Combined) {
+            panic!("rim command only works on test process with combined kind");
+        }
+
+        let mut base = StdCommand::new(program);
+        let home_dir = self.home_dir();
+        base.env("HOME", &home_dir).env("MODE", "manager");
+        #[cfg(windows)]
+        base.env("USERPROFILE", &home_dir).arg("--no-modify-env");
+        base
     }
 
     /// Consume self and keep all temporary files.
@@ -174,14 +229,11 @@ impl ProcessBuilder {
 
 // Before any invoke of rim_cli,
 // we should save a copy as `installer` and `manager`.
-fn ensure_bin(name: &str) -> (TempDir, PathBuf) {
+fn ensure_bin() -> (TempDir, PathBuf) {
     let test_root = paths::test_root();
     let src = snapbox::cmd::cargo_bin("rim-cli");
-    let dst = test_root.path().join(name);
-    if !dst.exists() {
-        std::fs::copy(src, &dst)
-            .unwrap_or_else(|_| panic!("Failed to copy rim-cli{EXE_SUFFIX} to {name}"));
-    }
+    let dst = test_root.path().join(exe!("rim"));
+    utils::copy_file(src, &dst).unwrap();
 
     (test_root, dst)
 }

@@ -46,12 +46,12 @@ impl Toolkit {
             return Ok(INSTALLED_KIT.get());
         }
 
-        if !InstallationRecord::exists()? {
+        if !InstallationRecord::exists() {
             // No toolkit installed, return None
             return Ok(None);
         }
 
-        let fp = InstallationRecord::load_from_install_dir()?;
+        let fp = InstallationRecord::load_from_config_dir()?;
         let Some(name) = fp.name.clone() else {
             return Ok(None);
         };

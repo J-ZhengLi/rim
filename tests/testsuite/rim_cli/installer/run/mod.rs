@@ -1,11 +1,13 @@
 use std::path::Path;
 
 use rim_common::{build_config, exe};
-use rim_test_support::{prelude::*, process::ProcessBuilder};
+use rim_test_support::{prelude::*, process::TestProcess};
+
+use crate::rim_cli::default_install;
 
 #[rim_test]
 fn default_installation_dir() {
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let res = process.command().arg("-y").assert().success();
     println!("{}", String::from_utf8_lossy(&res.get_output().stdout));
 
@@ -14,7 +16,7 @@ fn default_installation_dir() {
 
 #[rim_test]
 fn custom_installation_dir() {
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let install_dir = process.root().join("install_prefix");
     process
         .command()
@@ -35,10 +37,8 @@ fn check_installation(root: &Path) {
     assert!(root.join("env").is_file());
     assert!(cargo_home.is_dir());
     assert!(cargo_home.join("bin").is_dir());
-    assert!(cargo_home.join("config.toml").is_file());
     assert!(rustup_home.is_dir());
     assert!(root.join("temp").is_dir());
-    assert!(root.join(".fingerprint.toml").is_file());
     assert!(root.join("toolset-manifest.toml").is_file());
     assert!(root.join(exe!(build_config().app_name())).is_file());
 
@@ -55,7 +55,7 @@ fn env_and_path_configured() {
     use rim_common::utils;
     use rim_test_support::process::{local_rustup_update_root, mocked_dist_server};
 
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let root = process.default_install_dir();
     let res = process.command().arg("-y").assert().success();
     println!("{}", String::from_utf8_lossy(&res.get_output().stdout));
@@ -77,7 +77,7 @@ export CARGO_HOME=\"{}\"
 export RUSTUP_HOME=\"{}\"
 add_to_path \"{}\"
 ",
-                mocked_dist_server(),
+                mocked_dist_server().rustup,
                 local_rustup_update_root(),
                 root.join("cargo").display(),
                 root.join("rustup").display(),
@@ -98,7 +98,7 @@ set -Ux CARGO_HOME \"{}\"
 set -Ux RUSTUP_HOME \"{}\"
 add_to_path \"{}\"
 ",
-                mocked_dist_server(),
+                mocked_dist_server().rustup,
                 local_rustup_update_root(),
                 root.join("cargo").display(),
                 root.join("rustup").display(),
@@ -111,7 +111,7 @@ add_to_path \"{}\"
 #[cfg(target_os = "linux")]
 #[rim_test]
 fn rc_files_are_created() {
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     process.command().arg("-y").assert().success();
 
     let possible_bash_rcs = [".profile", ".bash_profile", ".bash_login", ".bashrc"]
@@ -142,7 +142,7 @@ fn installation_removes_legacy_config_section() {
     use rim_common::utils;
 
     let mut num_rc_checked = 0;
-    let process = ProcessBuilder::installer_process();
+    let process = TestProcess::installer();
     let possible_bash_rcs = [".profile", ".bash_profile", ".bash_login", ".bashrc"]
         .map(|rc| process.home_dir().join(rc));
     let legacy_content = r#"
@@ -182,4 +182,17 @@ export CARGO_HOME=/path/to/cargo
     assert!(backup_files
         .iter()
         .all(|f| { std::fs::read_to_string(f).unwrap() == legacy_content }));
+}
+
+#[rim_test]
+fn install_record_created() {
+    let process = default_install(false);
+
+    let config_dir = process.config_dir();
+    let record = config_dir.join("install-record.toml");
+    assert!(record.is_file());
+
+    let record_content = std::fs::read_to_string(record).unwrap();
+    println!("record content: {record_content}");
+    assert!(record_content.contains(&format!("{}", process.default_install_dir().display())));
 }

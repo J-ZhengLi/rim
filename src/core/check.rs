@@ -37,14 +37,12 @@ pub(crate) fn run(extra_args: &[String]) -> Result<()> {
 
     let mut toolchain_override = String::new();
     if env::var_os("SKIP_RULESET_VALIDATION").is_none() {
-        if !InstallationRecord::load_from_install_dir()?
-            .type_of_tool_is_installed(ToolKind::RuleSet)
+        if !InstallationRecord::load_from_config_dir()?.type_of_tool_is_installed(ToolKind::RuleSet)
         {
             bail!(t!("no_rule_set_installed"));
         }
 
-        let installed_toolchains_output = cmd!(rustup, "toolchain", "list").output()?;
-        let installed_toolchains = String::from_utf8(installed_toolchains_output.stdout)?;
+        let installed_toolchains = utils::command_output(cmd!(rustup, "toolchain", "list"))?;
         if installed_toolchains.contains(RUNNER_TOOLCHAIN_NAME) {
             toolchain_override = format!("+{RUNNER_TOOLCHAIN_NAME}");
         } else {

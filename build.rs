@@ -23,4 +23,6 @@ fn main() {
 
     let edition = env::var(EDITION_OVERRIDE_ENV).unwrap_or(DEFAULT_EDITION.to_string());
     println!("cargo::rustc-env=EDITION={edition}");
+
+    rim_common::setup_version_info!();
 }

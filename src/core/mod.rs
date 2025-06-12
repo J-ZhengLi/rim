@@ -25,8 +25,8 @@ pub use locales::Language;
 pub(crate) use path_ext::PathExt;
 pub use toolkit_manifest_ext::*;
 
-use crate::{cli, fingerprint::InstallationRecord};
-use anyhow::{bail, Context, Result};
+use crate::{cli, configuration::Configuration, fingerprint::InstallationRecord};
+use anyhow::{bail, Result};
 use rim_common::{build_config, types::TomlParser, utils};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -167,6 +167,10 @@ impl Mode {
             }
         }
 
+        if let Err(e) = handle_migration() {
+            error!("migration failed, the program might mot be able to work as expected: {e}");
+        }
+
         Self::Manager(maybe_args)
     }
     fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
@@ -199,13 +203,54 @@ impl Mode {
             Ok("manager") => Self::manager(manager_callback),
             // fallback to installer mode
             Ok(_) => Self::installer(installer_callback),
-            Err(_) => match utils::lowercase_program_name() {
-                Some(s) if s.contains("manager") => Self::manager(manager_callback),
-                // fallback to installer mode
-                _ => Self::installer(installer_callback),
-            },
+            Err(_) => {
+                if InstallationRecord::load_from_config_dir().is_ok() {
+                    Self::manager(manager_callback)
+                } else {
+                    // fallback to installer mode
+                    Self::installer(installer_callback)
+                }
+            }
         }
     }
+}
+
+/// Some settings are different
+fn handle_migration() -> Result<()> {
+    fn migrate_config_file(old_name: &str, new_name: &str) -> Result<()> {
+        // the configs were stored under install_dir, the only way to find it without reading the
+        // install-record is to check for `<current_exe_dir>/.fingerprint.toml`, or
+        // `<current_exe_dir>/../../.fingerprint.toml` since this could be a link under cargo/bin
+        let mut old_file = utils::parent_dir_of_cur_exe()?.join(old_name);
+        if !old_file.exists() {
+            old_file.pop();
+            old_file.pop();
+            old_file.pop();
+            old_file.push(old_name);
+        };
+        let new_file = rim_common::dirs::rim_config_dir().join(new_name);
+        match (old_file.is_file(), new_file.is_file()) {
+            (true, false) => utils::move_to(&old_file, &new_file, true),
+            (true, true) => {
+                warn!(
+                    "{}",
+                    t!(
+                        "duplicated_config_files",
+                        first = new_file.display(),
+                        second = old_file.display()
+                    )
+                );
+                Ok(())
+            }
+            (false, _) => Ok(()),
+        }
+    }
+
+    // Migrate the old config files (rim <= 0.8.0) to the new config_dir
+    migrate_config_file(".fingerprint.toml", InstallationRecord::FILENAME)?;
+    migrate_config_file("config.toml", Configuration::FILENAME)?;
+
+    Ok(())
 }
 
 /// The meta information about this program.
@@ -241,15 +286,20 @@ impl AppInfo {
         Self::get().is_manager
     }
 
-    /// Try guessing the installation directory base on current exe path, and return the path.
+    /// Return the path of directory where `rim` was installed on.
     ///
-    /// This program should be installed directly under `install_dir`,
-    /// but in case someone accidentally put this binary into some other locations such as
-    /// the root, we should definitely NOT remove the parent dir after installation.
-    /// Therefor we need some checks:
-    /// 1. Make sure the parent directory is not root.
-    /// 2. Make sure there is a `.fingerprint` file alongside current binary.
-    /// 3. Make sure the parent directory matches the recorded `root` path in the fingerprint file.
+    /// Note: In early builds, we stored current executable directly in `install_dir`,
+    /// which contains configuration files that help us determine this dir.
+    /// However, it's not suitable anymore as we have linked binaries now.
+    ///
+    /// So, in order to determine the `install_dir` after installation, we have to
+    /// store the configuration files under a system's well known `config_dir`,
+    /// therefore we can use those to determine which dir we have installed.
+    ///
+    /// After we get the `install_dir` path, these factors need to be verified:
+    /// 1. The directory is not root. (It won't, unless get changed by third-party)
+    /// 2. The directory is not any well-known path of the OS.
+    /// 3. The directory actually contains the `rim` executable.
     ///
     /// # Panic
     /// If the program is not currently running in **manager** mode
@@ -260,30 +310,53 @@ impl AppInfo {
         }
 
         fn inner_() -> Result<PathBuf> {
-            let maybe_install_dir = utils::parent_dir_of_cur_exe()?;
+            let record = InstallationRecord::load_from_config_dir()?;
 
-            // the first check
-            if maybe_install_dir.parent().is_none() {
-                bail!("it appears that this program was mistakenly installed in root directory");
+            // root check
+            if record.install_dir.parent().is_none() {
+                bail!(t!("install_dir_is_root"));
             }
-            // the second check
-            if !maybe_install_dir
-                .join(InstallationRecord::FILENAME)
-                .is_file()
+            // well known dir check, because we are removing the entire install_dir when uninstall,
+            // so you can never be too careful.
+            let well_known_dirs = [
+                dirs::audio_dir(),
+                dirs::cache_dir(),
+                dirs::config_dir(),
+                dirs::config_local_dir(),
+                dirs::data_dir(),
+                dirs::data_local_dir(),
+                dirs::desktop_dir(),
+                dirs::document_dir(),
+                dirs::download_dir(),
+                dirs::executable_dir(),
+                dirs::font_dir(),
+                dirs::home_dir(),
+                dirs::picture_dir(),
+                dirs::preference_dir(),
+                dirs::public_dir(),
+                dirs::runtime_dir(),
+                dirs::state_dir(),
+                dirs::template_dir(),
+                dirs::video_dir(),
+            ];
+            for maybe_dir in well_known_dirs {
+                let Some(dir) = maybe_dir else {
+                    continue;
+                };
+                if dir == record.install_dir {
+                    bail!(t!("install_dir_is_os_dir", path = dir.display()));
+                }
+            }
+            // rim existence check
+            if !record
+                .install_dir
+                .join(exe!(build_config().app_name()))
+                .exists()
             {
-                bail!("installation record cannot be found");
-            }
-            // the third check
-            let fp = InstallationRecord::load_from_dir(&maybe_install_dir)
-                .context("'.fingerprint' file exists but cannot be loaded")?;
-            if fp.root != maybe_install_dir {
-                bail!(
-                    "`.fingerprint` file exists but the installation root in it \n\
-                    does not match the one its in"
-                );
+                bail!("installation directory is incorrect");
             }
 
-            Ok(maybe_install_dir.to_path_buf())
+            Ok(record.install_dir.clone())
         }
 
         INSTALL_DIR_ONCE.get_or_init(|| inner_().expect("unable to determine install dir"))

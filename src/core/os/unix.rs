@@ -275,6 +275,7 @@ mod shell {
 
     use super::utils;
     use anyhow::{bail, Result};
+    use rim_common::dirs as rim_dirs;
     use std::{env, path::PathBuf};
 
     pub(super) type Shell = Box<dyn UnixShell>;
@@ -332,7 +333,7 @@ mod shell {
         }
 
         fn rcfiles(&self) -> Vec<PathBuf> {
-            vec![utils::home_dir().join(".profile")]
+            vec![rim_dirs::home_dir().join(".profile")]
         }
 
         fn update_rcs(&self) -> Vec<PathBuf> {
@@ -352,7 +353,7 @@ mod shell {
             // .profile as part of POSIX and always does setup for POSIX shells.
             [".bash_profile", ".bash_login", ".bashrc"]
                 .iter()
-                .map(|rc| utils::home_dir().join(rc))
+                .map(|rc| rim_dirs::home_dir().join(rc))
                 .collect()
         }
 
@@ -395,7 +396,7 @@ mod shell {
         }
 
         fn rcfiles(&self) -> Vec<PathBuf> {
-            [Zsh::zdotdir().ok(), Some(utils::home_dir())]
+            [Zsh::zdotdir().ok(), Some(rim_dirs::home_dir())]
                 .iter()
                 .filter_map(|dir| dir.as_ref().map(|p| p.join(".zshenv")))
                 .collect()
@@ -430,7 +431,7 @@ mod shell {
                 .ok()
                 .map(|p| vec![PathBuf::from(p).join("fish/conf.d/rustup.fish")])
                 .unwrap_or_default();
-            res.push(utils::home_dir().join(".config/fish/conf.d/rustup.fish"));
+            res.push(rim_dirs::home_dir().join(".config/fish/conf.d/rustup.fish"));
 
             res
         }

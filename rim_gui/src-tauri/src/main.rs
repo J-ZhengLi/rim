@@ -56,7 +56,7 @@ fn main() -> Result<()> {
 // TODO: add user setting for this
 fn handle_autostart() -> Result<()> {
     // Load configuration to check if autostart is allowed
-    let allow_autostart = Configuration::load_from_install_dir().autostart;
+    let allow_autostart = Configuration::load_from_config_dir().autostart;
 
     let cur_exe = std::env::current_exe()?;
     let Some(exe_path) = cur_exe.to_str() else {

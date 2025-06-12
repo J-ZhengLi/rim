@@ -64,12 +64,11 @@ After env setup, it will guide you through installing Rust `toolkit`.
 - Debug `installer` mode:
   - Commandline interface
   ```bash
-  cargo run
+  cargo dev run --cli --installer
   ```
   - Graphical interface
   ```bash
-  cd rim_gui
-  pnpm run tauri dev
+  pnpm dev run --installer
   ```
 - Debug `manager` mode:
   > Running `manager` is not as straight forward as running in `Installer` mode.
@@ -78,7 +77,7 @@ After env setup, it will guide you through installing Rust `toolkit`.
   so you can test `manager`'s functionalities easier.
 
   ```bash
-  cargo dev run-manager
+  cargo dev run --manager
   ```
 
 ### Release
@@ -140,12 +139,8 @@ Options:
 
 ### Manager mode (CLI)
 
-> Manager mode can be activated by:
->
-> 1. Renaming the binary to one that contains `manager`, such as `manager-cli`
-> 2. Having a `MODE` environment variable set to `manager` before running the program, such as running `export MODE='manager'` in Unix systems.
->
-> NOTE: **Manager will be automatically deployed after installation, and must be run inside of the installation directory to avoid crash**
+> Manager mode will run after an installation record was detected, and it can also be overridden by
+> having a `MODE` environment variable set to `manager` before running the program, such as running `export MODE='manager'` in Unix systems.
 
 ```console
 Usage: MODE='manager' rim-cli.exe [OPTIONS] [COMMAND]

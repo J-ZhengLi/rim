@@ -1,10 +1,10 @@
 use rim_test_support::file;
 use rim_test_support::prelude::*;
-use rim_test_support::process::ProcessBuilder;
+use rim_test_support::process::TestProcess;
 
 #[rim_test]
 fn case() {
-    let base = ProcessBuilder::installer_process()
+    let base = TestProcess::installer()
         .command()
         .arg("--help")
         .assert()

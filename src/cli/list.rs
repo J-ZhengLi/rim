@@ -24,7 +24,14 @@ pub enum ListCommand {
 impl ListCommand {
     fn execute(&self, installed: bool) -> Result<()> {
         match self {
-            Self::Component => list_components(installed, None),
+            Self::Component => {
+                let manifest = if installed {
+                    None
+                } else {
+                    Some(ToolkitManifest::load_from_install_dir()?)
+                };
+                list_components(installed, true, manifest.as_ref())
+            }
             Self::Toolkit => blocking!(list_toolkits(installed)),
         }
     }
@@ -41,7 +48,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     let sub_cmd = command.unwrap_or_default();
     sub_cmd.execute(*installed)?;
 
-    Ok(ExecStatus::new_executed())
+    Ok(ExecStatus::new_executed().no_pause(true))
 }
 
 /// Ask user about list options, return a `bool` indicates whether the user wishs to continue.
@@ -60,22 +67,36 @@ pub(super) fn ask_list_command() -> Result<Option<ListCommand>> {
 /// Print a list of components and return them.
 pub(crate) fn list_components(
     installed_only: bool,
+    check_record: bool,
     manifest: Option<&ToolkitManifest>,
 ) -> Result<()> {
-    let components = if let Some(mf) = manifest {
-        mf.current_target_components(true)?
-    } else {
-        let fp = InstallationRecord::load_from_install_dir()?;
+    let mut components = if check_record {
+        let fp = InstallationRecord::load_from_config_dir()?;
         components::all_components_from_installation(&fp)?
+    } else {
+        vec![]
     };
 
-    let comp_iter = components.iter();
+    if !installed_only {
+        // we need to insert the non-installed components by reading
+        // the optional toolkit manifest
+        if let Some(mf) = manifest {
+            for comp in mf.current_target_components(false)? {
+                if components.iter().any(|c| c.name == comp.name) {
+                    continue;
+                }
+                components.push(comp);
+            }
+        }
+    }
+
     let verbose = GlobalOpts::get().verbose;
     let mut stdout = std::io::stdout();
 
     writeln!(&mut stdout)?;
     if installed_only {
-        let installed_comps = comp_iter
+        let installed_comps = components
+            .iter()
             .filter_map(|comp| {
                 comp.installed.then_some(if verbose {
                     let version = comp
@@ -97,7 +118,7 @@ pub(crate) fn list_components(
             }
         }
     } else {
-        for comp in comp_iter {
+        for comp in components {
             let version = if verbose {
                 comp.version
                     .as_ref()

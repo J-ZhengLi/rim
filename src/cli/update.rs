@@ -21,6 +21,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
         manager_only,
         insecure,
         component,
+        rustup_dist_server,
     } = cmd
     else {
         return Ok(ExecStatus::default());
@@ -29,7 +30,12 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     let update_opt = UpdateOpt::new().insecure(*insecure);
     if !manager_only {
         update_opt.update_toolkit(|path| {
-            blocking!(update_toolkit_(path, *insecure, component.as_deref()))
+            blocking!(update_toolkit_(
+                path,
+                *insecure,
+                component.as_deref(),
+                rustup_dist_server
+            ))
         })?;
     }
     if !toolkit_only {
@@ -43,6 +49,7 @@ async fn update_toolkit_(
     install_dir: &Path,
     insecure: bool,
     user_selected_comps: Option<&[String]>,
+    rustup_dist_server: &Option<Url>,
 ) -> Result<()> {
     let Some(installed) = Toolkit::installed(false).await? else {
         info!("{}", t!("no_toolkit_installed"));
@@ -88,7 +95,8 @@ async fn update_toolkit_(
     // let user choose if they want to update installed component only, or want to select more components to install
     if let UpdateOption::Yes(components) = updater.to_update_option(user_selected_comps)? {
         // install update for selected components
-        let config = InstallConfiguration::new(install_dir, &manifest)?;
+        let config = InstallConfiguration::new(install_dir, &manifest)?
+            .with_rustup_dist_server(rustup_dist_server.clone());
         config.update(components.into_values().cloned().collect())
     } else {
         Ok(())

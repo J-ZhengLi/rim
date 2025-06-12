@@ -7,29 +7,6 @@ use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use tempfile::NamedTempFile;
 
-/// Get a path to user's "home" directory.
-///
-/// The home directory is determined by a combination of ways
-/// with a fallback order:
-///
-/// 1. The `HOME` environment variable
-/// 2. The `USERPROFILE` environment variable (Windows only)
-/// 3. The [`home_dir`](dirs::home_dir) function of the `dirs` crate
-///
-/// # Panic
-///
-/// Will panic if such directory cannot be determined,
-/// which could be the result of missing certain environment variable at runtime,
-/// check [`dirs::home_dir`] for more information.
-pub fn home_dir() -> PathBuf {
-    let base = env::var_os("HOME").filter(|oss| !oss.is_empty());
-    #[cfg(windows)]
-    let base = base.or_else(|| env::var_os("USERPROFILE").filter(|oss| !oss.is_empty()));
-
-    base.map(PathBuf::from)
-        .unwrap_or_else(|| dirs::home_dir().expect("home directory cannot be determined."))
-}
-
 /// Wrapper to [`std::fs::read_to_string`] but with additional error context.
 pub fn read_to_string<P: AsRef<Path>>(name: &str, path: P) -> Result<String> {
     fs::read_to_string(path.as_ref()).with_context(|| {

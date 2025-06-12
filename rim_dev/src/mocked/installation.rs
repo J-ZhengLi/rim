@@ -4,6 +4,7 @@ use crate::common::{self, pnpm_cmd};
 
 use super::TOOLKIT_NAME;
 use anyhow::{bail, Result};
+use rim_common::{build_config, exe};
 use std::{env::consts::EXE_SUFFIX, fs, path::PathBuf, process::Command};
 
 struct FakeInstallation {
@@ -36,16 +37,12 @@ paths = ['{0}/tools/mingw64']
     }
 
     fn generate_manager_bin(&mut self, no_gui: bool) -> Result<()> {
-        let (mut cmd, src_bin, dest_bin) = if no_gui {
+        let (mut cmd, src_bin) = if no_gui {
             // use cargo build
             let mut cmd = Command::new("cargo");
             cmd.arg("build");
 
-            (
-                cmd,
-                format!("rim-cli{EXE_SUFFIX}"),
-                format!("manager-cli{EXE_SUFFIX}"),
-            )
+            (cmd, format!("rim-cli{EXE_SUFFIX}"))
         } else {
             common::install_gui_deps();
 
@@ -53,11 +50,7 @@ paths = ['{0}/tools/mingw64']
             let mut cmd = pnpm_cmd();
             cmd.args(["run", "tauri", "build", "-d"]);
 
-            (
-                cmd,
-                format!("rim-gui{EXE_SUFFIX}"),
-                format!("manager{EXE_SUFFIX}"),
-            )
+            (cmd, format!("rim-gui{EXE_SUFFIX}"))
         };
 
         // build rim
@@ -67,6 +60,7 @@ paths = ['{0}/tools/mingw64']
         }
 
         let build_artifact = super::debug_dir().join(src_bin);
+        let dest_bin = exe!(build_config().app_name());
         let dest_path = super::install_dir().join(dest_bin);
         // make a copy of rim as manager binary to the fake installation root
         fs::copy(build_artifact, &dest_path)?;
@@ -77,7 +71,7 @@ paths = ['{0}/tools/mingw64']
     }
 
     fn generate_meta_files(&self) -> Result<()> {
-        let fingerprint_path = super::install_dir().join(".fingerprint.toml");
+        let fingerprint_path = rim_common::dirs::rim_config_dir().join("install-record.toml");
         let manifest_path = super::install_dir().join("toolset-manifest.toml");
 
         // don't write if the path already exists

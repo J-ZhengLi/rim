@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{bail, Result};
-use clap::Subcommand;
+use clap::{Subcommand, ValueHint};
 use rim_common::types::{ToolInfo, ToolInfoDetails, ToolkitManifest};
+use url::Url;
 
 use crate::{
     components::{split_components, Component},
@@ -26,6 +27,9 @@ pub enum ComponentCommand {
         /// The list of components to install, check `list component` for available options
         #[arg(value_name = "COMPONENTS", value_delimiter = ',')]
         components: Vec<String>,
+        /// Specify another server to download Rust toolchain components.
+        #[arg(long, value_name = "URL", value_hint = ValueHint::Url)]
+        rustup_dist_server: Option<Url>,
     },
     /// Uninstall components
     #[command(alias = "remove")]
@@ -42,7 +46,8 @@ impl ComponentCommand {
             Self::Install {
                 components,
                 insecure,
-            } => install_components(components, *insecure),
+                rustup_dist_server,
+            } => install_components(components, *insecure, rustup_dist_server),
             Self::Uninstall { components } => uninstall_components(components),
         }
     }
@@ -58,7 +63,11 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     Ok(ExecStatus::new_executed())
 }
 
-fn install_components(components: &[String], insecure: bool) -> Result<()> {
+fn install_components(
+    components: &[String],
+    insecure: bool,
+    rustup_dist_server: &Option<Url>,
+) -> Result<()> {
     let manifest = ToolkitManifest::load_from_install_dir()?;
     let all_comps = manifest.current_target_components(true)?;
 
@@ -87,8 +96,9 @@ fn install_components(components: &[String], insecure: bool) -> Result<()> {
 
     let (tc_components, tools) = split_components(comps_to_install);
 
-    let mut config =
-        InstallConfiguration::new(AppInfo::get_installed_dir(), &manifest)?.insecure(insecure);
+    let mut config = InstallConfiguration::new(AppInfo::get_installed_dir(), &manifest)?
+        .insecure(insecure)
+        .with_rustup_dist_server(rustup_dist_server.clone());
     config.install_toolchain_components(&tc_components)?;
     config.install_tools(&tools)?;
 
@@ -111,7 +121,7 @@ fn install_components(components: &[String], insecure: bool) -> Result<()> {
 }
 
 fn uninstall_components(components: &[String]) -> Result<()> {
-    let record = InstallationRecord::load_from_install_dir()?;
+    let record = InstallationRecord::load_from_config_dir()?;
 
     // make a set out of components to:
     // 1. remove duplicates; 2. search faster;
@@ -208,7 +218,7 @@ pub(super) fn collect_components_to_add() -> Result<Vec<String>> {
 /// 4. convert list of indexes into list of names then return it.
 pub(super) fn collect_components_to_remove() -> Result<Vec<String>> {
     // step 1: load installed component names
-    let record = InstallationRecord::load_from_install_dir()?;
+    let record = InstallationRecord::load_from_config_dir()?;
     // we need to convert these records to `Component`
     let mut all_installed_comps = record
         .installed_toolchain_components()
