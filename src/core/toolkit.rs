@@ -46,7 +46,7 @@ impl Toolkit {
             return Ok(INSTALLED_KIT.get());
         }
 
-        if !InstallationRecord::exists()? {
+        if !InstallationRecord::exists() {
             // No toolkit installed, return None
             return Ok(None);
         }

@@ -69,7 +69,7 @@ impl RimDir for &InstallConfiguration<'_> {
 impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolkitManifest) -> Result<Self> {
         let (reg_name, reg_url) = super::default_cargo_registry();
-        let install_record = if InstallationRecord::exists()? {
+        let install_record = if InstallationRecord::exists() {
             // TODO: handle existing record, maybe we want to enter manager mode directly?
             InstallationRecord::load_from_config_dir()?
         } else {

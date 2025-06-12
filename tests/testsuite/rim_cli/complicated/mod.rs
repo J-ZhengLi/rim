@@ -129,6 +129,9 @@ fn list_component_output(process: &TestProcess, rim: &Path) -> String {
         .args(["list", "component"])
         .output()
         .unwrap();
+    if !list_comp_output.status.success() {
+        panic!("{}", String::from_utf8_lossy(&list_comp_output.stderr));
+    }
     String::from_utf8_lossy(&list_comp_output.stdout)
         .trim()
         .to_string()

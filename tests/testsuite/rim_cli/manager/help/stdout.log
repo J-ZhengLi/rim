@@ -1,6 +1,6 @@
 An interactive Rust installation manager
 
-Usage: manager-cli[EXE] [OPTIONS] [COMMAND]
+Usage: rim[EXE] [OPTIONS] [COMMAND]
 
 Commands:
   update     Update toolkit and/or this installation manager

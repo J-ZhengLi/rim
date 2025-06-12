@@ -1,6 +1,6 @@
 An interactive Rust installation manager
 
-Usage: installer-cli[EXE] [OPTIONS]
+Usage: rim[EXE] [OPTIONS]
 
 Options:
   -v, --verbose

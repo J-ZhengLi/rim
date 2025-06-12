@@ -33,8 +33,8 @@ impl InstallationRecord {
     ///
     /// This is useful when you want to know it without causing
     /// the program to panic using [`get_installed_dir`](AppInfo::get_installed_dir).
-    pub fn exists() -> Result<bool> {
-        Ok(rim_config_dir().join(Self::FILENAME).is_file())
+    pub fn exists() -> bool {
+        rim_config_dir().join(Self::FILENAME).is_file()
     }
 
     /// Load installation record from [`rim_config_dir`].

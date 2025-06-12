@@ -13,8 +13,8 @@ Options:
     -h, -help       Print this help message
 
 Commands:
-    dist, d         Generate release binaries
-    run-manager     Run in manager mode
+    d, dist         Generate release binaries
+    r, run          Build and run RIM for testing purpose
     vendor          Download packages for offline package build
     mock-rustup-server
                     Generate a mocked rustup dist server
@@ -23,19 +23,19 @@ Commands:
 ### Debug manager (GUI)
 
 ```bash
-cargo dev run-manager
+cargo dev run --manager
 ```
 
 ### Debug manager (CLI)
 
 ```bash
-cargo dev run-manager --cli
+cargo dev run --manager --cli
 ```
 
 check for more manager-mode help
 
 ```bash
-cargo dev run-manager --help
+cargo dev run --manager --help
 ```
 
 ### Generate release binaries

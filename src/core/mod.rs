@@ -203,11 +203,14 @@ impl Mode {
             Ok("manager") => Self::manager(manager_callback),
             // fallback to installer mode
             Ok(_) => Self::installer(installer_callback),
-            Err(_) => match utils::lowercase_program_name() {
-                Some(s) if s.contains("manager") || s == "rim" => Self::manager(manager_callback),
-                // fallback to installer mode
-                _ => Self::installer(installer_callback),
-            },
+            Err(_) => {
+                if InstallationRecord::load_from_config_dir().is_ok() {
+                    Self::manager(manager_callback)
+                } else {
+                    // fallback to installer mode
+                    Self::installer(installer_callback)
+                }
+            }
         }
     }
 }

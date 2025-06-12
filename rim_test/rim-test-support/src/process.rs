@@ -1,4 +1,3 @@
-use env::consts::EXE_SUFFIX;
 use rim_common::{build_config, utils};
 use snapbox::cmd::Command;
 use std::env;
@@ -102,8 +101,7 @@ enum TestProcessKind {
 impl TestProcess {
     /// Generate installer test process
     pub fn installer() -> TestProcess {
-        let name = &format!("installer-cli{EXE_SUFFIX}");
-        let (root, executable) = ensure_bin(name);
+        let (root, executable) = ensure_bin();
         TestProcess {
             root,
             executable,
@@ -113,8 +111,7 @@ impl TestProcess {
 
     /// Generate manager test process
     pub fn manager() -> TestProcess {
-        let name = &format!("manager-cli{EXE_SUFFIX}");
-        let (root, executable) = ensure_bin(name);
+        let (root, executable) = ensure_bin();
         TestProcess {
             root,
             executable,
@@ -179,9 +176,16 @@ impl TestProcess {
         // used to override `HOME`, this is to ensure that the test program doesn't change
         // the actual environment
         let home_dir = &self.home_dir();
+        let mode = if let TestProcessKind::Manager = self.kind {
+            "manager"
+        } else {
+            "installer"
+        };
 
         #[cfg(unix)]
-        let base = Command::new(&self.executable).env("HOME", home_dir);
+        let base = Command::new(&self.executable)
+            .env("HOME", home_dir)
+            .env("MODE", mode);
         // On Windows, env vars are directly added, which make it a bit
         // harder to rollback after running the tests (rustup also struggle with this).
         // So it might be better to disable env modification until we figure out
@@ -190,6 +194,7 @@ impl TestProcess {
         let base = Command::new(&self.executable)
             .env("HOME", home_dir)
             .env("USERPROFILE", home_dir)
+            .env("MODE", mode)
             .arg("--no-modify-env");
 
         if !matches!(self.kind, TestProcessKind::Manager) {
@@ -209,7 +214,7 @@ impl TestProcess {
 
         let mut base = StdCommand::new(program);
         let home_dir = self.home_dir();
-        base.env("HOME", &home_dir);
+        base.env("HOME", &home_dir).env("MODE", "manager");
         #[cfg(windows)]
         base.env("USERPROFILE", &home_dir).arg("--no-modify-env");
         base
@@ -224,14 +229,11 @@ impl TestProcess {
 
 // Before any invoke of rim_cli,
 // we should save a copy as `installer` and `manager`.
-fn ensure_bin(name: &str) -> (TempDir, PathBuf) {
+fn ensure_bin() -> (TempDir, PathBuf) {
     let test_root = paths::test_root();
     let src = snapbox::cmd::cargo_bin("rim-cli");
-    let dst = test_root.path().join(name);
-    if !dst.exists() {
-        std::fs::copy(src, &dst)
-            .unwrap_or_else(|_| panic!("Failed to copy rim-cli{EXE_SUFFIX} to {name}"));
-    }
+    let dst = test_root.path().join(exe!("rim"));
+    utils::copy_file(src, &dst).unwrap();
 
     (test_root, dst)
 }

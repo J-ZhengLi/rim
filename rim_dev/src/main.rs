@@ -1,12 +1,14 @@
 mod common;
 mod dist;
 mod mocked;
+mod run;
 mod toolkits_parser;
 mod vendor;
 
 use anyhow::{anyhow, Context, Result};
 use dist::DIST_HELP;
-use mocked::{installation, manager, server};
+use mocked::server;
+use run::RunMode;
 use std::env;
 use std::io::{stdout, Write};
 use std::path::PathBuf;
@@ -21,22 +23,11 @@ Options:
     -h, -help       Print this help message
 
 Commands:
-    dist, d         Generate release binaries
-    run-manager     Run in manager mode
+    d, dist         Generate release binaries
+    r, run          Build and run RIM for testing purpose
     vendor          Download packages for offline package build
     mock-server
                     Generate a mocked rustup dist server
-"#;
-
-const MANAGER_MODE_HELP: &str = r#"
-Run with manager mode
-
-Usage: cargo dev run-manager [OPTIONS]
-
-Options:
-        --cli       Run manager mode with commandline interface
-        --gui       Run manager mode with graphical interface (default)
-    -h, -help       Print this help message
 "#;
 const MOCK_HELP: &str = r#"
 Generate a mocked rustup dist server and rim dist server
@@ -57,8 +48,8 @@ enum DevCmd {
         dist_targets: Vec<String>,
         name: Option<String>,
     },
-    RunManager {
-        no_gui: bool,
+    Run {
+        mode: RunMode,
         args: Vec<String>,
     },
     Mock {
@@ -83,25 +74,7 @@ impl DevCmd {
                 dist_targets,
                 name,
             } => dist::dist(mode, binary_only, name, build_target, dist_targets)?,
-            Self::RunManager { no_gui, args } => {
-                println!("running manager with args: {args:?}");
-                // replace home env to prevent modifying the actually environment
-                let home = mocked::mocked_home();
-                std::env::set_var("HOME", home);
-                #[cfg(windows)]
-                std::env::set_var("USERPROFILE", home);
-
-                // a mocked server is needed to run most of function in manager
-                server::generate_rim_server_files()?;
-
-                // generate a fake manager binary with higher version so we
-                // can test the self update.
-                if args.iter().any(|arg| arg == "update") {
-                    manager::generate()?;
-                }
-
-                installation::generate_and_run_manager(no_gui, &args)?;
-            }
+            Self::Run { mode, args } => mode.run(&args)?,
             Self::Vendor {
                 mode,
                 name,
@@ -203,18 +176,21 @@ fn main() -> Result<ExitCode> {
                 clear,
             }
         }
-        "run-manager" => {
+        "run" => {
             let mut is_extra_arg = false;
             let mut extra_args = vec![];
-            let mut no_gui = false;
+            let mut mode = RunMode::default();
 
             while let Some(arg) = args.next().as_deref() {
                 match arg {
                     "-h" | "--help" if !is_extra_arg => {
-                        writeln!(&mut stdout, "{MANAGER_MODE_HELP}")?;
+                        writeln!(&mut stdout, "{}", run::RUN_HELP)?;
                         return Ok(ExitCode::SUCCESS);
                     }
-                    "--cli" => no_gui = true,
+                    "-c" | "--cli" => mode.set_no_gui(true),
+                    "-g" | "--gui" => mode.set_no_gui(false),
+                    "-i" | "--installer" => mode.switch_to_installer(),
+                    "-m" | "--manager" => mode.switch_to_manager(),
                     "--" if !is_extra_arg => is_extra_arg = true,
                     a => {
                         if is_extra_arg {
@@ -224,8 +200,8 @@ fn main() -> Result<ExitCode> {
                 }
             }
 
-            DevCmd::RunManager {
-                no_gui,
+            DevCmd::Run {
+                mode,
                 args: extra_args,
             }
         }
