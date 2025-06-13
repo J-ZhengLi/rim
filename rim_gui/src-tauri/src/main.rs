@@ -2,21 +2,18 @@
 extern crate rust_i18n;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate rim_common;
 
 mod common;
 mod consts;
 mod error;
 mod installer_mode;
 mod manager_mode;
-mod notification;
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use anyhow::Result;
-use rim::{cli::ExecutableCommand, configuration::Configuration, AppInfo, Mode};
+use rim::{cli::ExecutableCommand, Mode};
 use rim_common::utils;
 
 i18n!("../../locales", fallback = "en");
@@ -38,42 +35,12 @@ fn main() -> Result<()> {
     match mode {
         Mode::Manager(maybe_args) => {
             run_cli_else_hide_console(&maybe_args)?;
-
-            if let Err(e) = handle_autostart() {
-                // log the error but do NOT abort the program
-                error!("unable to setup autostart: {e}");
-            }
             manager_mode::main(msg_recv, maybe_args)?;
         }
         Mode::Installer(maybe_args) => {
             run_cli_else_hide_console(&maybe_args)?;
             installer_mode::main(msg_recv, maybe_args)?;
         }
-    }
-    Ok(())
-}
-
-// TODO: add user setting for this
-fn handle_autostart() -> Result<()> {
-    // Load configuration to check if autostart is allowed
-    let allow_autostart = Configuration::load_from_config_dir().autostart;
-
-    let cur_exe = std::env::current_exe()?;
-    let Some(exe_path) = cur_exe.to_str() else {
-        log::error!("the path to this application contains invalid UTF-8 character");
-        return Ok(());
-    };
-
-    let auto = auto_launch::AutoLaunchBuilder::new()
-        .set_app_name(AppInfo::name())
-        .set_app_path(exe_path)
-        .set_use_launch_agent(true)
-        .build()?;
-
-    if allow_autostart {
-        auto.enable()?;
-    } else if auto.is_enabled().unwrap_or_default() {
-        auto.disable()?;
     }
     Ok(())
 }

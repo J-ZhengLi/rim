@@ -26,7 +26,7 @@ pub(super) fn main(
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cmd| {}))
         .invoke_handler(tauri::generate_handler![
-            close_window,
+            common::close_window,
             default_install_dir,
             check_install_path,
             get_component_list,
@@ -50,11 +50,6 @@ pub(super) fn main(
         .run(tauri::generate_context!())
         .context("unknown error occurs while running tauri application")?;
     Ok(())
-}
-
-#[tauri::command]
-fn close_window(window: tauri::Window) {
-    common::close_window(window);
 }
 
 #[tauri::command]
