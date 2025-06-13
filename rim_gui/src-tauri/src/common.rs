@@ -223,32 +223,6 @@ pub(crate) fn get_build_cfg_locale_str(key: &str) -> &str {
     utils::build_cfg_locale(key)
 }
 
-/// Simple representation of a Rust's function signature, typically got sent
-/// to the frontend, therefore the frontend knows which and how to invoke a
-/// certain Rust function.
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct FrontendFunctionPayload {
-    pub(crate) name: String,
-    pub(crate) args: Vec<(&'static str, String)>,
-    /// The **identifier** of function return, not the actual return value,
-    /// because the frontend can retrieve the return value itself, but it
-    /// need to known how to deal with it base on an unique identifier.
-    pub(crate) ret_id: Option<&'static str>,
-}
-
-impl FrontendFunctionPayload {
-    pub(crate) fn new<S: Into<String>>(name: S) -> Self {
-        Self {
-            name: name.into(),
-            args: vec![],
-            ret_id: None,
-        }
-    }
-
-    setter!(with_args(self.args, Vec<(&'static str, String)>));
-    setter!(with_ret_id(self.ret_id, identifier: &'static str) { Some(identifier) });
-}
-
 /// Build the installer window with shared configuration.
 pub(crate) fn setup_installer_window(
     manager: &mut App,
