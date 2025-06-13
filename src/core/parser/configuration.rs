@@ -13,26 +13,9 @@ const DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES: u64 = 1440;
 pub const DEFAULT_UPDATE_CHECK_DURATION: Duration =
     Duration::from_secs(60 * DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES);
 
-fn default_autostart_policy() -> bool {
-    // We don't have a setting for auto-start yet,
-    // therefore it'd better to disable auto-start by default so it won't annoys the user.
-    false
-}
-
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Configuration {
-    #[serde(default = "default_autostart_policy")]
-    pub autostart: bool,
     pub update: UpdateCheckerOpt,
-}
-
-impl Default for Configuration {
-    fn default() -> Self {
-        Self {
-            autostart: default_autostart_policy(),
-            update: UpdateCheckerOpt::default(),
-        }
-    }
 }
 
 impl TomlParser for Configuration {
