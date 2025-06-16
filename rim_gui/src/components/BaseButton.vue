@@ -28,26 +28,23 @@ const themeClasses = computed(() => {
 </script>
 
 <template>
-  <button
-    p="x-16px y-8px"
-    :class="[
-      themeClasses,
-      ' rounded-[4px] b b-solid hover:op-80', // Common classes
-      { 'opacity-50 cursor-not-allowed': disabled }, // Disabled styles
-    ]"
-    :disabled="disabled"
-  >
+  <button p="x-16px y-8px" :class="[
+    themeClasses,
+    ' rounded-[30vw] b b-solid hover:op-80', // Common classes
+    { 'opacity-50 cursor-not-allowed': disabled }, // Disabled styles
+  ]" :disabled="disabled">
     <slot></slot>
   </button>
 </template>
 
 <style scoped>
 button {
-  font-size: clamp(12px, 1.6vw, 16px);
+  font-size: 3vh;
   padding: 5px 25px 5px 25px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
   transition:
     background-color 0.3s,
     border-color 0.3s;

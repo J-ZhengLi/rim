@@ -34,7 +34,7 @@ pub(super) fn main(
             updated_package_sources,
             install_toolchain,
             run_app,
-            welcome_label,
+            toolkit_name,
             load_manifest_and_ret_version,
             common::supported_languages,
             common::set_locale,
@@ -88,9 +88,8 @@ async fn get_component_list() -> Result<Vec<Component>> {
 }
 
 #[tauri::command]
-fn welcome_label() -> String {
-    let product = utils::build_cfg_locale("product");
-    t!("welcome", product = product).into()
+fn toolkit_name() -> String {
+    utils::build_cfg_locale("product").into()
 }
 
 // Make sure this function is called first after launch.

@@ -1,32 +1,83 @@
 <script lang="ts" setup>
-import { computed, onBeforeMount, onMounted, ref } from 'vue';
+import { onBeforeMount, onMounted, onUnmounted, Ref, ref } from 'vue';
 import { useCustomRouter } from '@/router/index';
-import { message } from '@tauri-apps/api/dialog';
 import { installConf, invokeCommand, invokeLabelList } from '@/utils/index';
 
 const { routerPush } = useCustomRouter();
-const isDialogVisible = ref(false);
-// TODO: add license and app description etc
-const explainText: string[] = ``.split('\n');
 
-const isUserAgree = ref(true);
-const welcomeLabel = ref('');
+const toolkitName = ref('');
 const labels = ref<Record<string, string>>({});
-const version = computed(() => installConf.version);
-const homePageUrl = ref('');
 
-function handleDialogOk() {
-  isDialogVisible.value = false;
-  isUserAgree.value = true;
+// bubble controls
+const bubbles: Ref<Bubble[]> = ref([]);
+const containerSize = ref({ width: 0, height: 0 });
+let animationFrame: number | null = null;
+interface Bubble {
+  x: number;
+  y: number;
+  size: number;
+  blur: number;
+  hue: number;
+  vx: number;
+  vy: number;
+}
+
+// Initialize bubbles with random properties
+function initBubbles() {
+  const count = 5; // Number of bubbles
+  // a random scale within [-1, -0.5] and [0.5, 1] to prevent frozen bubbles
+  const randomSpeedScale = (): number => {
+    const rand = Math.random();
+    return rand < 0.5 ? 0.5 + rand : -1 + rand - 0.5;
+  };
+  const size = 400 + Math.random() * 100; // 400-500px
+  bubbles.value = Array.from({ length: count }, () => ({
+    x: Math.random() * (containerSize.value.width - size),
+    y: Math.random() * (containerSize.value.height - size),
+    size: size,
+    blur: 5 + Math.random() * 15, // slight blur between 5-20px
+    hue: 180 + Math.random() * 50,  // blueish hue
+    vx: randomSpeedScale() * 0.5, // Horizontal velocity
+    vy: randomSpeedScale() * 0.5, // Vertical velocity
+  }));
+}
+
+// Update bubble positions and handle collisions
+function updateBubbles() {
+  bubbles.value.forEach(bubble => {
+    // Update position
+    bubble.x += bubble.vx;
+    bubble.y += bubble.vy;
+
+    // Boundary collision
+    const bubbleRadius = bubble.size / 2;
+    if (bubble.x + bubbleRadius < 0 || bubble.x + bubbleRadius > containerSize.value.width) bubble.vx *= -1;
+    if (bubble.y + bubbleRadius < 0 || bubble.y + bubbleRadius > containerSize.value.height) bubble.vy *= -1;
+  });
+}
+
+// Animation loop
+function animate() {
+  updateBubbles();
+  animationFrame = requestAnimationFrame(animate);
+}
+
+// Handle window resize
+function handleResize() {
+  containerSize.value = {
+    width: window.innerWidth,
+    height: window.innerHeight
+  };
+  initBubbles();
 }
 
 function handleInstallClick(custom: boolean) {
-  if (isUserAgree.value) {
-    installConf.setCustomInstall(custom);
-    routerPush(custom ? '/installer/folder' : '/installer/confirm');
-  } else {
-    message('请先同意许可协议', { title: '提示' });
-  }
+  installConf.setCustomInstall(custom);
+  routerPush(custom ? '/installer/folder' : '/installer/confirm');
+}
+
+function selectOtherEdition() {
+  console.log("TODO: show a page to load toolkit form url or path");
 }
 
 onBeforeMount(() => installConf.loadManifest());
@@ -34,23 +85,15 @@ onBeforeMount(() => installConf.loadManifest());
 onMounted(() => {
   const labelKeys = [
     'install',
-    'license_agreement',
-    'close',
-    'agree',
+    'install_other_edition',
   ];
   invokeLabelList(labelKeys).then((results) => {
     labels.value = results;
   });
 
-  invokeCommand('welcome_label').then((lb) => {
+  invokeCommand('toolkit_name').then((lb) => {
     if (typeof lb === 'string') {
-      welcomeLabel.value = lb;
-    }
-  });
-
-  invokeCommand('get_home_page_url').then((res) => {
-    if (typeof res === 'string') {
-      homePageUrl.value = res;
+      toolkitName.value = lb;
     }
   });
 
@@ -65,79 +108,84 @@ onMounted(() => {
       labels.value.content_source = res
     }
   });
+
+  window.addEventListener('resize', handleResize);
+  handleResize();
+  animate();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+  }
 });
 </script>
 
 <template>
-  <div class="svg-background" flex="~ col items-center" w="full">
-    <div grow="2">
-      <a block mt="15vw" decoration="none" flex="~ items-center" :href="homePageUrl" target="_blank">
-        <img class="logo" src="/logo.png" alt="logo" />
-        <div ml="12px" c="header" font="bold" text="[clamp(24px,4vw,40px)]">
-          {{ labels.vendor }}
+  <div class="with-background" flex="~ col items-center" w="full">
+    <div w="full" text="center" class="bubble-container">
+      <div v-for="(bubble, index) in bubbles" :key="index" class="bubble" :style="{
+        '--x': `${bubble.x}px`,
+        '--y': `${bubble.y}px`,
+        '--size': `${bubble.size}px`,
+        '--blur': `${bubble.blur}px`,
+        '--hue': bubble.hue
+      }"></div>
+      <base-card h="50%" w="60%">
+        <div flex="~ col items-center" h="full">
+          <div class="toolkit-info">
+            <div c="darker-secondary" font="bold" text="4vh">{{ toolkitName }}</div>
+            <div c="secondary" text="3.5vh">{{ installConf.version }}</div>
+          </div>
+          <base-button theme="primary" font="bold" w="20vw" h="7vh" @click="handleInstallClick(true)">{{ labels.install }}</base-button>
+          <span @click="selectOtherEdition" c="secondary" mt="10px" cursor-pointer underline>{{ labels.install_other_edition }}</span>
         </div>
-      </a>
+      </base-card>
     </div>
-    <div grow="2" flex="~ col items-center">
-      <div class="bold-text" text="[clamp(22px,3.6vw,38px)]">{{ welcomeLabel }}</div>
-      <div class="bold-text" text="[clamp(12px,2vw,24px)]">{{ version }}</div>
-    </div>
-    <div w="full" text="center">
-      <div flex="~ items-end justify-center">
-        <base-button theme="primary" w="12rem" mx="8px" font="bold" @click="handleInstallClick(true)">{{ labels.install
-          }}</base-button>
-      </div>
-      <!-- <base-check-box v-model="isUserAgree" mt="8px"
-        >我同意
-        <span
-          @click="isDialogVisible = !isDialogVisible"
-          c="primary"
-          cursor-pointer
-          decoration="hover:underline"
-          >许可协议</span
-        >
-      </base-check-box> -->
-    </div>
-    <div basis="30px" m="10px" text="center [clamp(11px,1vw,16px)]">
-      {{ labels.content_source }}
-    </div>
-    <base-dialog v-model="isDialogVisible" title="{{ labels.license_agreement }}" width="80%">
-      <scroll-box flex="1" overflow="auto">
-        <p v-for="txt in explainText" :key="txt">
-          {{ txt }}
-        </p>
-      </scroll-box>
-      <template #footer>
-        <div flex="~ items-center justify-end" gap="12px" mt="12px">
-          <base-button @click="isDialogVisible = !isDialogVisible">{{
-            labels.close
-          }}</base-button>
-          <base-button @click="handleDialogOk">{{ labels.agree }}</base-button>
-        </div>
-      </template>
-    </base-dialog>
+    <div class="content-disclaimer">{{ labels.content_source }}</div>
   </div>
 </template>
 
 <style lang="css" scoped>
-.bold-text {
-  text-align: center;
-  line-height: 6dvw;
-  cursor: default;
-  font-weight: bold;
-  margin-inline: 10px;
-}
-
-.svg-background {
-  background-image: url("/installer_bg.svg");
-  background-repeat: no-repeat;
-  background-position:
-    top center,
-    bottom center;
+.with-background {
+  background: linear-gradient(to bottom,
+      white,
+      rgba(255, 255, 255, 0.1),
+      rgb(158, 203, 255));
   background-size: 100% auto;
+  border: 1px solid rgb(166, 166, 166);
+  box-sizing: border-box;
 }
 
-.logo {
-  height: clamp(45px, 10vw, 80px);
+.toolkit-info {
+  margin-top: 12%;
+  margin-bottom: 10%;
+  display: flex;
+  flex-direction: column;
+  gap: 5vh;
+}
+
+.content-disclaimer {
+  --uno: c-secondary;
+  position: fixed;
+  font-size: 14px;
+  bottom: 3vh;
+}
+
+.bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* TODO: how to make this size scales to the container */
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: hsl(var(--hue), 100%, 70%);
+  filter: blur(var(--blur));
+  opacity: 0.6;
+  transform:
+    translateX(var(--x)) translateY(var(--y)) translateZ(0);
+  will-change: transform;
 }
 </style>

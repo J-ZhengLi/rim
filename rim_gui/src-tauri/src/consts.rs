@@ -1,3 +1,8 @@
+/// The preferred window width.
+pub(crate) const WINDOW_WIDTH: f64 = 960.0;
+/// The preferred window height.
+pub(crate) const WINDOW_HEIGHT: f64 = WINDOW_WIDTH / 16.0 * 10.0;
+
 // Events
 pub(crate) const MESSAGE_UPDATE_EVENT: &str = "update-message";
 pub(crate) const PROGRESS_UPDATE_EVENT: &str = "update-progress";

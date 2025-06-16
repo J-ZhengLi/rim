@@ -27,8 +27,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <titlebar :title="appTitle" />
-  <div flex="~ items-stretch" absolute top-0 left-0 bottom-0 right-0 style="margin-top: 40px;">
+  <titlebar :title="appTitle" :isSetupMode=true />
+  <div flex="~ items-stretch" absolute top-0 left-0 bottom-0 right-0>
     <transition name="aside">
       <aside
         v-if="!isHome"

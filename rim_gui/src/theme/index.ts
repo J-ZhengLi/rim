@@ -10,6 +10,7 @@ import ScrollBox from '../components/ScrollBox.vue';
 import Titlebar from '../components/Titlebar.vue';
 import LoadingMask from '../components/LoadingMask.vue';
 import BaseToast from '@/components/BaseToast.vue';
+import BaseCard from '@/components/BaseCard.vue';
 
 export default {
   install(app: App) {
@@ -24,5 +25,6 @@ export default {
     app.component('titlebar', Titlebar);
     app.component('loading-mask', LoadingMask);
     app.component('base-toast', BaseToast);
+    app.component('base-card', BaseCard);
   },
 };
