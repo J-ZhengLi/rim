@@ -22,7 +22,7 @@ export default defineConfig({
       'disabled-bg': '#eeeeee',
 
       // 主色
-      primary: '#526ecc',
+      primary: '#5888e8',
       success: '#50d4ab',
       warning: '#fbb175',
       danger: '#f66f6a',
@@ -33,7 +33,8 @@ export default defineConfig({
       // 文字色相关
       header: '#252b3a',
       regular: '#575d6c',
-      secondary: '#8a8e99',
+      'darker-secondary': '#6a6a6a',
+      secondary: '#808080',
       placeholder: '#adb0b8',
       disabled: '#c0c4cc',
       reverse: '#ffffff',

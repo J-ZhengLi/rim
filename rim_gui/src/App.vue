@@ -13,18 +13,12 @@ import { RouterView } from 'vue-router';
   margin: 0;
   padding: 0;
   font-family:
-    -apple-system,
-    BlinkMacSystemFont,
+    "Microsoft YaHei",
+    "微软雅黑",
     Segoe UI,
-    Helvetica,
-    Arial,
-    sans-serif,
-    Apple Color Emoji,
-    Segoe UI Emoji,
-    Segoe UI Symbol;
+    sans-serif;
   font-size: 14px;
   line-height: 24px;
-  letter-spacing: normal;
   font-weight: 400;
   --uno: bg-back c-header;
   font-synthesis: none;
@@ -32,5 +26,9 @@ import { RouterView } from 'vue-router';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+}
+
+div {
+  cursor: default;
 }
 </style>

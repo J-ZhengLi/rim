@@ -1,40 +1,33 @@
 <script setup lang="ts">
 import { invokeCommand } from "@/utils";
 import { appWindow } from "@tauri-apps/api/window";
-import { onMounted, Ref, ref } from "vue";
+import { onMounted, ref } from "vue";
 import { event } from "@tauri-apps/api";
 
-const { title } = defineProps({
+const { title, isSetupMode } = defineProps({
     title: {
         type: String,
         default: '',
     },
+    isSetupMode: {
+        type: Boolean,
+        default: true,
+    },
 });
 
-interface Language {
-    id: string
-    name: string
-}
-
-const languages: Ref<Language[]> = ref([]);
 const exitDisabled = ref(false);
-// const showLangs = ref(false);
+const labels = ref<Record<string, string>>({});
 
 function minimize() { appWindow.minimize(); }
 function maximize() { appWindow.toggleMaximize() }
 function close() {
     invokeCommand('close_window');
 }
-// function onLangSelected(value: string) {
-//     invokeCommand("set_locale", { language: value }).then(() => {
-//         location.reload();
-//     });
-// }
 
 onMounted(() => {
-    invokeCommand("supported_languages").then((list) => {
-        if (Array.isArray(list) && list.every((item) => "id" in item && "name" in item)) {
-            languages.value = list;
+    invokeCommand('get_build_cfg_locale_str', { key: 'logo_text' }).then((res) => {
+        if (typeof res === 'string') {
+            labels.value.logoText = res
         }
     });
     
@@ -48,44 +41,37 @@ onMounted(() => {
 
 <template>
     <div data-tauri-drag-region class="titlebar">
-        <div class="titlebar-icon" id="titlebar-icon">
-            <img data-tauri-drag-region src="/favicon.ico" h="1.5rem" />
+        <div class="titlebar-logo" id="titlebar-logo">
+            <img data-tauri-drag-region src="/logo.png" h="7vh" />
+            <div data-tauri-drag-region class="titlebar-logo-text">{{ labels.logoText }}</div>
         </div>
-
-        <div data-tauri-drag-region class="titlebar-title">{{ title }}</div>
+        <div data-tauri-drag-region class="titlebar-title" v-if="isSetupMode">{{ title }}</div>
 
         <div data-tauri-drag-region class="titlebar-buttons" id="titlebar-buttons">
             <!-- FIXME: we need an English translation for GUI before enabling this -->
-            <!-- <div class="titlebar-button" @click="showLangs = !showLangs" @focusout="showLangs = false" tabindex="0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                    <path fill="white"
-                        d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2m6.93 6h-2.95a15.7 15.7 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.92 8M12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96M4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A8 8 0 0 1 5.08 16m2.95-8H5.08a8 8 0 0 1 4.33-3.56A15.7 15.7 0 0 0 8.03 8M12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96M14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2m.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56M16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2z" />
+            <div class="titlebar-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 18 24">
+                    <path d="M2 8C2 7.44772 2.44772 7 3 7H21C21.5523 7 22 7.44772 22 8C22 8.55228 21.5523 9 21 9H3C2.44772 9 2 8.55228 2 8Z"></path>
+                    <path d="M2 12C2 11.4477 2.44772 11 3 11H21C21.5523 11 22 11.4477 22 12C22 12.5523 21.5523 13 21 13H3C2.44772 13 2 12.5523 2 12Z"></path>
+                    <path d="M3 15C2.44772 15 2 15.4477 2 16C2 16.5523 2.44772 17 3 17H15C15.5523 17 16 16.5523 16 16C16 15.4477 15.5523 15 15 15H3Z"></path>
                 </svg>
-                <transition name="fade" appear>
-                    <div class="sub-menu" v-if="showLangs">
-                        <ul v-for="item in languages" :key="item.id" class="menu-item">
-                            <li @click="onLangSelected(item.id)">{{ item.name }}</li>
-                        </ul>
-                    </div>
-                </transition>
-            </div> -->
+            </div>
 
             <div class="titlebar-button" id="titlebar-minimize" @click="minimize">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
-                    <path fill="white" d="M3 8a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 8" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 16 16">
+                    <path d="M3 8a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 8" />
                 </svg>
             </div>
 
             <div class="titlebar-button" id="titlebar-maximize" @click="maximize">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 16 16">
-                    <path fill="white"
-                        d="M4.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3zM5 4.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V5a.5.5 0 0 1 .5-.5" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 16 16">
+                    <path d="M4.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3zM5 4.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V5a.5.5 0 0 1 .5-.5" />
                 </svg>
             </div>
 
             <div class="titlebar-button" id="titlebar-close" @click="close" v-if="!exitDisabled">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16">
-                    <path fill="white" fill-rule="evenodd"
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd"
                         d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94z"
                         clip-rule="evenodd" />
                 </svg>
@@ -96,8 +82,8 @@ onMounted(() => {
 
 <style scoped>
 .titlebar {
-    background-color: rgba(2, 2, 10, 0.8);
-    height: 40px;
+    background-color: rgba(0, 0, 0, 0);
+    height: 10vh;
     user-select: none;
     display: flex;
     position: fixed;
@@ -105,13 +91,19 @@ onMounted(() => {
     left: 0;
     right: 0;
     z-index: 1000;
-    padding-inline: 2px;
+    margin-inline: 2.5vw;
 }
 
-.titlebar-icon {
+.titlebar-logo {
     display: flex;
     align-items: center;
-    margin-inline: 3px;
+    margin-top: 2.5vh;
+}
+
+.titlebar-logo-text {
+    margin-left: 10px;
+    font-weight: bold;
+    font-size: 2.5vw;
 }
 
 .titlebar-buttons {
@@ -126,12 +118,12 @@ onMounted(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    fill: white;
-    width: 32px;
-    height: 32px;
+    width: 4vw;
+    height: 4vh;
     border-radius: 3px;
     margin-inline: 3px;
     padding: 0;
+    fill:rgb(155, 155, 155);
 }
 
 .titlebar-button:hover {
@@ -143,11 +135,10 @@ onMounted(() => {
 }
 
 .titlebar-title {
-    color: white;
+    color: rgb(128, 128, 128);
     display: flex;
-    align-items: center;
-    margin-left: 3px;
-    font-size: 12px;
+    margin: 4.8vh 0px 0px 12px;
+    font-size: 2.3vh;
 }
 
 .sub-menu {

@@ -279,18 +279,22 @@ pub(crate) fn setup_manager_window(
 
 fn setup_window_(app: &mut App, label: &str, url: WindowUrl, visible: bool) -> Result<Window> {
     let window = tauri::WindowBuilder::new(app, label, url)
-        .inner_size(800.0, 600.0)
-        .min_inner_size(640.0, 480.0)
+        .inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
+        .min_inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
         .decorations(false)
         .transparent(true)
         .title(AppInfo::name())
         .visible(visible)
         .build()?;
 
-    #[cfg(not(target_os = "linux"))]
-    if let Err(e) = window_shadows::set_shadow(&window, true) {
-        log::error!("unable to apply window effects: {e}");
-    }
+    // when opening the application, there's a chance that everything appear
+    // to be un-arranged after loaded due to WebView not being fully initialized,
+    // therefore we add 1 second delay to hide it after the content was loaded.
+    // FIXME: maybe it's better to have a simple splash screen
+    window.eval("window.addEventListener('DOMContentLoaded', () => {
+    document.body.style.visibility = 'hidden';
+    setTimeout(() => { document.body.style.visibility = 'visible' }, 1000);
+});")?;
 
     // enable dev console only on debug mode
     #[cfg(debug_assertions)]
