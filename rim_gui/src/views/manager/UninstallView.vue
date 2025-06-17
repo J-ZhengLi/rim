@@ -30,7 +30,7 @@ function handleUninstall() {
       <h1>卸载</h1>
       <p>即将卸载以下产品</p>
     </div>
-    <scroll-box mx="12px" flex="1">
+    <base-card mx="12px" flex="1">
       <Label
         m="0"
         :label="installed?.name || ''"
@@ -46,7 +46,7 @@ function handleUninstall() {
       >
         <Label :label="item.displayName" :old-ver="item.version"></Label>
       </div>
-    </scroll-box>
+    </base-card>
     <div m="l-2em t-0.5em" h="2em">
       <base-check-box v-model="isUninstallManger" title="同时卸载此管理工具" />
     </div>

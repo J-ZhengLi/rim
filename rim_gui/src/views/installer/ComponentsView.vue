@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
-import ScrollBox from '@/components/ScrollBox.vue';
 import { componentUtils, installConf, invokeCommand } from '@/utils/index';
 import type {
   CheckGroup,
@@ -133,7 +132,7 @@ onMounted(() => {
   <div flex="~ col" w="full" h="full">
     <h4 ml="12px">安装选项</h4>
     <div flex="1 ~" p="12px" overflow="auto">
-      <scroll-box overflow-auto p="4px" grow="1">
+      <base-card overflow-auto p="4px" grow="1">
         <div p="t-8px l-8px">组件</div>
         <div ml="1.5rem">
           <base-check-box flex="~ items-center" v-model="checkedAllBundle" title="全选">
@@ -148,12 +147,12 @@ onMounted(() => {
 
         <check-box-group v-for="group of groupComponents" :key="group.label" :group="group" expand
           @itemClick="handleComponentsClick" @change="handleComponentsChange" />
-      </scroll-box>
-      <scroll-box basis="200px" grow="4" ml="12px">
+      </base-card>
+      <base-card basis="200px" grow="4" ml="12px">
         <div>组件详细信息</div>
         <p font="b">{{ curCheckComponent?.value.displayName }}</p>
         <p>{{ curCheckComponent?.value.desc }}</p>
-      </scroll-box>
+      </base-card>
     </div>
 
     <div basis="60px" flex="~ justify-end items-center">

@@ -6,11 +6,11 @@ import BaseProgress from '../components/BaseProgress.vue';
 import BaseRadio from '../components/BaseRadio.vue';
 import BaseDialog from '../components/BaseDialog.vue';
 import BaseTag from '@/components/BaseTag.vue';
-import ScrollBox from '../components/ScrollBox.vue';
 import Titlebar from '../components/Titlebar.vue';
 import LoadingMask from '../components/LoadingMask.vue';
 import BaseToast from '@/components/BaseToast.vue';
 import BaseCard from '@/components/BaseCard.vue';
+import Background from '@/components/Background.vue';
 
 export default {
   install(app: App) {
@@ -21,10 +21,10 @@ export default {
     app.component('base-radio', BaseRadio);
     app.component('base-dialog', BaseDialog);
     app.component('base-tag', BaseTag);
-    app.component('scroll-box', ScrollBox);
     app.component('titlebar', Titlebar);
     app.component('loading-mask', LoadingMask);
     app.component('base-toast', BaseToast);
     app.component('base-card', BaseCard);
+    app.component('background', Background);
   },
 };

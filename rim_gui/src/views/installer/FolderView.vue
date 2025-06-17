@@ -53,7 +53,7 @@ async function openFolder() {
     <!-- <div mx="12px">
       <p>至少需要{{ diskRequire.toFixed(1) }}M的磁盘空间</p>
     </div> -->
-    <div h="60px" flex="~ justify-end items-center">
+    <div h="10vh" flex="~ justify-end items-center">
       <base-button theme="primary" mr="12px" @click="routerBack">上一步</base-button>
       <base-button theme="primary" mr="12px" @click="handleNextClick">下一步</base-button>
     </div>

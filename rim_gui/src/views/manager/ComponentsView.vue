@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, onUpdated, Ref, ref, watch, nextTick } from 'vue';
-import ScrollBox from '@/components/ScrollBox.vue';
 import { componentUtils, managerConf } from '@/utils/index';
 import type {
   CheckGroup,
@@ -146,7 +145,7 @@ onUpdated(() => {
   <div flex="~ col" w="full" h="full">
     <h4 ml="12px">组件更改</h4>
     <div flex="1 ~" p="12px" overflow="auto">
-      <scroll-box overflow-auto p="4px" grow="1" relative>
+      <base-card overflow-auto p="4px" grow="1" relative>
         <div p="l-8px t-8px" flex="~ items-center wrap" gap="3" bg="back">
           <b>组件</b>
           <span>
@@ -176,12 +175,12 @@ onUpdated(() => {
 
         <check-box-group v-for="group of groupComponents" :key="group.label" :group="group" expand mb="1rem"
           @itemClick="handleComponentsClick" @change="handleComponentsChange" />
-      </scroll-box>
-      <scroll-box basis="200px" grow="4" ml="12px">
+      </base-card>
+      <base-card basis="200px" grow="4" ml="12px">
         <b>组件详细信息</b>
         <p font="b">{{ curCheckComponent?.value.displayName }}</p>
         <p>{{ curCheckComponent?.value.desc }}</p>
-      </scroll-box>
+      </base-card>
     </div>
 
     <div basis="60px" flex="~ justify-end items-center">

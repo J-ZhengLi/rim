@@ -4,9 +4,7 @@ import { useCustomRouter } from '@/router';
 import { useRoute } from 'vue-router';
 import TheAside from './TheAside.vue';
 import { installConf } from '@/utils';
-import { onMounted, ref } from 'vue';
 
-const appTitle = ref('');
 const route = useRoute();
 const { isBack } = useCustomRouter();
 const isHome = computed(() => route.name === 'Home');
@@ -18,39 +16,16 @@ const transitionName = computed(() => {
 });
 
 onBeforeMount(() => installConf.loadAll());
-
-onMounted(() => {
-  installConf.appNameWithVersion().then((res) => {
-    appTitle.value = res
-  });
-});
 </script>
 
 <template>
-  <titlebar :title="appTitle" :isSetupMode=true />
-  <div flex="~ items-stretch" absolute top-0 left-0 bottom-0 right-0>
+  <div flex="~ items-stretch" top-0 left-0 bottom-0 right-0>
     <transition name="aside">
-      <aside
-        v-if="!isHome"
-        w="150px"
-        h="full"
-        b="t-0 r-1 b-0 l-0 solid base"
-        absolute
-        bg-back
-        z-1
-      >
+      <aside v-if="!isHome" w="15%" absolute z-1>
         <the-aside />
       </aside>
     </transition>
-    <main
-      flex="1"
-      overflow="hidden"
-      absolute
-      top="0"
-      right="0"
-      bottom="0"
-      :style="{ left: isHome ? '0' : '150px' }"
-    >
+    <main flex="1" overflow="hidden" absolute top="0" right="0" bottom="0" :style="{ left: isHome ? '0' : '16%' }">
       <div h-full relative>
         <router-view v-slot="{ Component }">
           <transition :name="transitionName">
