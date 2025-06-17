@@ -18,16 +18,16 @@ export default defineConfig({
   theme: {
     colors: {
       // 背景色
-      back: '#f5f5f5',
+      back: '#ffffff',
       'disabled-bg': '#eeeeee',
 
       // 主色
-      primary: '#5888e8',
+      primary: '#5b98d8',
       success: '#50d4ab',
       warning: '#fbb175',
       danger: '#f66f6a',
       info: '#909399',
-      'light-primary': '#788ed7',
+      'light-primary': '#91aadb',
       'deep-primary': '#40569f',
 
       // 文字色相关

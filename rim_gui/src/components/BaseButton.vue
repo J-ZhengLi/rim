@@ -18,17 +18,17 @@ const themeClasses = computed(() => {
   switch (props.theme) {
     case 'primary':
       return 'bg-primary text-white border-primary active:bg-deep-primary';
-    case 'default':
-      return 'bg-gray-200 text-header border-gray-400 active:bg-gray-300';
+    case 'back':
+      return 'bg-back-btn text-header active:bg-deep-primary';
     // Add more themes as needed
     default:
-      return '';
+      return 'bg-gray-200 text-header border-gray-400 active:bg-gray-300';
   }
 });
 </script>
 
 <template>
-  <button p="x-16px y-8px" :class="[
+  <button p="x-3% y-1%" :class="[
     themeClasses,
     ' rounded-[30vw] b b-solid hover:op-80', // Common classes
     { 'opacity-50 cursor-not-allowed': disabled }, // Disabled styles
@@ -40,7 +40,6 @@ const themeClasses = computed(() => {
 <style scoped>
 button {
   font-size: 3vh;
-  padding: 5px 25px 5px 25px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -73,7 +73,7 @@ onMounted(() => {
       <p mt="4px">{{ labels.package_source_missing_info }}</p>
       <p mt="4px" class="text-secondary">{{ labels.default_source_hint }}</p>
     </div>
-    <scroll-box flex="1" mx="12px" overflow="auto">
+    <base-card flex="1" mx="12px" overflow="auto">
       <div class="input-field" v-for="(field, index) in fields" :key="index">
         <p>{{ field.label }}</p>
         <div flex="~ items-center">
@@ -88,7 +88,7 @@ onMounted(() => {
           <base-button theme="primary" ml="12px" @click="handleOpen(index)">{{ labels.select_file }}</base-button>
         </div>
       </div>
-    </scroll-box>
+    </base-card>
     <div h="60px" flex="~ justify-end items-center">
       <base-button theme="primary" mr="12px" @click="routerBack">上一步</base-button>
       <base-button theme="primary" mr="12px" :disabled="!allSourcesAreFilled" @click="handleNextClick">下一步</base-button>

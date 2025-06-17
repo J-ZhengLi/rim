@@ -47,7 +47,7 @@ function menuItemActive(order: number) {
 </script>
 
 <template>
-  <div flex="~ col items-center" h="full">
+  <div flex="~ col items-center">
     <h4 w="full" text="center">安装步骤</h4>
     <div flex="1" text="end secondary" w="full">
       <div
@@ -55,7 +55,6 @@ function menuItemActive(order: number) {
         class="activeItem"
         :class="{ ...menuItemActive(menuFirstItem?.meta?.order as number) }"
         relative
-        h="24px"
         mt="12px"
         pr="1em"
       >
@@ -65,16 +64,12 @@ function menuItemActive(order: number) {
         v-for="item in menu"
         :key="item.path"
         :class="{ ...menuItemActive(item.meta?.order as number) }"
-        h="24px"
         mt="12px"
         pr="1em"
         transition="all 0.3s"
       >
         {{ item.meta?.title }}
       </div>
-    </div>
-    <div mb="8px" text="center">
-      <img src="/logo-with-text.png" alt="logo" w="90%" />
     </div>
   </div>
 </template>

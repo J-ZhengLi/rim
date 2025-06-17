@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router';
+import Titlebar from './components/Titlebar.vue';
 </script>
 
 <template>
-  <div>
-    <RouterView />
-  </div>
+  <background />
+  <Titlebar />
+  <main>
+    <router-view />
+  </main>
 </template>
 
 <style>
@@ -30,5 +32,9 @@ import { RouterView } from 'vue-router';
 
 div {
   cursor: default;
+}
+
+main {
+  margin-top: 10vh;
 }
 </style>

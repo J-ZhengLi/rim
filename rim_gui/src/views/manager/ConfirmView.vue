@@ -57,19 +57,19 @@ onMounted(() => {
       <p>即将安装以下产品</p>
     </div>
 
-    <scroll-box mx="12px" flex="1">
+    <base-card mx="12px" flex="1">
       <div v-for="item in labels" :key="item.label" mb="24px">
         <component-label :label="item.label" :oldVer="item.originVer" :newVer="item.targetVer" />
       </div>
-    </scroll-box>
+    </base-card>
 
     <div mx="12px" v-if="obsoletedComponents.length > 0">
       <p>{{ localeLabels.components_to_remove }}</p>
-      <scroll-box flex="1">
+      <base-card flex="1">
         <div v-for="item in obsoletedComponents" mb="24px">
           <component-label :label="item" />
         </div>
-      </scroll-box>
+      </base-card>
     </div>
 
     <div basis="60px" flex="~ justify-end items-center">

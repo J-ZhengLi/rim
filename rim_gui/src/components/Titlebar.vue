@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { invokeCommand } from "@/utils";
+import { installConf, invokeCommand } from "@/utils";
 import { appWindow } from "@tauri-apps/api/window";
 import { onMounted, ref } from "vue";
 import { event } from "@tauri-apps/api";
 
-const { title, isSetupMode } = defineProps({
-    title: {
-        type: String,
-        default: '',
-    },
+const { isSetupMode } = defineProps({
     isSetupMode: {
         type: Boolean,
         default: true,
@@ -17,6 +13,7 @@ const { title, isSetupMode } = defineProps({
 
 const exitDisabled = ref(false);
 const labels = ref<Record<string, string>>({});
+const appTitle = ref('');
 
 function minimize() { appWindow.minimize(); }
 function maximize() { appWindow.toggleMaximize() }
@@ -36,6 +33,10 @@ onMounted(() => {
             exitDisabled.value = event.payload;
         }
     });
+
+    installConf.appNameWithVersion().then((res) => {
+        appTitle.value = res
+    });
 })
 </script>
 
@@ -45,7 +46,7 @@ onMounted(() => {
             <img data-tauri-drag-region src="/logo.png" h="7vh" />
             <div data-tauri-drag-region class="titlebar-logo-text">{{ labels.logoText }}</div>
         </div>
-        <div data-tauri-drag-region class="titlebar-title" v-if="isSetupMode">{{ title }}</div>
+        <div data-tauri-drag-region class="titlebar-title" v-if="isSetupMode">{{ appTitle }}</div>
 
         <div data-tauri-drag-region class="titlebar-buttons" id="titlebar-buttons">
             <!-- FIXME: we need an English translation for GUI before enabling this -->
