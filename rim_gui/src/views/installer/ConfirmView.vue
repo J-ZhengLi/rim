@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { installConf, invokeCommand, Component } from '@/utils/index';
+import { installConf, invokeCommand, Component, invokeLabelList } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
 const path = installConf.path;
+const labels = ref<Record<string, string>>({});
 
 const components = computed(() => {
   const list = installConf.getCheckedComponents();
@@ -18,16 +19,21 @@ function handleNextClick() {
     install_dir: path.value as string,
   }).then(() => routerPush('/installer/install'));
 }
+
+onMounted(() => {
+  invokeLabelList(['install']).then((res) => {
+    labels.value = res;
+  })
+})
 </script>
 
 <template>
   <div flex="~ col">
     <div ml="12px">
-      <h4 mb="4px">准备安装</h4>
       <p mt="4px">开始安装之前，请确认安装信息无误。</p>
       <p mb="4px">单击“安装”以继续。如果需要修改配置请点击“上一步”。</p>
     </div>
-    <base-card flex="1" mx="12px" overflow="auto">
+    <base-card flex="1" mx="12px" mb="7%" overflow="auto">
       <p m="0">安装位置：</p>
       <p my="4px">{{ path }}</p>
       <p mb="8px">组件：</p>
@@ -39,13 +45,11 @@ function handleNextClick() {
         </p>
       </div>
     </base-card>
-    <div h="60px" flex="~ justify-end items-center">
-      <base-button theme="primary" mr="12px" @click="routerBack"
-        >上一步</base-button
-      >
-      <base-button theme="primary" mr="12px" @click="handleNextClick"
-        >开始安装</base-button
-      >
-    </div>
+
+    <page-nav-buttons
+      :nextLabel="labels.install"
+      @back-clicked="routerBack"
+      @next-clicked="handleNextClick"
+    />
   </div>
 </template>

@@ -38,6 +38,7 @@ pub(super) fn main(
             load_manifest_and_ret_version,
             common::supported_languages,
             common::set_locale,
+            common::get_locale,
             common::app_info,
             common::get_label,
             get_home_page_url,

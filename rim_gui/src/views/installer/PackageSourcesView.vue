@@ -48,7 +48,7 @@ function handleNextClick() {
     })
     installConf.setComponents(updated);
   });
-  routerPush('/installer/confirm');
+  routerPush('/installer/confirmation');
 }
 
 onMounted(() => {

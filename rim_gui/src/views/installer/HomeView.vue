@@ -8,9 +8,8 @@ const { routerPush } = useCustomRouter();
 const toolkitName = ref('');
 const labels = ref<Record<string, string>>({});
 
-function handleInstallClick(custom: boolean) {
-  installConf.setCustomInstall(custom);
-  routerPush(custom ? '/installer/folder' : '/installer/confirm');
+function handleInstallClick() {
+  routerPush('/installer/configuration');
 }
 
 function selectOtherEdition() {
@@ -50,14 +49,14 @@ onMounted(() => {
 
 <template>
   <div flex="~ col items-center" w="full">
-    <base-card h="50%" w="60%" class="info-card">
+    <base-card h="60%" w="80%" class="info-card">
       <div flex="~ col items-center" h="full">
         <div text="center" class="toolkit-info">
           <div c="darker-secondary" font="bold" text="4vh">{{ toolkitName }}</div>
           <div c="secondary" text="3.5vh">{{ installConf.version }}</div>
         </div>
-        <base-button theme="primary" font="bold" w="20vw" position="fixed" bottom="4vh"
-          @click="handleInstallClick(true)">{{ labels.install }}</base-button>
+        <base-button theme="primary" w="20vw" position="fixed" bottom="5vh"
+          @click="handleInstallClick()">{{ labels.install }}</base-button>
         <span c="secondary" position="fixed" bottom="-5vh" cursor-pointer underline @click="selectOtherEdition">{{
           labels.install_other_edition }}</span>
       </div>

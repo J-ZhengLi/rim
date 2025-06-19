@@ -8,8 +8,10 @@ import { Ref, ref } from 'vue';
 
 import TheInstallerLayout from '@/views/installer/components/TheInstallerLayout.vue';
 import HomeView from '@/views/installer/HomeView.vue';
-import FolderView from '@/views/installer/FolderView.vue';
+import ConfigurationView from '@/views/installer/ConfigurationView.vue';
+import ProfileView from '@/views/installer/ProfileView.vue';
 import ComponentsView from '@/views/installer/ComponentsView.vue';
+import PackageSourcesView from '@/views/installer/PackageSourcesView.vue';
 import ConfirmView from '@/views/installer/ConfirmView.vue';
 import InstallView from '@/views/installer/InstallView.vue';
 import FinishView from '@/views/installer/FinishView.vue';
@@ -21,7 +23,6 @@ import ManagerConfirmView from '@/views/manager/ConfirmView.vue';
 import UninstallView from '@/views/manager/UninstallView.vue';
 import ProgressView from '@/views/manager/ProgressView.vue';
 import CompleteView from '@/views/manager/CompleteView.vue';
-import ConfirmPackageSourcesView from '@/views/installer/ConfirmPackageSourcesView.vue';
 
 const routes = [
   {
@@ -33,43 +34,49 @@ const routes = [
         name: 'Home',
         path: '',
         component: HomeView,
-        meta: { title: '开始', order: 0, required: true },
+        meta: { title: 'home', order: 0, required: true },
       },
       {
-        name: 'Folder',
-        path: 'folder',
-        component: FolderView,
-        meta: { title: '安装位置', order: 1, required: false },
+        name: 'Configuration',
+        path: 'configuration',
+        component: ConfigurationView,
+        meta: { title: 'configuration', order: 1, required: false },
       },
       {
-        name: 'Components',
-        path: 'components',
+        name: 'CustomizeProfile',
+        path: 'customize_profile',
+        component: ProfileView,
+        meta: { title: 'customization:profile', order: 2, required: false },
+      },
+      {
+        name: 'CustomizeComponent',
+        path: 'customize_component',
         component: ComponentsView,
-        meta: { title: '组件选项', order: 2, required: false },
+        meta: { title: 'customization:component', order: 3, required: false },
       },
       {
-        name: 'ConfirmPackageSources',
-        path: 'confirm-package-sources',
-        component: ConfirmPackageSourcesView,
-        meta: { title: '包来源确认', order: 3, required: false },
+        name: 'CustomizePackageSource',
+        path: 'customize_package_sources',
+        component: PackageSourcesView,
+        meta: { title: 'customization:package_source', order: 4, required: false },
       },
       {
-        name: 'Confirm',
-        path: 'confirm',
+        name: 'Confirmation',
+        path: 'confirmation',
         component: ConfirmView,
-        meta: { title: '信息确认', order: 4, required: true },
+        meta: { title: 'confirmation', order: 5, required: true },
       },
       {
         name: 'Install',
         path: 'install',
         component: InstallView,
-        meta: { title: '进行安装', order: 5, required: true },
+        meta: { title: 'install', order: 6, required: true },
       },
       {
         name: 'Finish',
         path: 'finish',
         component: FinishView,
-        meta: { title: '安装完成', order: 6, required: true },
+        meta: { title: 'finish', order: 7, required: true },
       },
     ],
   },

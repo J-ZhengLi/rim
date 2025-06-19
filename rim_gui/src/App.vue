@@ -36,5 +36,6 @@ div {
 
 main {
   margin-top: 10vh;
+  overflow: hidden;
 }
 </style>

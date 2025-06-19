@@ -136,9 +136,9 @@ onMounted(() => {
 }
 
 .titlebar-title {
-    color: rgb(128, 128, 128);
+    --uno: 'c-secondary';
     display: flex;
-    margin: 4.8vh 0px 0px 12px;
+    margin: 3.2% 0px 0px 12px;
     font-size: 2.3vh;
 }
 

@@ -178,7 +178,7 @@ impl CustomInstallOpt {
 }
 
 fn read_install_dir_input(default: &str) -> Result<Option<String>> {
-    let dir_input = common::question_str(t!("question_install_dir"), None, default)?;
+    let dir_input = common::question_str(t!("installation_path"), None, default)?;
     // verify path input before proceeding
     if utils::is_root_dir(&dir_input) {
         warn!("{}", t!("notify_root_dir"));

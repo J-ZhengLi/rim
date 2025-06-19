@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeMount } from 'vue';
 import { useCustomRouter } from '@/router';
-import { useRoute } from 'vue-router';
-import TheAside from './TheAside.vue';
 import { installConf } from '@/utils';
+import { useRoute } from 'vue-router';
+import PageIndicator from './PageIndicator.vue';
 
 const route = useRoute();
 const { isBack } = useCustomRouter();
@@ -20,12 +20,9 @@ onBeforeMount(() => installConf.loadAll());
 
 <template>
   <div flex="~ items-stretch" top-0 left-0 bottom-0 right-0>
-    <transition name="aside">
-      <aside v-if="!isHome" w="15%" absolute z-1>
-        <the-aside />
-      </aside>
-    </transition>
-    <main flex="1" overflow="hidden" absolute top="0" right="0" bottom="0" :style="{ left: isHome ? '0' : '16%' }">
+    <PageIndicator v-if="!isHome" />
+    <main p="4vh" flex="1" overflow="hidden" absolute top="0" right="0" bottom="0"
+      :style="{ left: '0', top: isHome ? '0' : '4vh' }">
       <div h-full relative>
         <router-view v-slot="{ Component }">
           <transition :name="transitionName">
@@ -40,30 +37,13 @@ onBeforeMount(() => installConf.loadAll());
 </template>
 
 <style>
-.aside-enter-active,
-.aside-leave-active,
 .push-enter-active,
 .push-leave-active,
 .back-enter-active,
 .back-leave-active {
   transition: all 0.5s ease;
 }
-/* 菜单进出 */
-.aside-enter-from {
-  left: -150px;
-}
 
-.aside-enter-to {
-  left: 0;
-}
-
-.aside-leave-from {
-  left: 0;
-}
-
-.aside-leave-to {
-  left: -150px;
-}
 /* 页面前进 */
 .push-enter-from {
   right: -100%;
@@ -84,6 +64,7 @@ onBeforeMount(() => installConf.loadAll());
   left: -100%;
   opacity: 0;
 }
+
 /* 页面返回 */
 .back-enter-from {
   left: -100%;

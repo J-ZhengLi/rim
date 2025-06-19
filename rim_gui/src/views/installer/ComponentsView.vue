@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
-import { componentUtils, installConf, invokeCommand } from '@/utils/index';
+import { componentUtils, installConf } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
   CheckItem,
   Component,
-  RestrictedComponent,
 } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
 import CheckBoxGroup from '@/components/CheckBoxGroup.vue';
 
-const { routerPush, routerBack } = useCustomRouter();
+const { routerBack } = useCustomRouter();
 const selectComponentId = ref(0);
 
 const groupComponents: Ref<CheckGroup<Component>[]> = ref([]);
@@ -111,16 +110,7 @@ function handleSelectAll() {
 
 function handleNextClick() {
   updateInstallConf();
-
-  invokeCommand('get_restricted_components', { components: installConf.getCheckedComponents() }).then((res) => {
-    const restricted = res as RestrictedComponent[];
-    if (restricted.length > 0) {
-      installConf.setRestrictedComponents(restricted);
-      routerPush('/installer/confirm-package-sources');
-    } else {
-      routerPush('/installer/confirm');
-    }
-  })
+  routerBack();
 }
 
 onMounted(() => {
