@@ -204,6 +204,11 @@ pub(crate) fn set_locale(language: String) -> Result<()> {
 }
 
 #[tauri::command]
+pub(crate) fn get_locale() -> String {
+    rust_i18n::locale().to_string()
+}
+
+#[tauri::command]
 pub(crate) fn app_info() -> AppInfo {
     AppInfo::get().to_owned()
 }
@@ -282,7 +287,6 @@ fn setup_window_(app: &mut App, label: &str, url: WindowUrl, visible: bool) -> R
         .inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
         .min_inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
         .decorations(false)
-        .transparent(true)
         .title(AppInfo::name())
         .visible(visible)
         .build()?;
@@ -291,10 +295,12 @@ fn setup_window_(app: &mut App, label: &str, url: WindowUrl, visible: bool) -> R
     // to be un-arranged after loaded due to WebView not being fully initialized,
     // therefore we add 1 second delay to hide it after the content was loaded.
     // FIXME: maybe it's better to have a simple splash screen
-    window.eval("window.addEventListener('DOMContentLoaded', () => {
+    window.eval(
+        "window.addEventListener('DOMContentLoaded', () => {
     document.body.style.visibility = 'hidden';
     setTimeout(() => { document.body.style.visibility = 'visible' }, 1000);
-});")?;
+});",
+    )?;
 
     // enable dev console only on debug mode
     #[cfg(debug_assertions)]

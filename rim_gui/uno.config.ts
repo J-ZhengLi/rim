@@ -18,7 +18,7 @@ export default defineConfig({
   theme: {
     colors: {
       // 背景色
-      back: '#ffffff',
+      'secondary-btn': '#f2f2f2',
       'disabled-bg': '#eeeeee',
 
       // 主色

@@ -36,13 +36,13 @@ function initBubbles() {
     const rand = Math.random();
     return rand < 0.5 ? 0.5 + rand : -1 + rand - 0.5;
   };
-  const size = 400 + Math.random() * 100; // 400-500px
+  const size = containerSize.value.height / 1.8 + Math.random() * 100;
   bubbles.value = Array.from({ length: count }, () => ({
     x: Math.random() * (containerSize.value.width - size),
     y: Math.random() * (containerSize.value.height - size),
     size: size,
-    blur: 5 + Math.random() * 15, // slight blur between 5-20px
-    hue: 180 + Math.random() * 30,  // blueish hue
+    blur: 5 + Math.random() * 15, // slight random blur
+    hue: 185 + Math.random() * 35,  // blueish hue
     vx: randomSpeedScale() * 0.5, // Horizontal velocity
     vy: randomSpeedScale() * 0.5, // Vertical velocity
   }));
@@ -58,7 +58,7 @@ function updateBubbles() {
     // Boundary collision
     const bubbleRadius = bubble.size / 2;
     if (bubble.x + bubbleRadius < 0 || bubble.x + bubbleRadius > containerSize.value.width) bubble.vx *= -1;
-    if (bubble.y + bubbleRadius < 0 || bubble.y + bubbleRadius > containerSize.value.height) bubble.vy *= -1;
+    if (bubble.y < 0 || bubble.y + bubbleRadius > containerSize.value.height) bubble.vy *= -1;
   });
 }
 
@@ -105,6 +105,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  z-index: -1;
 }
 
 .bubble {
