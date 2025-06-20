@@ -1,3 +1,8 @@
+/// The preferred window width.
+pub(crate) const WINDOW_WIDTH: f64 = 960.0;
+/// The preferred window height.
+pub(crate) const WINDOW_HEIGHT: f64 = WINDOW_WIDTH / 16.0 * 10.0;
+
 // Events
 pub(crate) const MESSAGE_UPDATE_EVENT: &str = "update-message";
 pub(crate) const PROGRESS_UPDATE_EVENT: &str = "update-progress";
@@ -13,16 +18,3 @@ pub(crate) const TOOLKIT_UPDATE_EVENT: &str = "toolkit-update";
 // inserting a label in `src-tauri/capabilities/migrated.json`.
 pub(crate) const MANAGER_WINDOW_LABEL: &str = "manager_window";
 pub(crate) const INSTALLER_WINDOW_LABEL: &str = "installer_window";
-// If adding more notification windows, make sure their label start with 'notification:'
-pub(crate) const NOTIFICATION_WINDOW_LABEL: &str = "notification:popup";
-
-// The notification window appear to be bigger than normal on Windows,
-// It might be due to the fact that windows has different scaling or something else.
-#[cfg(unix)]
-pub(crate) const NOTIFICATION_WINDOW_WIDTH: f64 = 450.0;
-#[cfg(windows)]
-pub(crate) const NOTIFICATION_WINDOW_WIDTH: f64 = 360.0;
-#[cfg(unix)]
-pub(crate) const NOTIFICATION_WINDOW_HEIGHT: f64 = 275.0;
-#[cfg(windows)]
-pub(crate) const NOTIFICATION_WINDOW_HEIGHT: f64 = 220.0;

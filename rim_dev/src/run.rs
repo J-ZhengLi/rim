@@ -1,6 +1,7 @@
 use std::process::Command;
 
 use anyhow::{bail, Result};
+use rim_common::utils;
 
 use crate::{
     common,
@@ -56,6 +57,8 @@ impl RunMode {
 
         // replace home env to prevent modifying the actually HOME var
         let home = mocked::mocked_home();
+        // remove previous artifacts including configs
+        utils::remove(home)?;
         std::env::set_var("HOME", home);
         #[cfg(windows)]
         std::env::set_var("USERPROFILE", home);

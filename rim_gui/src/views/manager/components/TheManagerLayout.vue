@@ -21,8 +21,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <titlebar :title="appTitle" />
-  <main absolute top="0" bottom="0" left="0" right="0" overflow-hidden style="margin-top: 40px;">
+  <main absolute top="0" bottom="0" left="0" right="0" overflow-hidden>
     <router-view v-slot="{ Component }">
       <transition :name="transitionName">
         <keep-alive>

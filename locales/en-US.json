@@ -1,5 +1,5 @@
 {
-    "install": "install",
+    "install": "Install",
     "update": "Update",
     "uninstall": "Uninstall",
 
@@ -40,8 +40,9 @@
     "welcome": "Thanks for using %{product}",
     "what_this_is": "This program will guide you through installing the Rust programming language, with additional third party tools of your choice.",
     "custom_install_help": "Enter the value of each installation options, or just press 'Enter' key to use the default value.",
-    "question_install_dir": "Installation path?",
-    "select_components_to_install": "Choose what components to install: (separated multiple options by spaces, required tools are automatically selected)",
+    "installation_path": "Installation path",
+    "select_components_to_install": "Select components to install",
+    "select_components_cli_hint": "separated multiple options by spaces, required tools are automatically selected",
     "select_components_to_update": "Choose what components to update: (separated multiple options by spaces)",
     "select_components_to_remove": "Choose what components to remove: (separated multiple options by spaces)",
     "question_try_demo": "Do you want to try Rust with a demo project?",
@@ -101,7 +102,9 @@
     "customize": "Customize",
     "show_ui": "Show UI",
     "quit": "Quit",
-    "select_file": "Select local file",
+    "next": "Next",
+    "select_file": "Select file",
+    "select_folder": "Select folder",
     "pre_update_confirmation": "\nThese components below will be updated, you may choose to install them, or manually select another set by entering '2'\n\n%{list}",
     "downloading_rustup_init": "downloading rustup-init...",
     "unable_to_remove": "unable to remove '%{path}' as it might be current used by other programs, please try manually remove it after.",
@@ -119,9 +122,6 @@
     "package_source_missing_info": "One or more selected components require separated packages, you need to manually provide a path or link to install those.",
     "default_source_hint": "Note: If no input is provided and a default value exists, the default value will be used.",
     "question_package_source": "Enter the package source (path or url) for '%{tool}'",
-    "install_default": "default",
-    "install_everything": "everything",
-    "install_custom": "customize",
 
     "skip_ssl_check": "skip SSL certificate verification",
     "update_all": "Update all (including toolkit and toolkit manager)",
@@ -167,5 +167,16 @@
     "install_dir_is_root": "the program is installed but the installation directory appears to be root or empty, try re-install this program to fix the problem",
     "install_dir_is_os_dir": "the program is installed but the installation directory appears to be an OS specific directory '%{path}', try re-install this program to fix the problem",
     "uninstall_self_residual_info": "uninstall finished successfully, some files might not get removed until next system reboot",
-    "duplicated_config_files": "duplicated config file detected at these locations:\n1. %{first}\n2. %{second}\nconfiguration of the first one will be used"
+    "duplicated_config_files": "duplicated config file detected at these locations:\n1. %{first}\n2. %{second}\nconfiguration of the first one will be used",
+    "install_other_edition": "Install other edition",
+    "configuration": "Configuration",
+    "customization": "Customization",
+    "confirmation": "Confirmation",
+    "finish": "Finish",
+    "advanced_options": "Advanced Options",
+    "minimal": "Minimal",
+    "minimal_desc": "Contains only the required components sufficient to run Rust compiler, no other tools such as IDE are included",
+    "standard": "Standard",
+    "standard_desc": "Contains recommanded components such as IDE or ruleset for code check etc, does not includes optional tools. Recommanded for regular users.",
+    "customize_desc": "Choose any recommanded and optional components of your preference, suitable for exprienced users."
 }

@@ -26,7 +26,7 @@ pub(super) fn main(
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cmd| {}))
         .invoke_handler(tauri::generate_handler![
-            close_window,
+            common::close_window,
             default_install_dir,
             check_install_path,
             get_component_list,
@@ -34,10 +34,11 @@ pub(super) fn main(
             updated_package_sources,
             install_toolchain,
             run_app,
-            welcome_label,
+            toolkit_name,
             load_manifest_and_ret_version,
             common::supported_languages,
             common::set_locale,
+            common::get_locale,
             common::app_info,
             common::get_label,
             get_home_page_url,
@@ -50,11 +51,6 @@ pub(super) fn main(
         .run(tauri::generate_context!())
         .context("unknown error occurs while running tauri application")?;
     Ok(())
-}
-
-#[tauri::command]
-fn close_window(window: tauri::Window) {
-    common::close_window(window);
 }
 
 #[tauri::command]
@@ -93,9 +89,8 @@ async fn get_component_list() -> Result<Vec<Component>> {
 }
 
 #[tauri::command]
-fn welcome_label() -> String {
-    let product = utils::build_cfg_locale("product");
-    t!("welcome", product = product).into()
+fn toolkit_name() -> String {
+    utils::build_cfg_locale("product").into()
 }
 
 // Make sure this function is called first after launch.
@@ -120,6 +115,7 @@ async fn load_manifest_and_ret_version() -> Result<String> {
             .clone()
             .unwrap_or_default())
     } else {
+        debug!("manifest loaded");
         Ok(version)
     }
 }

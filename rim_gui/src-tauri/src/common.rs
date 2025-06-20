@@ -204,6 +204,11 @@ pub(crate) fn set_locale(language: String) -> Result<()> {
 }
 
 #[tauri::command]
+pub(crate) fn get_locale() -> String {
+    rust_i18n::locale().to_string()
+}
+
+#[tauri::command]
 pub(crate) fn app_info() -> AppInfo {
     AppInfo::get().to_owned()
 }
@@ -221,32 +226,6 @@ pub(crate) fn close_window(win: Window) {
 #[tauri::command]
 pub(crate) fn get_build_cfg_locale_str(key: &str) -> &str {
     utils::build_cfg_locale(key)
-}
-
-/// Simple representation of a Rust's function signature, typically got sent
-/// to the frontend, therefore the frontend knows which and how to invoke a
-/// certain Rust function.
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct FrontendFunctionPayload {
-    pub(crate) name: String,
-    pub(crate) args: Vec<(&'static str, String)>,
-    /// The **identifier** of function return, not the actual return value,
-    /// because the frontend can retrieve the return value itself, but it
-    /// need to known how to deal with it base on an unique identifier.
-    pub(crate) ret_id: Option<&'static str>,
-}
-
-impl FrontendFunctionPayload {
-    pub(crate) fn new<S: Into<String>>(name: S) -> Self {
-        Self {
-            name: name.into(),
-            args: vec![],
-            ret_id: None,
-        }
-    }
-
-    setter!(with_args(self.args, Vec<(&'static str, String)>));
-    setter!(with_ret_id(self.ret_id, identifier: &'static str) { Some(identifier) });
 }
 
 /// Build the installer window with shared configuration.
@@ -305,18 +284,23 @@ pub(crate) fn setup_manager_window(
 
 fn setup_window_(app: &mut App, label: &str, url: WindowUrl, visible: bool) -> Result<Window> {
     let window = tauri::WindowBuilder::new(app, label, url)
-        .inner_size(800.0, 600.0)
-        .min_inner_size(640.0, 480.0)
+        .inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
+        .min_inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
         .decorations(false)
-        .transparent(true)
         .title(AppInfo::name())
         .visible(visible)
         .build()?;
 
-    #[cfg(not(target_os = "linux"))]
-    if let Err(e) = window_shadows::set_shadow(&window, true) {
-        log::error!("unable to apply window effects: {e}");
-    }
+    // when opening the application, there's a chance that everything appear
+    // to be un-arranged after loaded due to WebView not being fully initialized,
+    // therefore we add 1 second delay to hide it after the content was loaded.
+    // FIXME: maybe it's better to have a simple splash screen
+    window.eval(
+        "window.addEventListener('DOMContentLoaded', () => {
+    document.body.style.visibility = 'hidden';
+    setTimeout(() => { document.body.style.visibility = 'visible' }, 1000);
+});",
+    )?;
 
     // enable dev console only on debug mode
     #[cfg(debug_assertions)]

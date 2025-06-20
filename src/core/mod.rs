@@ -154,7 +154,7 @@ impl Mode {
     fn manager(manager_callback: Option<Box<dyn FnOnce(&cli::Manager)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: utils::build_cfg_locale("manager_title").into(),
+            name: utils::build_cfg_locale("app_name").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: true,
         });
@@ -176,7 +176,7 @@ impl Mode {
     fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: utils::build_cfg_locale("installer_title").into(),
+            name: utils::build_cfg_locale("app_name").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: false,
         });
