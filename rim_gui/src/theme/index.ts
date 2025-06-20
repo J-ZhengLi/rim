@@ -13,6 +13,7 @@ import Background from '@/components/Background.vue';
 import Inputton from '@/components/Inputton.vue';
 import PageNavButtons from '@/components/PageNavButtons.vue';
 import BaseDetails from '@/components/BaseDetails.vue';
+import SplitBox from '@/components/SplitBox.vue';
 
 export default {
   install(app: App) {
@@ -30,5 +31,6 @@ export default {
     app.component('inputton', Inputton);
     app.component('page-nav-buttons', PageNavButtons);
     app.component('base-details', BaseDetails);
+    app.component('split-box', SplitBox);
   },
 };

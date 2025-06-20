@@ -115,6 +115,7 @@ async fn load_manifest_and_ret_version() -> Result<String> {
             .clone()
             .unwrap_or_default())
     } else {
+        debug!("manifest loaded");
         Ok(version)
     }
 }

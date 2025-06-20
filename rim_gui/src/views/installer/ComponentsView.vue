@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
-import { componentUtils, installConf } from '@/utils/index';
+import { componentUtils, installConf, invokeLabelList } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -9,8 +9,10 @@ import type {
 } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
 import CheckBoxGroup from '@/components/CheckBoxGroup.vue';
+import { handleRestrictedComponents } from '@/utils/common';
 
-const { routerBack } = useCustomRouter();
+const { routerBack, routerPush } = useCustomRouter();
+const labels = ref<Record<string, string>>({});
 const selectComponentId = ref(0);
 
 const groupComponents: Ref<CheckGroup<Component>[]> = ref([]);
@@ -49,7 +51,6 @@ function updateInstallConf() {
           label: item.label,
           checked: item.checked,
           disabled: item.disabled,
-          required: item.required,
           value: { ...item.value },
         };
       })
@@ -110,20 +111,35 @@ function handleSelectAll() {
 
 function handleNextClick() {
   updateInstallConf();
-  routerBack();
+  handleRestrictedComponents(
+    () => routerPush('/installer/confirmation'),
+    () => routerPush('/installer/customize_package_sources'),
+  );
 }
 
 onMounted(() => {
   groupComponents.value = installConf.getGroups();
+  
+  invokeLabelList(['select_components_to_install']).then((res) => {
+    labels.value = res;
+  });
 });
 </script>
 
 <template>
   <div flex="~ col" w="full" h="full">
-    <h4 ml="12px">安装选项</h4>
-    <div flex="1 ~" p="12px" overflow="auto">
+    <span class="info-label">{{ labels.select_components_to_install }}</span>
+    <!-- <div flex="1 ~" p="12px" mb="7%" overflow="auto">
       <base-card overflow-auto p="4px" grow="1">
-        <div p="t-8px l-8px">组件</div>
+        
+      </base-card>
+      <base-card overflow-auto basis="200px" grow="3" ml="12px">
+        
+      </base-card>
+    </div> -->
+    <split-box flex="1 ~" mt="1.5%" mb="10vh">
+      <template #left>
+        <span>组件</span>
         <div ml="1.5rem">
           <base-check-box flex="~ items-center" v-model="checkedAllBundle" title="全选">
             <template #icon>
@@ -137,17 +153,15 @@ onMounted(() => {
 
         <check-box-group v-for="group of groupComponents" :key="group.label" :group="group" expand
           @itemClick="handleComponentsClick" @change="handleComponentsChange" />
-      </base-card>
-      <base-card basis="200px" grow="4" ml="12px">
-        <div>组件详细信息</div>
+      </template>
+
+      <template #right>
+        <span>组件详细信息</span>
         <p font="b">{{ curCheckComponent?.value.displayName }}</p>
         <p>{{ curCheckComponent?.value.desc }}</p>
-      </base-card>
-    </div>
+      </template>
+    </split-box>
 
-    <div basis="60px" flex="~ justify-end items-center">
-      <base-button theme="primary" mr="12px" @click="routerBack">上一步</base-button>
-      <base-button theme="primary" mr="12px" @click="handleNextClick">下一步</base-button>
-    </div>
+    <page-nav-buttons @back-clicked="routerBack" @next-clicked="handleNextClick" />
   </div>
 </template>

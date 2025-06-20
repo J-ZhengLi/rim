@@ -27,7 +27,7 @@ export default defineConfig({
       warning: '#fbb175',
       danger: '#f66f6a',
       info: '#909399',
-      'light-primary': '#91aadb',
+      'light-primary': '#e3f1ff',
       'deep-primary': '#40569f',
 
       // 文字色相关

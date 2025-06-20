@@ -219,8 +219,9 @@ fn custom_component_choices<'a>(
         .map(|idx| (idx + 1).to_string())
         .collect::<Vec<_>>()
         .join(" ");
+    let question = format!("{}: ({})", t!("select_components_to_install"), t!("select_components_cli_hint"));
     let choices = common::question_multi_choices(
-        t!("select_components_to_install"),
+        question,
         &list_of_comps,
         &default_ids,
     )?;
@@ -247,9 +248,9 @@ fn read_component_selections<'a>(
     user_selected_comps: Option<&[String]>,
 ) -> Result<ComponentChoices<'a>> {
     let profile_choices = &[
-        t!("install_default"),
-        t!("install_everything"),
-        t!("install_custom"),
+        t!("standard"),
+        t!("minimal"),
+        t!("customize"),
     ];
     let choice = question_single_choice(t!("question_components_profile"), profile_choices, "1")?;
     let selection = match choice {
@@ -259,7 +260,7 @@ fn read_component_selections<'a>(
         2 => all_components
             .iter()
             .enumerate()
-            .filter(|(_, c)| !c.installed)
+            .filter(|(_, c)| !c.installed && c.required)
             .collect(),
         // Customized set
         3 => custom_component_choices(all_components, user_selected_comps)?,

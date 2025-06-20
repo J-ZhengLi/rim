@@ -32,7 +32,7 @@ async function openFolder() {
 onMounted(() => {
   invokeLabelList(['select_folder', 'installation_path', 'advanced_options']).then((res) => {
     labels.value = res;
-  })
+  });
 })
 </script>
 
