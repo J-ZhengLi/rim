@@ -20,6 +20,53 @@ impl ComponentType {
     pub fn is_from_toolchain(&self) -> bool {
         matches!(self, Self::ToolchainComponent | Self::ToolchainProfile)
     }
+
+    #[cfg(feature = "gui")]
+    /// Return verball discription of a certain type
+    pub fn desc(&self, tool_kind: Option<ToolKind>) -> ComponentTypeDesc {
+        match (self, tool_kind) {
+            (Self::ToolchainComponent, _) => ComponentTypeDesc {
+                name: t!("toolchain_component").into(),
+                help: Some(t!("toolchain_component_help").into()),
+            },
+            (Self::ToolchainProfile, _) => ComponentTypeDesc {
+                name: t!("toolchain").into(),
+                help: None,
+            },
+            (Self::Tool, None) => ComponentTypeDesc::default(),
+            (Self::Tool, Some(kind)) => match kind {
+                ToolKind::CargoTool => ComponentTypeDesc {
+                    name: t!("bin_crate").into(),
+                    help: Some(t!("bin_crate_help").into()),
+                },
+                ToolKind::Crate => ComponentTypeDesc {
+                    name: t!("dependency_crate").into(),
+                    help: Some(t!("dependency_crate_help").into()),
+                },
+                ToolKind::DirWithBin => ComponentTypeDesc {
+                    name: t!("standalone_tool").into(),
+                    help: Some(t!("standalone_tool_help").into()),
+                },
+                ToolKind::Executables => ComponentTypeDesc {
+                    name: t!("executables").into(),
+                    help: Some(t!("executables_help").into()),
+                },
+                ToolKind::Installer => ComponentTypeDesc {
+                    name: t!("installer").into(),
+                    help: Some(t!("installer_help").into()),
+                },
+                ToolKind::Plugin => ComponentTypeDesc {
+                    name: t!("plugin").into(),
+                    help: Some(t!("plugin_help").into()),
+                },
+                ToolKind::RuleSet => ComponentTypeDesc {
+                    name: t!("ruleset").into(),
+                    help: Some(t!("ruleset_help").into()),
+                },
+                _ => ComponentTypeDesc::default(),
+            },
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq, Eq)]
@@ -36,8 +83,26 @@ pub struct Component {
     pub optional: bool,
     pub tool_installer: Option<ToolInfo>,
     pub kind: ComponentType,
+    pub kind_desc: ComponentTypeDesc,
     /// Indicates whether this component was already installed or not.
     pub installed: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+#[cfg(feature = "gui")]
+pub struct ComponentTypeDesc {
+    name: String,
+    help: Option<String>,
+}
+
+impl Default for ComponentTypeDesc {
+    fn default() -> Self {
+        ComponentTypeDesc {
+            name: t!("third_party_tool").into(),
+            help: None,
+        }
+    }
 }
 
 impl Component {
@@ -66,10 +131,22 @@ impl Component {
             .unwrap_or_default()
     }
 
+    pub fn with_type(mut self, ty: ComponentType) -> Self {
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "gui")] {
+                self.kind = ty;
+                self.kind_desc = ty.desc(self.tool_installer.as_ref().and_then(|ti| ti.kind()));
+                self
+            } else {
+                self.kind = ty;
+                self
+            }
+        }
+    }
+
     setter!(required(self.required, bool));
     setter!(optional(self.optional, bool));
     setter!(installed(self.installed, bool));
-    setter!(with_type(self.kind, ComponentType));
     setter!(with_category(self.category, name: impl ToString) { name.to_string() });
     setter!(with_tool_installer(self.tool_installer, installer: &ToolInfo) { Some(installer.clone()) });
     setter!(with_version(self.version, version: Option<&str>) { version.map(ToOwned::to_owned) });

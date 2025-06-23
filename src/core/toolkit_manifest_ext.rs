@@ -192,7 +192,8 @@ impl ToolkitManifestExt for ToolkitManifest {
                         .optional(tool_info.is_optional())
                         .installed(installed)
                         .with_version(version)
-                        .with_display_name(tool_info.display_name().unwrap_or(tool_name)),
+                        .with_display_name(tool_info.display_name().unwrap_or(tool_name))
+                        .with_type(ComponentType::Tool),
                 );
             }
         }

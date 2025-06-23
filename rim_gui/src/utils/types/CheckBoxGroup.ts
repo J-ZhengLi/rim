@@ -3,7 +3,6 @@ import { Component } from 'vue';
 export interface CheckItem<T> {
   label: string;
   checked: boolean;
-  required?: boolean;
   disabled?: boolean;
   value: T;
 }

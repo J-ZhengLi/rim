@@ -8,14 +8,12 @@ class InstallConf {
   path: Ref<string>;
   info: Ref<AppInfo | null> = ref(null);
   checkComponents: Ref<CheckItem<Component>[]>;
-  isCustomInstall: boolean;
   version: Ref<string>;
   restrictedComponents: Ref<RestrictedComponent[]>;
 
   constructor(path: string, components: CheckItem<Component>[]) {
     this.path = ref(path);
     this.checkComponents = ref(components);
-    this.isCustomInstall = true;
     this.version = ref('');
     this.restrictedComponents = ref([]);
   }
@@ -48,10 +46,6 @@ class InstallConf {
     this.restrictedComponents.value = comps;
   }
 
-  setCustomInstall(isCustomInstall: boolean) {
-    this.isCustomInstall = isCustomInstall;
-  }
-
   getGroups(): CheckGroup<Component>[] {
     const groups = this.checkComponents.value.reduce(
       (acc, item) => {
@@ -80,17 +74,20 @@ class InstallConf {
         return item.value as Component;
       });
   }
+
+  mapCheckedComponents(callback: (comp: CheckItem<Component>) => CheckItem<Component>) {
+    this.checkComponents.value = this.checkComponents.value.map(callback)
+  }
   
   getRestrictedComponents(): RestrictedComponent[] {
     return this.restrictedComponents.value;
   }
 
-  loadManifest() {
-    invokeCommand("load_manifest_and_ret_version").then((ver) => {
-      if (typeof ver === 'string') {
-        this.version.value = ver;
-      }
-    });
+  async loadManifest() {
+    const ver = await invokeCommand("load_manifest_and_ret_version");
+    if (typeof ver === 'string') {
+      this.version.value = ver;
+    }
   }
 
   async loadDefaultPath() {
@@ -122,8 +119,12 @@ class InstallConf {
   }
 
   async loadAll() {
-    await this.loadDefaultPath();
-    await this.loadComponents();
+    // make sure the manifest is loaded before loading components
+    // as it requires the manifest to be loaded.
+    this.loadManifest().then(async () => {
+      await this.loadDefaultPath();
+      await this.loadComponents();
+    });
   }
 }
 

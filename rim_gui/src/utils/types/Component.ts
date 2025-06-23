@@ -40,6 +40,7 @@ export interface Component {
   optional: boolean;
   toolInstaller?: string | ToolInfoDetails;
   kind: ComponentType;
+  kindDesc: ComponentTypeDesc;
   installed: boolean;
 }
 
@@ -99,6 +100,11 @@ export enum ComponentType {
   Tool = "Tool",
   ToolchainComponent = "ToolchainComponent",
   ToolchainProfile = "ToolchainProfile",
+}
+
+export interface ComponentTypeDesc {
+  name: string,
+  help?: string,
 }
 
 export function toChecked(components: Component[]): CheckItem<Component>[] {

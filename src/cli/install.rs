@@ -219,11 +219,12 @@ fn custom_component_choices<'a>(
         .map(|idx| (idx + 1).to_string())
         .collect::<Vec<_>>()
         .join(" ");
-    let choices = common::question_multi_choices(
+    let question = format!(
+        "{}: ({})",
         t!("select_components_to_install"),
-        &list_of_comps,
-        &default_ids,
-    )?;
+        t!("select_components_cli_hint")
+    );
+    let choices = common::question_multi_choices(question, &list_of_comps, &default_ids)?;
     // convert input vec to set for faster lookup
     // Note: user input index are started from 1.
     let index_set: HashSet<usize> = choices.into_iter().collect();
@@ -246,11 +247,7 @@ fn read_component_selections<'a>(
     all_components: &'a [Component],
     user_selected_comps: Option<&[String]>,
 ) -> Result<ComponentChoices<'a>> {
-    let profile_choices = &[
-        t!("install_default"),
-        t!("install_everything"),
-        t!("install_custom"),
-    ];
+    let profile_choices = &[t!("standard"), t!("minimal"), t!("customize")];
     let choice = question_single_choice(t!("question_components_profile"), profile_choices, "1")?;
     let selection = match choice {
         // Default set
@@ -259,7 +256,7 @@ fn read_component_selections<'a>(
         2 => all_components
             .iter()
             .enumerate()
-            .filter(|(_, c)| !c.installed)
+            .filter(|(_, c)| !c.installed && c.required)
             .collect(),
         // Customized set
         3 => custom_component_choices(all_components, user_selected_comps)?,
