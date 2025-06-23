@@ -16,6 +16,7 @@ const toggleCheck = () => {
   }
 
   isChecked.value = !isChecked.value;
+  emit('titleClick');
 };
 
 function titleClick() {

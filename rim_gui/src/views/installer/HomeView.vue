@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onBeforeMount, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useCustomRouter } from '@/router/index';
 import { installConf, invokeCommand, invokeLabelList } from '@/utils/index';
 
@@ -15,8 +15,6 @@ function handleInstallClick() {
 function selectOtherEdition() {
   console.log("TODO: show a page to load toolkit form url or path");
 }
-
-onBeforeMount(() => installConf.loadManifest());
 
 onMounted(() => {
   const labelKeys = [
@@ -55,7 +53,7 @@ onMounted(() => {
           <div c="darker-secondary" font="bold" text="4vh">{{ toolkitName }}</div>
           <div c="secondary" text="3.5vh">{{ installConf.version }}</div>
         </div>
-        <base-button theme="primary" w="20vw" position="fixed" bottom="5vh"
+        <base-button theme="primary" w="20vw" position="fixed" bottom="10vh"
           @click="handleInstallClick()">{{ labels.install }}</base-button>
         <span c="secondary" position="fixed" bottom="-5vh" cursor-pointer underline @click="selectOtherEdition">{{
           labels.install_other_edition }}</span>
