@@ -13,15 +13,22 @@ const components = computed(() => {
   return list;
 });
 
-function handleNextClick() {
-  invokeCommand('install_toolchain', {
+async function handleNextClick() {
+  routerPush('/installer/install');
+  await invokeCommand('install_toolchain', {
     components_list: components.value as Component[],
     install_dir: path.value as string,
-  }).then(() => routerPush('/installer/install'));
+  });
 }
 
 onMounted(() => {
-  invokeLabelList(['install']).then((res) => {
+  invokeLabelList([
+    'install',
+    'review_configuration',
+    'review_installation_hint',
+    'installation_path',
+    'components',
+  ]).then((res) => {
     labels.value = res;
   })
 })
@@ -29,16 +36,16 @@ onMounted(() => {
 
 <template>
   <div flex="~ col">
-    <div ml="12px">
-      <p mt="4px">开始安装之前，请确认安装信息无误。</p>
-      <p mb="4px">单击“安装”以继续。如果需要修改配置请点击“上一步”。</p>
+    <div>
+      <span class="info-label">{{ labels.review_configuration }}</span>
+      <p ml="1vw">{{ labels.review_installation_hint }}</p>
     </div>
-    <base-card flex="1" mx="12px" mb="7%" overflow="auto">
-      <p m="0">安装位置：</p>
-      <p my="4px">{{ path }}</p>
-      <p mb="8px">组件：</p>
-      <div ml="12px">
-        <p my="4px" v-for="component in components" :key="component.displayName">
+    <base-card flex="1" mx="1vw" mb="7%" overflow="auto">
+      <p m="0" font="bold">{{ labels.installation_path }}:</p>
+      <p my="0.5rem" ml="2rem">{{ path }}</p>
+      <p m="0" font="bold">{{ labels.components }}:</p>
+      <div ml="2rem">
+        <p my="0.5rem" v-for="component in components" :key="component.displayName">
           {{
             `${component.displayName} ${component.installed ? '(installed, re-installing)' : component.required ? '(required)' : ''} `
           }}

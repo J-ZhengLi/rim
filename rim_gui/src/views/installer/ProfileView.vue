@@ -1,6 +1,6 @@
 <template>
   <div flex="~ col">
-    <div flex="1" m="12px">
+    <div flex="1">
       <span class="info-label">{{ labels.question_components_profile }}</span>
       <div class="cards-container">
         <base-card class="profile-card" :interactive=true @click="selectProfile('minimal')">

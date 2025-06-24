@@ -38,13 +38,13 @@ onMounted(() => {
 
 <template>
   <div flex="~ col">
-    <div flex="1" m="12px">
+    <div flex="1">
       <span class="info-label">{{ labels.installation_path }}</span>
-      <inputton m="1vh" h="7vh" v-bind:modelValue="installConf.path.value" :button-label="labels.select_folder"
+      <inputton m="2vh" h="7vh" v-bind:modelValue="installConf.path.value" :button-label="labels.select_folder"
         @change="(event: Event) => installConf.setPath((event.target as HTMLInputElement).value)"
         @keydown.enter="(event: Event) => installConf.setPath((event.target as HTMLInputElement).value)"
         @button-click="openFolder" />
-      <base-details :title="labels.advanced_options">
+      <base-details my="4vh" mx="0.5vw" :title="labels.advanced_options">
         <div>TODO</div>
       </base-details>
     </div>
@@ -57,6 +57,6 @@ onMounted(() => {
   --uno: "c-regular";
   font-weight: bold;
   font-size: clamp(8px, 2.6vh, 22px);
-  margin-inline: 1vh;
+  margin-inline: 1vw;
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
     <base-card overflow-auto>
         <div class="resizable-container" ref="container">
-            <div class="panel left-panel" :style="{ width: leftWidth + 'px' }" ref="leftPanel">
+            <div class="panel" :style="{ width: leftWidth + 'px' }" ref="leftPanel">
                 <slot name="left"></slot>
             </div>
             <div class="divider" @mousedown="startDrag"></div>
