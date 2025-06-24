@@ -44,17 +44,13 @@ watch(isOpen, (newValue) => {
 
         <div class="content" :class="{ open: isOpen }" ref="contentRef"
             :style="{ '--content-height': contentHeight + 'px' }">
-            <div m="1%">
-                <slot></slot>
-            </div>
+            <slot></slot>
         </div>
     </div>
 </template>
 
 <style scoped>
 .details-container {
-    overflow: hidden;
-    margin: 1rem 0;
     transition: all 0.3s ease;
 }
 
@@ -95,15 +91,7 @@ watch(isOpen, (newValue) => {
 }
 
 .content.open {
+    overflow: visible;
     max-height: var(--content-height, 100%);
-}
-
-/* Animate the first opening */
-.content:not(.open) {
-    transition: max-height 0.3s cubic-bezier(0, 1, 0, 1);
-}
-
-.content.open {
-    transition: max-height 0.5s ease-in-out;
 }
 </style>

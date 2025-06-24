@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { invokeLabel } from '@/utils';
-import { onMounted, ref } from 'vue';
+import { ref, watch } from 'vue';
 
 const props = defineProps({
     backLabel: String,
@@ -31,20 +31,23 @@ const nextClicked = () => emit('next-clicked');
 const backBtnLbl = ref('');
 const nextBtnLbl = ref('');
 
-onMounted(() => {
+// watch prop changes for async label loading
+watch(() => props.backLabel, () => {
     if (props.backLabel) {
         backBtnLbl.value = props.backLabel;
     } else {
         invokeLabel('back').then((res) => {
             backBtnLbl.value = res;
-        })
+        });
     }
+}, { immediate: true });
+watch(() => props.nextLabel, () => {
     if (props.nextLabel) {
         nextBtnLbl.value = props.nextLabel;
     } else {
         invokeLabel('next').then((res) => {
             nextBtnLbl.value = res;
-        })
+        });
     }
-})
+}, { immediate: true });
 </script>

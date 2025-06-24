@@ -1,5 +1,7 @@
 {
     "install": "安装",
+    "installing": "正在安装",
+    "install_finished": "安装完成",
     "update": "更新",
     "uninstall": "卸载",
 
@@ -196,5 +198,8 @@
     "ruleset": "规则集",
     "ruleset_help": "包含用于代码检查的自定义规则。",
     "type": "类型",
-    "type_desc": "类型说明"
+    "type_desc": "类型说明",
+    "review_configuration": "检查安装配置",
+    "review_installation_hint": "点击「安装」开始安装，或点击「返回」修改配置。",
+    "show_details": "显示详情"
 }

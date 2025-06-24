@@ -1,5 +1,7 @@
 {
     "install": "Install",
+    "installing": "Installing",
+    "install_finished": "Install finished",
     "update": "Update",
     "uninstall": "Uninstall",
 
@@ -200,5 +202,8 @@
     "ruleset": "ruleset",
     "ruleset_help": "contains customized rules that are used for linting.",
     "type": "Type",
-    "type_desc": "Type description"
+    "type_desc": "Type description",
+    "review_configuration": "Review configuration",
+    "review_installation_hint": "Click 'Install' to start installation, or click 'Back' to make changes.",
+    "show_details": "Show details"
 }

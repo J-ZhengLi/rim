@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { event } from '@tauri-apps/api';
 import { computed, nextTick, onMounted, Ref, ref } from 'vue';
-import { managerConf, ManagerOperation, progressFormat } from '@/utils';
+import { managerConf, ManagerOperation } from '@/utils';
 import { useCustomRouter } from '@/router';
 import { message } from '@tauri-apps/api/dialog';
 
@@ -71,7 +71,7 @@ function toBottom() {
   <section flex="~ col">
     <h4 ml="12px">正在{{ isUninstall ? '卸载' : '安装' }}，请稍候...</h4>
     <div px="12px">
-      <base-progress w="full" :percentage="progress" striped stripedFlow :format="progressFormat" />
+      <base-progress w="full" :percentage="progress" striped stripedFlow />
     </div>
     <div ref="scrollBox" flex="1" m="12px" p="12px" overflow-y="auto" b="1px solid light hover:active" rounded="4px">
       <p my="8px" v-for="item in output" :key="item">{{ item }}</p>

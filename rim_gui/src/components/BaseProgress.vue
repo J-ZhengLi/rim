@@ -1,83 +1,57 @@
-<script setup lang="ts">
-import { computed } from 'vue';
+<template>
+  <div flex="~ items-center justify-between">
+    <div class="progress-bar">
+      <div class="progress-fill" :style="{ width: props.percentage + '%' }"></div>
+    </div>
+    <div text-end w="5em">{{ progressFormat(percentage) }}</div>
+  </div>
+</template>
 
+<script setup lang="ts">
 const props = defineProps({
   percentage: {
     type: Number,
     required: true,
     validator: (value: number) => value >= 0 && value <= 100,
   },
-  format: {
-    type: Function,
-  },
-  striped: {
-    type: Boolean,
-    default: false,
-  },
-  stripedFlow: {
-    type: Boolean,
-    default: false,
-  },
-  duration: {
-    type: Number,
-    default: 8000,
-  },
 });
 
-const progressStyle = computed(() => {
-  return {
-    width: props.percentage + '%',
-    animationDuration: props.duration + 'ms',
-    animationPlayState: props.stripedFlow ? 'running' : 'paused',
-    backgroundImage: props.striped
-      ? `linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.2) 25%,
-        transparent 25%,
-        transparent 50%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(255, 255, 255, 0.2) 75%,
-        transparent 75%,
-        transparent
-      )`
-      : 'linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent)',
-  };
-});
+function progressFormat(value: number) {
+  return value.toFixed(2).padStart(5, '0') + '%';
+}
 </script>
 
-<template>
-  <div flex="~ items-center justify-between">
-    <div class="progress" bg-disabled>
-      <div class="progress-bar" bg-primary :style="{ ...progressStyle }"></div>
-    </div>
-    <div v-if="format" text-end w="5em">{{ format(percentage) }}</div>
-  </div>
-</template>
-
 <style scoped>
-.progress {
-  width: 100%;
-  height: 20px;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
 .progress-bar {
+  width: 100%;
   height: 100%;
-  border-radius: 4px;
-  transition: width 0.3s ease;
-  background-size: 1.25em 1.25em;
-  animation: striped 3s linear infinite;
-  animation: striped-flow 1s linear infinite;
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, .4);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 16px 32px rgba(0, 0, 0, .12);
+  backdrop-filter: url(#frosted);
+  -webkit-backdrop-filter: blur(25px);
+  outline: 0;
 }
 
-@keyframes striped-flow {
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(270deg,
+      #5b98d8,
+      #a0dcff,
+      #5b98d8);
+  background-size: 200% 100%;
+  animation: gradientMove 3s linear infinite;
+  transition: width 0.5s ease-in-out;
+}
+
+@keyframes gradientMove {
   0% {
-    background-position: -100%;
+    background-position: 0% 50%;
   }
 
   100% {
-    background-position: 100%;
+    background-position: -200% 50%;
   }
 }
 </style>

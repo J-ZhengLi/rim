@@ -138,7 +138,7 @@ onMounted(() => {
 <template>
   <div flex="~ col" w="full" h="full">
     <span class="info-label">{{ labels.select_components_to_install }}</span>
-    <split-box flex="1 ~" mt="1.5%" mb="10vh" mx="2vh">
+    <split-box flex="1 ~" mt="1.5%" mb="10vh" mx="1vw">
       <template #left>
         <span font="bold">{{ labels.components }}</span>
         <div ml="1.5rem" mt="0.5rem">
