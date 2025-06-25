@@ -6,7 +6,7 @@ import { nextTick, onMounted, ref, watch } from 'vue';
 import { useCustomRouter } from '@/router/index';
 import { invokeCommand, invokeLabelList } from '@/utils/index';
 
-const { routerBack, routerPush } = useCustomRouter();
+const { routerPush } = useCustomRouter();
 const progress = ref(0);
 const output: Ref<string[]> = ref([]);
 const scrollBox: Ref<HTMLElement | null> = ref(null);
@@ -54,6 +54,13 @@ onMounted(() => {
     dots.value = '.'.repeat(dotCount.value);
     dotCount.value = (dotCount.value + 1) % 4;
   }, 500);
+
+  window.setInterval(() => {
+    if (progress.value < 100) {
+      progress.value += 1;
+      output.value.push("info: this is a test message " + progress.value);
+    }
+  }, 100);
 });
 
 watch(progress, (newValue) => {
@@ -67,7 +74,6 @@ watch(output.value, () => {
   nextTick(() => {
     // scroll to bottom
     if (scrollBox.value) {
-      console.log(scrollBox.value.scrollHeight);
       scrollBox.value.scrollTo({
         top: scrollBox.value.scrollHeight,
         behavior: 'smooth'
@@ -86,10 +92,10 @@ watch(output.value, () => {
     <base-details my="2vh" mx="0.5vw" :title="labels.show_details">
       <base-card h="43vh" mx="0.5vw" my="0.5vh">
         <div ref="scrollBox" flex="1" overflow="auto" h="full">
-          <p v-for="item in output" :key="item">{{ item }}</p>
+          <p my="0.5rem" v-for="item in output" :key="item">{{ item }}</p>
         </div>
       </base-card>
     </base-details>
-    <page-nav-buttons @back-clicked="routerBack" @next-clicked="() => routerPush('/installer/finish')" />
+    <page-nav-buttons :hideBack="true" :hideNext="progress < 100" @next-clicked="() => routerPush('/installer/finish')" />
   </div>
 </template>

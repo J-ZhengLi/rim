@@ -3,14 +3,15 @@ use std::sync::mpsc::Receiver;
 use std::sync::OnceLock;
 
 use anyhow::{anyhow, Context};
-use rim_common::build_config;
+use rim_common::{build_config, exe};
 use serde::{Deserialize, Serialize};
+use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 use super::{common, INSTALL_DIR};
 use crate::error::Result;
 use rim::components::Component;
-use rim::{get_toolkit_manifest, try_it, ToolkitManifestExt};
+use rim::{get_toolkit_manifest, ToolkitManifestExt};
 use rim_common::types::{ToolInfo, ToolSource, ToolkitManifest};
 use rim_common::utils;
 
@@ -33,7 +34,7 @@ pub(super) fn main(
             get_restricted_components,
             updated_package_sources,
             install_toolchain,
-            run_app,
+            post_installation_opts,
             toolkit_name,
             load_manifest_and_ret_version,
             common::supported_languages,
@@ -202,10 +203,35 @@ fn cached_manifest() -> &'static Mutex<ToolkitManifest> {
         .expect("toolset manifest should be loaded by now")
 }
 
-#[tauri::command(rename_all = "snake_case")]
-fn run_app(install_dir: String) -> Result<()> {
-    let dir: PathBuf = install_dir.into();
-    try_it(Some(&dir))?;
+#[tauri::command]
+fn post_installation_opts(
+    app: AppHandle,
+    install_dir: String,
+    open: bool,
+    shortcut: bool,
+) -> Result<()> {
+    let install_dir = PathBuf::from(install_dir);
+    if shortcut {
+        utils::ApplicationShortcut {
+            name: utils::build_cfg_locale("app_name"),
+            path: install_dir.join(exe!(build_config().app_name())),
+            icon: Some(install_dir.join(format!("{}.ico", build_config().app_name()))),
+            comment: Some(env!("CARGO_PKG_DESCRIPTION")),
+            startup_notify: true,
+            startup_wm_class: Some(env!("CARGO_PKG_NAME")),
+            categories: &["Development"],
+            keywords: &["rust", "rim", "xuanwu"],
+            ..Default::default()
+        }
+        .create()?;
+    }
+
+    if open {
+        std::env::set_var("MODE", "manager");
+        app.restart();
+    } else {
+        app.exit(0);
+    }
     Ok(())
 }
 

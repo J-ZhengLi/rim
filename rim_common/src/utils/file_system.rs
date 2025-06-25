@@ -399,6 +399,171 @@ where
     }
 }
 
+#[derive(Debug, Default)]
+#[allow(unused, reason = "Most of fields only work on Linux")]
+/// Helper struct to create/delete desktop shortcut for any application.
+pub struct ApplicationShortcut<'a> {
+    /// Name of the shortcut.
+    pub name: &'a str,
+    /// Path of the application to create shortcut for.
+    pub path: PathBuf,
+    /// (Linux Only) Path to the shortcut's icon
+    pub icon: Option<PathBuf>,
+    /// (Linux Only) Application description.
+    pub comment: Option<&'a str>,
+    /// (Linux Only) Application category description.
+    pub generic_name: Option<&'a str>,
+    /// (Linux Only) Field code for execute command, such as `%f`, `%F`, `%u`, `%U` etc.
+    pub field_code: Option<&'a str>,
+    /// (Linux Only) whether or not to enable startup feedback, such as showing
+    /// `busy` cursor during launch
+    pub startup_notify: bool,
+    /// (Linux Only) Class for multiple window management, used to group windows on taskbar.
+    pub startup_wm_class: Option<&'a str>,
+    /// (Linux Only) Menu categorization hierarchy, follows freedesktop.org
+    /// [`standards`](https://specifications.freedesktop.org/menu-spec/latest/category-registry.html)
+    pub categories: &'a [&'a str],
+    /// (Linux Only) for file association, such as `text/html`, `x-scheme-handler/https` etc.
+    pub mime_type: &'a [&'a str],
+    /// (Linux Only) A list of keywords that can be used to search this application.
+    pub keywords: &'a [&'a str],
+}
+
+impl ApplicationShortcut<'_> {
+    /// Creating desktop shortcut for a specific application.
+    ///
+    /// # Platform Specific Behavior
+    /// - On Windows, this will just execute a powershell command to add shortcut for us.
+    /// - On Linux, this writes two entries with `.desktop` extension to user `applications` folder
+    ///   and `Desktop` folder.
+    pub fn create(&self) -> Result<()> {
+        let desktop_dir =
+            dirs::desktop_dir().unwrap_or_else(|| crate::dirs::home_dir().join("Desktop"));
+        #[cfg(windows)]
+        let application_dir: Option<PathBuf> = None;
+        #[cfg(target_os = "linux")]
+        let application_dir: Option<PathBuf> =
+            dirs::data_local_dir().map(|dld| dld.join("applications"));
+
+        self.create_shortcut_(&desktop_dir, application_dir.as_deref())
+    }
+
+    /// Remove desktop shortcut
+    pub fn remove(&self) -> Result<()> {
+        let desktop_dir =
+            dirs::desktop_dir().unwrap_or_else(|| crate::dirs::home_dir().join("Desktop"));
+        #[cfg(windows)]
+        let application_dir: Option<PathBuf> = None;
+        #[cfg(target_os = "linux")]
+        let application_dir: Option<PathBuf> =
+            dirs::data_local_dir().map(|dld| dld.join("applications"));
+
+        self.remove_shortcut_(&desktop_dir, application_dir.as_deref())
+    }
+
+    #[cfg(windows)]
+    fn create_shortcut_(&self, desktop_dir: &Path, _application_dir: Option<&Path>) -> Result<()> {
+        let shortcut_path = desktop_dir.join(format!("{}.lnk", self.name));
+        let weird_powershell_cmd = format!(
+            "$s=(New-Object -COM WScript.Shell).CreateShortcut('{}');$s.TargetPath='{}';$s.Save()",
+            shortcut_path.display(),
+            self.path.display(),
+        );
+        if crate::run!("powershell", weird_powershell_cmd).is_err() {
+            bail!(
+                "unable to create a shortcut for '{}', skipping...",
+                self.name
+            );
+        }
+
+        // TODO: add windows menu shortcut, but I currently don't know how
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    fn create_shortcut_(&self, desktop_dir: &Path, application_dir: Option<&Path>) -> Result<()> {
+        macro_rules! shortcut_file_content {
+            ($($key:literal = $val:expr);+) => {{
+                let mut _base_content_ = std::string::String::from(
+                    "[Desktop Entry]\nType=Application\n"
+                );
+                $(
+                    if let Some(_val_) = $val {
+                        _base_content_.push_str(&std::format!("{}={_val_}\n", $key));
+                    }
+                )*
+                _base_content_
+            }};
+        }
+
+        let shortcut_content = shortcut_file_content!(
+            "Name" = Some(self.name);
+            "Exec" = Some(format!(
+                "{}{}",
+                self.path.display(),
+                self.field_code.map(|c| format!(" {c}")).unwrap_or_default()
+            ));
+            "Icon" = self.icon.as_ref().map(|p| format!("{}", p.display()));
+            "Comment" = self.comment;
+            "GenericName" = self.generic_name;
+            "StartupNotify" = Some(self.startup_notify);
+            "StartupWMClass" = self.startup_wm_class;
+            "MimeType" = (!self.mime_type.is_empty()).then_some(self.mime_type.join(";") + ";");
+            "Categories" = (!self.categories.is_empty()).then_some(self.categories.join(";") + ";");
+            "Keywords" = (!self.keywords.is_empty()).then_some(self.keywords.join(";") + ";")
+        );
+
+        let shortcut_filename = format!("{}.desktop", self.name);
+        // write shortcut file to desktop folder
+        let desktop_shortcut = desktop_dir.join(&shortcut_filename);
+        ensure_dir(&desktop_dir)?;
+        write_file(&desktop_shortcut, &shortcut_content, false)?;
+        set_exec_permission(&desktop_shortcut)?;
+
+        // write shortcut file to application folder (for application menu)
+        if let Some(app_dir) = application_dir {
+            let app_shortcut = app_dir.join(&shortcut_filename);
+            ensure_dir(&app_dir)?;
+            write_file(&app_shortcut, &shortcut_content, false)?;
+            set_exec_permission(&app_shortcut)?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    fn remove_shortcut_(&self, desktop_dir: &Path, _application_dir: Option<&Path>) -> Result<()> {
+        // remove the desktop shortcut
+        let shortcut_path = desktop_dir.join(format!("{}.lnk", self.name));
+        if shortcut_path.is_file() {
+            remove(shortcut_path)
+        } else {
+            Ok(())
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn remove_shortcut_(&self, desktop_dir: &Path, application_dir: Option<&Path>) -> Result<()> {
+        let shortcut_filename = format!("{}.desktop", self.name);
+
+        // remove the desktop shortcut
+        let desktop_shortcut = desktop_dir.join(&shortcut_filename);
+        if desktop_shortcut.is_file() {
+            remove(desktop_shortcut)?;
+        }
+
+        // remove the application shortcut
+        if let Some(application_sc) = application_dir
+            .map(|d| d.join(shortcut_filename))
+            .filter(|d| d.is_file())
+        {
+            remove(application_sc)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,5 +582,62 @@ mod tests {
         let with_dots_normalized = to_normalized_absolute_path(&with_dots, None).unwrap();
         let without_dots_normalized = to_normalized_absolute_path(&without_dots, None).unwrap();
         assert_eq!(with_dots_normalized, without_dots_normalized);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn shortcut_creation() {
+        let debug_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .with_file_name("target")
+            .join("debug");
+        assert!(debug_dir.is_dir());
+
+        let tmp_dir = debug_dir.join("tmp");
+        ensure_dir(&tmp_dir).unwrap();
+
+        let temp_home = tempfile::tempdir_in(tmp_dir).unwrap();
+        let temp_desktop_dir = temp_home.path().join("Desktop");
+        let temp_application_dir = temp_home.path().join("applications");
+
+        let sc = ApplicationShortcut {
+            name: "test-shortcut",
+            path: "/path/to/test-shortcut".into(),
+            icon: Some("/path/to/test-shortcut-icon".into()),
+            comment: Some("a non-exist program for test"),
+            generic_name: Some("Tests"),
+            field_code: Some("%F"),
+            startup_notify: true,
+            startup_wm_class: Some("test-shortcut"),
+            categories: &["Development", "Utility"],
+            mime_type: &["text/plain", "application/pdf"],
+            keywords: &["test", "rust"],
+        };
+
+        // create shortcuts
+        sc.create_shortcut_(&temp_desktop_dir, Some(&temp_application_dir))
+            .unwrap();
+        let desktop_sc_file = temp_desktop_dir.join("test-shortcut.desktop");
+        let applica_sc_file = temp_application_dir.join("test-shortcut.desktop");
+        assert!(desktop_sc_file.is_file());
+        assert!(applica_sc_file.is_file());
+
+        let desktop_sc_content = read_to_string("", desktop_sc_file).unwrap();
+        let applica_sc_content = read_to_string("", applica_sc_file).unwrap();
+        assert_eq!(&desktop_sc_content, &applica_sc_content);
+        assert_eq!(
+            desktop_sc_content,
+            "[Desktop Entry]
+Type=Application
+Name=test-shortcut
+Exec=/path/to/test-shortcut %F
+Icon=/path/to/test-shortcut-icon
+Comment=a non-exist program for test
+GenericName=Tests
+StartupNotify=true
+StartupWMClass=test-shortcut
+MimeType=text/plain;application/pdf;
+Categories=Development;Utility;
+Keywords=test;rust;\n\n"
+        );
     }
 }

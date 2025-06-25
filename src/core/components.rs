@@ -83,6 +83,7 @@ pub struct Component {
     pub optional: bool,
     pub tool_installer: Option<ToolInfo>,
     pub kind: ComponentType,
+    #[cfg(feature = "gui")]
     pub kind_desc: ComponentTypeDesc,
     /// Indicates whether this component was already installed or not.
     pub installed: bool,
@@ -96,6 +97,7 @@ pub struct ComponentTypeDesc {
     help: Option<String>,
 }
 
+#[cfg(feature = "gui")]
 impl Default for ComponentTypeDesc {
     fn default() -> Self {
         ComponentTypeDesc {

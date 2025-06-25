@@ -83,7 +83,7 @@
     "skip_non_exist_component_uninstallation": "the following components might not exist or removed already: %{tool}, skipping...",
     "path_to_installation_not_found": "path to the it's installation at '%{path}' cannot be found.",
 
-    "linux_source_hint": "Please restart the current shell or run `%{cmd}` for the environment changes to take effect",
+    "linux_source_hint": "Environment changes require restarting opened shells or run `%{cmd}` to take effect.",
 
     "notify_empty_path": "Please enter an installation path, or choose one using the button above",
     "notify_root_dir": "Cannot install in root directory, please select another one",
@@ -205,5 +205,8 @@
     "type_desc": "Type description",
     "review_configuration": "Review configuration",
     "review_installation_hint": "Click 'Install' to start installation, or click 'Back' to make changes.",
-    "show_details": "Show details"
+    "show_details": "Show details",
+
+    "post_installation_open": "Open after finished",
+    "post_installation_create_shortcut": "Create desktop shortcut"
 }
