@@ -79,7 +79,7 @@
     "skip_non_exist_component_uninstallation": "以下工具可能不存在或已被卸载: %{tool}, 即将跳过",
     "path_to_installation_not_found": "找不到工具安装路径 '%{path}'。",
 
-    "linux_source_hint": "请重启当前终端窗口或执行 `%{cmd}` 以使环境变更生效",
+    "linux_source_hint": "环境变量更改后需要重启已打开的 Shell 或运行 `%{cmd}` 命令才能生效。",
 
     "notify_empty_path": "请输入安装路径，或点击上方按钮选择一个路径",
     "notify_root_dir": "无法安装至根目录，请重新选择",
@@ -201,5 +201,8 @@
     "type_desc": "类型说明",
     "review_configuration": "检查安装配置",
     "review_installation_hint": "点击「安装」开始安装，或点击「返回」修改配置。",
-    "show_details": "显示详情"
+    "show_details": "显示详情",
+
+    "post_installation_open": "完成后打开",
+    "post_installation_create_shortcut": "创建桌面快捷方式"
 }

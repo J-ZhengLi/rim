@@ -1,6 +1,6 @@
 <template>
     <div flex="~ items-center" position="fixed" bottom="7%">
-      <base-button theme="secondary-btn" position="fixed" left="0" style="transform: translateX(30%);"
+      <base-button v-if="!hideBack" theme="secondary-btn" position="fixed" left="0" style="transform: translateX(30%);"
         @click="backClicked">{{ backBtnLbl }}</base-button>
       <base-button v-if="!hideNext" theme="primary" position="fixed" right="0" style="transform: translateX(-30%);"
         @click="nextClicked">{{ nextBtnLbl }}</base-button>
@@ -14,6 +14,10 @@ import { ref, watch } from 'vue';
 const props = defineProps({
     backLabel: String,
     nextLabel: String,
+    hideBack: {
+        type: Boolean,
+        default: false,  
+    },
     hideNext: {
         type: Boolean,
         default: false,

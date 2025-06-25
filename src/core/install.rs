@@ -116,6 +116,8 @@ impl<'a> InstallConfiguration<'a> {
         let manager_exe = install_dir.join(&manager_name);
         utils::copy_as(self_exe, &manager_exe)?;
 
+        // TODO: Write application icon (name: <APP_NAME>.ico) to the install dir for shortcut
+
         // soft-link this binary into cargo bin, so it will be in th PATH
         // Note: we are creating two symlinks binary, one have the fullname,
         // and one with shorter name (rim)
