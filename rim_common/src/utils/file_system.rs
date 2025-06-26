@@ -516,14 +516,14 @@ impl ApplicationShortcut<'_> {
         let shortcut_filename = format!("{}.desktop", self.name);
         // write shortcut file to desktop folder
         let desktop_shortcut = desktop_dir.join(&shortcut_filename);
-        ensure_dir(&desktop_dir)?;
+        ensure_dir(desktop_dir)?;
         write_file(&desktop_shortcut, &shortcut_content, false)?;
         set_exec_permission(&desktop_shortcut)?;
 
         // write shortcut file to application folder (for application menu)
         if let Some(app_dir) = application_dir {
             let app_shortcut = app_dir.join(&shortcut_filename);
-            ensure_dir(&app_dir)?;
+            ensure_dir(app_dir)?;
             write_file(&app_shortcut, &shortcut_content, false)?;
             set_exec_permission(&app_shortcut)?;
         }

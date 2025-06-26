@@ -85,4 +85,18 @@ onBeforeMount(() => installConf.loadAll());
   right: -100%;
   opacity: 0;
 }
+
+.info-label {
+  --uno: "c-regular";
+  font-weight: bold;
+  font-size: clamp(8px, 2.6vh, 22px);
+  margin-inline: 1vw;
+}
+
+.sub-info-label {
+  --uno: "c-secondary";
+  font-size: clamp(6px, 2.2vh, 20px);
+  margin-inline: 1vw;
+  margin-top: 0.5vh;
+}
 </style>

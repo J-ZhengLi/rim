@@ -51,12 +51,3 @@ onMounted(() => {
     <page-nav-buttons @back-clicked="routerBack" @next-clicked="handleNextClick" />
   </div>
 </template>
-
-<style lang="css">
-.info-label {
-  --uno: "c-regular";
-  font-weight: bold;
-  font-size: clamp(8px, 2.6vh, 22px);
-  margin-inline: 1vw;
-}
-</style>

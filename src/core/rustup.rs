@@ -73,30 +73,17 @@ impl ToolchainInstaller {
         self.ensure_rustup_dist_server_env(config.manifest, first_install)?;
 
         let rustup = &ensure_rustup(config, self.insecure)?;
-        // if this is the first time installing the tool chain, we need to add the base components
-        // from the manifest.
-        let mut base = if first_install {
-            config.manifest.rust.components.clone()
-        } else {
-            vec![]
-        };
-        base.extend(
-            components
-                .iter()
-                .filter_map(|c| (!c.is_profile).then_some(c.name.clone())),
-        );
-        let components_arg = base.join(",");
+        let components_arg = components
+            .iter()
+            .filter_map(|c| (!c.is_profile).then_some(c.name.as_str()))
+            .collect::<Vec<_>>()
+            .join(",");
 
         let version = &config.manifest.rust.channel;
-        let mut cmd = cmd!(
-            rustup,
-            "toolchain",
-            "install",
-            version,
-            "--no-self-update",
-            "-c",
-            &components_arg
-        );
+        let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update",);
+        if !components_arg.is_empty() {
+            cmd.args(["-c", &components_arg]);
+        }
         if let Some(profile) = config.manifest.rust.profile() {
             cmd.args(["--profile", profile]);
         }

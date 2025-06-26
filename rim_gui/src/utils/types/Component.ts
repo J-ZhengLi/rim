@@ -112,11 +112,18 @@ export function toChecked(components: Component[]): CheckItem<Component>[] {
     (item) => {
       return {
         label: `${item.displayName}${item.installed ? ' (installed)' : item.required ? ' (required)' : ''}`,
-        checked: !item.installed && (item.required || !item.optional),
+        checked: isRecommanded(item),
         required: item.required,
         disabled: item.installed ? false : item.required,
         value: item,
       } as CheckItem<Component>;
     }
   );
+}
+
+/**
+ * Return `true` if the given component is recommanded to install, a.k.a. pre-selected.
+ */
+export function isRecommanded(component: Component): boolean {
+  return !component.installed && (component.required || !component.optional);
 }

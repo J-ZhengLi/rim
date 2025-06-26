@@ -34,7 +34,7 @@ export default defineConfig({
       header: '#252b3a',
       regular: '#575d6c',
       'darker-secondary': '#6a6a6a',
-      secondary: '#808080',
+      secondary: '#878787',
       placeholder: '#adb0b8',
       disabled: '#c0c4cc',
       reverse: '#ffffff',

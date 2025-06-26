@@ -1,7 +1,9 @@
 <script setup lang="ts">
-const { title, disabled, labelComponent, labelComponentProps } = defineProps<{
+const { title, hint, disabled, isGroup, labelComponent, labelComponentProps } = defineProps<{
   title?: string;
+  hint?: string;
   disabled?: boolean;
+  isGroup?: boolean;
   labelComponent?: Object;
   labelComponentProps?: Object;
 }>();
@@ -16,7 +18,6 @@ const toggleCheck = () => {
   }
 
   isChecked.value = !isChecked.value;
-  emit('titleClick');
 };
 
 function titleClick() {
@@ -25,41 +26,48 @@ function titleClick() {
 </script>
 
 <template>
-  <label
-    flex="inline items-center"
-    :class="{ 'c-secondary': disabled }"
-    :title="title"
-    cursor-pointer
-  >
-    <span
-      flex="~ items-center justify-center"
-      w="1rem"
-      h="1rem"
-      b="1px solid base"
-      shrink="0"
-      rounded="2px"
-      bg="white"
+  <label flex="inline items-center" :class="disabled ? 'c-secondary' : 'c-regular'" :title="hint || title" cursor-pointer>
+    <span class="checkbox"
       :class="{
+        'c-active': isGroup,
         'bg-active border-active': isChecked,
         'bg-disabled-bg': disabled,
         'hover:b-active': !isChecked && !disabled,
         'cursor-not-allowed': disabled,
-      }"
-      @click="toggleCheck"
-    >
+      }" @click="toggleCheck">
       <slot name="icon">
         <i class="i-mdi:check" v-if="isChecked" c="active" />
       </slot>
     </span>
-    <span ml="4px" @click="titleClick" whitespace-nowrap>
+    <span @click="titleClick" whitespace-nowrap>
       <slot>
-        <component
-          v-if="labelComponent"
-          :is="labelComponent"
-          v-bind="labelComponentProps"
-        />
-        <span v-else>{{ title }}</span>
+        <component v-if="labelComponent" :is="labelComponent" v-bind="labelComponentProps" />
+        <span :class="isGroup ? 'cb-label-group' : 'cb-label'" v-else>{{ title }}</span>
       </slot>
     </span>
   </label>
 </template>
+
+<style lang="css" scoped>
+.checkbox {
+  /** flex="~ items-center justify-center" h="1rem" w="1rem" b="1px solid base" shrink="0" rounded="3px" bg="white" */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 1rem;
+  width: 1rem;
+  background: white;
+  border: 2px solid rgb(204, 204, 204);
+  border-radius: 3px;
+  margin-right: clamp(6px, 4%, 2rem);
+}
+.cb-label {
+  font-weight: 500;
+  font-size: clamp(0.5rem, 2.6vh, 1.5rem);
+}
+.cb-label-group {
+  --uno: 'c-active';
+  font-weight: bold;
+  font-size: clamp(0.5rem, 2.7vh, 1.5rem);
+}
+</style>

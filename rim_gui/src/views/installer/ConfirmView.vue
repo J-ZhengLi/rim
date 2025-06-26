@@ -38,7 +38,7 @@ onMounted(() => {
   <div flex="~ col">
     <div>
       <span class="info-label">{{ labels.review_configuration }}</span>
-      <p ml="1vw">{{ labels.review_installation_hint }}</p>
+      <p class="sub-info-label">{{ labels.review_installation_hint }}</p>
     </div>
     <base-card flex="1" mx="1vw" mb="7%" overflow="auto">
       <p m="0" font="bold">{{ labels.installation_path }}:</p>

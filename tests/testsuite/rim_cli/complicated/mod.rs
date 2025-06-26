@@ -158,6 +158,9 @@ fn manage_components_using_linked_rim() {
     assert_eq!(
         output,
         "Basic (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools
 rust-docs"
     );
@@ -169,6 +172,9 @@ rust-docs"
     assert_eq!(
         output,
         "Basic (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools (installed)
 rust-docs (installed)"
     );
@@ -179,6 +185,9 @@ rust-docs (installed)"
     assert_eq!(
         output,
         "Basic (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 rust-docs (installed)
 llvm-tools"
     );
@@ -198,6 +207,9 @@ fn install_with_specific_components() {
     // output contains debug log output
     assert!(list_output.ends_with(
         "Basic
+clippy
+rustfmt
+rust-src
 llvm-tools
 rust-docs"
     ));
@@ -220,6 +232,9 @@ rust-docs"
     assert_eq!(
         installed_components,
         "Basic (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 rust-docs (installed)
 llvm-tools"
     );
@@ -289,6 +304,9 @@ fn configs_migration() {
     assert_eq!(
         list_output,
         "Basic (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools
 rust-docs"
     );
@@ -299,6 +317,9 @@ rust-docs"
     assert_eq!(
         list_output,
         "Basic (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools
 rust-docs"
     );

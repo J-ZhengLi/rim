@@ -112,11 +112,17 @@ impl<'a> InstallConfiguration<'a> {
 
         // rename this installer to 'xxx-manager' and copy it into installer dir
         let self_exe = std::env::current_exe()?;
-        let manager_name = exe!(build_config().app_name());
+        let app_name = build_config().app_name();
+        let manager_name = exe!(&app_name);
         let manager_exe = install_dir.join(&manager_name);
         utils::copy_as(self_exe, &manager_exe)?;
 
-        // TODO: Write application icon (name: <APP_NAME>.ico) to the install dir for shortcut
+        // Write application icon (name: <APP_NAME>.ico) to the install dir for shortcut.
+        // Note that this file currently have no use for CLI version, but we still put
+        // it there to be future-proof.
+        let ico_content = include_bytes!("../../rim_gui/public/favicon.ico");
+        let ico_file_dest = install_dir.join(format!("{app_name}.ico"));
+        utils::write_bytes(ico_file_dest, ico_content, false)?;
 
         // soft-link this binary into cargo bin, so it will be in th PATH
         // Note: we are creating two symlinks binary, one have the fullname,
@@ -281,6 +287,7 @@ impl<'a> InstallConfiguration<'a> {
         self.install_tools_(true, tools, 30.0)
     }
 
+    /// Install Rust toolchain with a list of components
     pub fn install_rust(&mut self, components: &[ToolchainComponent]) -> Result<()> {
         info!("{}", t!("install_toolchain"));
 
@@ -306,6 +313,7 @@ impl<'a> InstallConfiguration<'a> {
         self.inc_progress(30.0)
     }
 
+    /// Add toolchain components separately, typically used in `component add`.
     pub fn install_toolchain_components(
         &mut self,
         components: &[ToolchainComponent],
