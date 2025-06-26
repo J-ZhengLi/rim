@@ -2,6 +2,7 @@
   <div flex="~ col">
     <div flex="1">
       <span class="info-label">{{ labels.question_components_profile }}</span>
+      <p class="sub-info-label">{{ labels.components_profile_hint }}</p>
       <div class="cards-container">
         <base-card class="profile-card" :interactive=true @click="selectProfile('minimal')">
           <svg class="profile-pic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -91,7 +92,8 @@ onMounted(() => {
     'standard_desc',
     'customize',
     'customize_desc',
-    'question_components_profile'
+    'question_components_profile',
+    'components_profile_hint',
   ]).then(res => {
     labels.value = res;
   })
@@ -101,7 +103,7 @@ onMounted(() => {
 .cards-container {
   display: flex;
   flex-direction: row;
-  margin: 3% 1%;
+  margin: 0 1%;
   padding: 2% 0;
   gap: 5%;
 }

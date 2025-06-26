@@ -1,5 +1,5 @@
 import { ref, Ref } from 'vue';
-import { toChecked, type Component, type RestrictedComponent } from './types/Component';
+import { isRecommanded, toChecked, type Component, type RestrictedComponent } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
 import { AppInfo } from './types/AppInfo';
@@ -103,10 +103,13 @@ class InstallConf {
     )) as Component[];
     if (Array.isArray(componentList)) {
       componentList.sort((a, b) => {
-        if (a.required && !b.required) {
+        // list pre-selected components at front.
+        let aIsRecommanded = isRecommanded(a);
+        let bIsRecommanded = isRecommanded(b);
+        if (aIsRecommanded && !bIsRecommanded) {
           return -1;
         }
-        if (!a.required && b.required) {
+        if (!aIsRecommanded && bIsRecommanded) {
           return 1;
         }
         // 名称排序

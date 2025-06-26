@@ -145,12 +145,12 @@ impl ToolkitManifestExt for ToolkitManifest {
             .required(true)
             .with_version(Some(tc_channel))];
 
-        for component in self.optional_toolchain_components() {
+        for (component, is_optional) in self.toolchain_components() {
             components.push(
                 Component::new(component)
                     .with_description(self.get_tool_description(component))
                     .with_category(tc_group)
-                    .optional(true)
+                    .optional(is_optional)
                     .with_type(ComponentType::ToolchainComponent)
                     // toolchain component's version are unified
                     .with_version(Some(tc_channel)),

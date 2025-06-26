@@ -3,7 +3,7 @@
     <div class="progress-bar">
       <div class="progress-fill" :style="{ width: props.percentage + '%' }"></div>
     </div>
-    <div text-end w="5em">{{ progressFormat(percentage) }}</div>
+    <div class="progress-label" text-end>{{ progressFormat(percentage) }}</div>
   </div>
 </template>
 
@@ -43,6 +43,11 @@ function progressFormat(value: number) {
   background-size: 200% 100%;
   animation: gradientMove 3s linear infinite;
   transition: width 0.5s ease-in-out;
+}
+
+.progress-label {
+  margin-left: 1rem;
+  font-size: clamp(80%, 2.3vh, 20px);
 }
 
 @keyframes gradientMove {

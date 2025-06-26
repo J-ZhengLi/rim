@@ -46,7 +46,12 @@ onMounted(() => {
     }
   });
 
-  invokeLabelList(['show_details', 'installing', 'install_finished']).then((res) => {
+  invokeLabelList([
+    'show_details',
+    'installing',
+    'install_finished',
+    'installing_hint',
+  ]).then((res) => {
     labels.value = res;
   });
 
@@ -54,13 +59,6 @@ onMounted(() => {
     dots.value = '.'.repeat(dotCount.value);
     dotCount.value = (dotCount.value + 1) % 4;
   }, 500);
-
-  window.setInterval(() => {
-    if (progress.value < 100) {
-      progress.value += 1;
-      output.value.push("info: this is a test message " + progress.value);
-    }
-  }, 100);
 });
 
 watch(progress, (newValue) => {
@@ -86,11 +84,12 @@ watch(output.value, () => {
 <template>
   <div flex="~ col">
     <span class="info-label">{{ progress >= 100 ? labels.install_finished : labels.installing }}{{ dots }}</span>
-    <div mx="1vw" mt="2vh">
+    <p class="sub-info-label">{{ labels.installing_hint }}</p>
+    <div mx="1vw">
       <base-progress w="full" h="4vh" :percentage="progress" />
     </div>
     <base-details my="2vh" mx="0.5vw" :title="labels.show_details">
-      <base-card h="43vh" mx="0.5vw" my="0.5vh">
+      <base-card h="40vh" mx="0.5vw" my="0.5vh">
         <div ref="scrollBox" flex="1" overflow="auto" h="full">
           <p my="0.5rem" v-for="item in output" :key="item">{{ item }}</p>
         </div>

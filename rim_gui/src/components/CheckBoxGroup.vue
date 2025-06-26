@@ -44,20 +44,19 @@ watch(group.items, (newValue) => {
   <div>
     <div flex="~ items-center">
       <i
-        class="i-mdi:menu-right"
+        class="i-mdi:menu-up"
         w="1.5rem"
         h="1.5rem"
         transition="all"
         cursor="pointer"
         c="secondary"
-        :class="{ 'rotate-90': groupExpand }"
+        :class="{ 'rotate-180': groupExpand }"
         @click="handleExpandClick"
       />
-      <base-check-box @titleClick="handleExpandClick">
+      <base-check-box w="full" @titleClick="handleExpandClick" :title="group.label" :isGroup="true">
         <template #icon>
           <span
             flex="~ items-center justify-center"
-            w="full"
             h="full"
             @click="handleCheckAllClick"
           >
@@ -69,7 +68,6 @@ watch(group.items, (newValue) => {
             />
           </span>
         </template>
-        <b c="active">{{ group.label }}</b>
       </base-check-box>
     </div>
     <transition name="group">

@@ -124,6 +124,7 @@ onMounted(() => {
   
   invokeLabelList([
     'select_components_to_install',
+    'select_components_gui_hint',
     'components',
     'description',
     'select_all',
@@ -138,10 +139,11 @@ onMounted(() => {
 <template>
   <div flex="~ col" w="full" h="full">
     <span class="info-label">{{ labels.select_components_to_install }}</span>
-    <split-box flex="1 ~" mt="1.5%" mb="10vh" mx="1vw">
+    <p class="sub-info-label">{{ labels.select_components_gui_hint }}</p>
+    <split-box flex="1 ~" mb="10vh" mx="1vw">
       <template #left>
-        <span font="bold">{{ labels.components }}</span>
-        <div ml="1.5rem" mt="0.5rem">
+        <b>{{ labels.components }}</b>
+        <div mt="0.5rem">
           <base-check-box flex="~ items-center" v-model="checkedAllBundle" :title="labels.select_all">
             <template #icon>
               <span flex="~ items-center justify-center" w="full" h="full" @click="handleSelectAll">
@@ -157,14 +159,14 @@ onMounted(() => {
       </template>
 
       <template #right>
-        <span font="bold">{{ labels.description }}</span>
+        <b>{{ labels.description }}</b>
         <p mr="1.5rem">{{ curCheckComponent?.value.desc }}</p>
         <div>
-          <span font="bold">{{ labels.type }}</span>
+          <b>{{ labels.type }}</b>
           <p>{{ curCheckComponent?.value.kindDesc.name }}</p>
         </div>
         <div v-if="curCheckComponent?.value.kindDesc.help">
-          <span font="bold">{{ labels.type_desc }}</span>
+          <b>{{ labels.type_desc }}</b>
           <p mr="1.5rem">{{ curCheckComponent?.value.kindDesc.help }}</p>
         </div>
       </template>

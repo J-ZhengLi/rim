@@ -204,9 +204,14 @@
     "type": "Type",
     "type_desc": "Type description",
     "review_configuration": "Review configuration",
-    "review_installation_hint": "Click 'Install' to start installation, or click 'Back' to make changes.",
     "show_details": "Show details",
 
     "post_installation_open": "Open after finished",
-    "post_installation_create_shortcut": "Create desktop shortcut"
+    "post_installation_create_shortcut": "Create desktop shortcut",
+
+    "post_installation_hint": "You may select any options below before clicking 'Finish' to exit the installer.",
+    "installing_hint": "Installing selected components - this may take a few moments.",
+    "review_installation_hint": "Review your settings below. Click 'Install' to proceed or 'Back' to modify.",
+    "components_profile_hint": "Choose a profile to continue. If your are unclear which one to use, choose 'Standard'.",
+    "select_components_gui_hint": "Select components in the left panel to install. Click any component to view details on the right. Required components cannot be deselected."
 }
