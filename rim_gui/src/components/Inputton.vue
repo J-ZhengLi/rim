@@ -6,27 +6,23 @@
             class="fused-input"
             :placeholder="placeholder"
         />
-        <base-button theme="primary" class="fused-button" @click="handleButtonClick">
+        <base-button theme="primary" class="fused-button" @click="emit('button-click')">
             {{ buttonLabel }}
         </base-button>
     </div>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
-  modelValue: string;
+defineProps<{
+  modelValue: string | null;
   placeholder?: string;
   buttonLabel?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
-  (e: 'button-click', value: string): void;
+  (e: 'button-click'): void;
 }>();
-
-function handleButtonClick() {
-  emit('button-click', props.modelValue);
-}
 </script>
 
 <style scoped>

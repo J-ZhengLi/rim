@@ -213,5 +213,6 @@
     "installing_hint": "Installing selected components - this may take a few moments.",
     "review_installation_hint": "Review your settings below. Click 'Install' to proceed or 'Back' to modify.",
     "components_profile_hint": "Choose a profile to continue. If your are unclear which one to use, choose 'Standard'.",
-    "select_components_gui_hint": "Select components in the left panel to install. Click any component to view details on the right. Required components cannot be deselected."
+    "select_components_gui_hint": "Select components in the left panel to install. Click any component to view details on the right. Required components cannot be deselected.",
+    "enter_path_or_url": "Enter Path or URL"
 }
