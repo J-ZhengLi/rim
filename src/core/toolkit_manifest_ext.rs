@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use anyhow::{anyhow, Result};
-use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolkitManifest};
+use rim_common::types::{TomlParser, ToolInfo, ToolkitManifest};
 use rim_common::utils;
 use serde::de::DeserializeOwned;
 use tokio::sync::Mutex;
@@ -34,13 +34,8 @@ where
 
     /// Get the tools that are only available in current target.
     ///
-    /// Return `None` if there are no available tools in the current target.
-    fn current_target_tools(&self) -> Option<&ToolMap>;
-
-    /// Get the mut reference to the tools that are only available in current target.
-    ///
-    /// Return `None` if there are no available tools in the current target.
-    fn current_target_tools_mut(&mut self) -> Option<&mut ToolMap>;
+    /// Return empty iterator if there are no available tools in the current target.
+    fn current_target_tools(&self) -> impl Iterator<Item = (&str, &ToolInfo)>;
 
     /// Like [`current_target_tools`](ToolkitExt::current_target_tools) but
     /// getting a list of tools and components as [`Component`].
@@ -97,7 +92,7 @@ where
         callback: F,
     ) -> Result<()>
     where
-        F: Fn(String) -> Result<String>;
+        F: Fn(String, Option<&str>) -> Result<String>;
 }
 
 impl ToolkitManifestExt for ToolkitManifest {
@@ -121,14 +116,20 @@ impl ToolkitManifestExt for ToolkitManifest {
             .map_err(|_| anyhow!("path '{}' cannot be converted to URL", full_path.display()))
     }
 
-    fn current_target_tools(&self) -> Option<&ToolMap> {
-        let cur_target = env!("TARGET");
-        self.tools.target.get(cur_target)
-    }
-
-    fn current_target_tools_mut(&mut self) -> Option<&mut ToolMap> {
-        let cur_target = env!("TARGET");
-        self.tools.target.get_mut(cur_target)
+    fn current_target_tools(&self) -> impl Iterator<Item = (&str, &ToolInfo)> {
+        let direct_target_tools = self
+            .tools
+            .target
+            .get(env!("TARGET"))
+            .map(|map| map.iter())
+            .unwrap_or_default();
+        let all_target_tools = self
+            .tools
+            .target
+            .get("all")
+            .map(|map| map.iter())
+            .unwrap_or_default();
+        direct_target_tools.chain(all_target_tools)
     }
 
     fn current_target_components(&self, check_for_existence: bool) -> Result<Vec<Component>> {
@@ -157,45 +158,34 @@ impl ToolkitManifestExt for ToolkitManifest {
             );
         }
 
-        if let Some(tools) = self.current_target_tools() {
-            let installed_in_env = if check_for_existence {
-                // components that are already installed in user's machine, such as vscode, or mingw.
-                tools
-                    .keys()
-                    .filter_map(|name| {
-                        custom_instructions::is_installed(name).then_some(name.as_str())
-                    })
-                    .collect()
-            } else {
-                vec![]
-            };
-            let filter_out_gui_tools = |a: &(&str, &ToolInfo)| -> bool {
-                utils::has_desktop_environment() || !a.1.is_gui_only()
-            };
-
-            for (tool_name, tool_info) in tools.iter().filter(filter_out_gui_tools) {
-                let installed = installed_in_env.contains(&tool_name);
-                let version = if check_for_existence && installed {
-                    // if the tool is already installed but we are doing a fresh install here,
-                    // which means it was installed by user not by `rim`,
-                    // therefore we don't know the version.
-                    None
-                } else {
-                    tool_info.version()
-                };
-                components.push(
-                    Component::new(tool_name)
-                        .with_description(self.get_tool_description(tool_name))
-                        .with_category(self.group_name(tool_name).unwrap_or(&default_cate_name))
-                        .with_tool_installer(tool_info)
-                        .required(tool_info.is_required())
-                        .optional(tool_info.is_optional())
-                        .installed(installed)
-                        .with_version(version)
-                        .with_display_name(tool_info.display_name().unwrap_or(tool_name))
-                        .with_type(ComponentType::Tool),
-                );
+        for (tool_name, tool_info) in self.current_target_tools() {
+            // filter out GUI tools on non-GUI environment
+            if tool_info.is_gui_only() && !utils::has_desktop_environment() {
+                continue;
             }
+
+            let installed_in_env =
+                check_for_existence && custom_instructions::is_installed(tool_name);
+            let version = if check_for_existence && installed_in_env {
+                // if the tool is already installed but we are doing a fresh install here,
+                // which means it was installed by user not by `rim`,
+                // therefore we don't know the version.
+                None
+            } else {
+                tool_info.version()
+            };
+            components.push(
+                Component::new(tool_name)
+                    .with_description(self.get_tool_description(tool_name))
+                    .with_category(self.group_name(tool_name).unwrap_or(&default_cate_name))
+                    .with_tool_installer(tool_info)
+                    .required(tool_info.is_required())
+                    .optional(tool_info.is_optional())
+                    .installed(installed_in_env)
+                    .with_version(version)
+                    .with_display_name(tool_info.display_name().unwrap_or(tool_name))
+                    .with_type(ComponentType::Tool),
+            );
         }
 
         Ok(components)
@@ -246,7 +236,7 @@ impl ToolkitManifestExt for ToolkitManifest {
         callback: F,
     ) -> Result<()>
     where
-        F: Fn(String) -> Result<String>,
+        F: Fn(String, Option<&str>) -> Result<String>,
     {
         for tool in self.tools.target.values_mut() {
             for (name, tool_info) in tool.iter_mut() {
@@ -255,12 +245,12 @@ impl ToolkitManifestExt for ToolkitManifest {
                 };
                 let display_name = tool_info.display_name().unwrap_or(name).to_string();
 
-                if let Some(source) = tool_info.restricted_source_mut() {
-                    let new_val = callback(display_name)?;
+                if let Some((source, default)) = tool_info.restricted_source_mut() {
+                    let new_val = callback(display_name, default.as_deref())?;
                     *source = Some(new_val.clone());
 
                     // try modify the ones in components as well
-                    if let Some(s) = comp_to_modify
+                    if let Some((s, _)) = comp_to_modify
                         .tool_installer
                         .as_mut()
                         .and_then(|c| c.restricted_source_mut())
@@ -364,20 +354,20 @@ d = "0.1.0"
 "#;
 
         let manifest = ToolkitManifest::from_str(input).unwrap();
-        let tools = manifest.current_target_tools();
+        let mut tools = manifest.current_target_tools();
 
         cfg_if::cfg_if! {
             if #[cfg(all(windows, target_env = "gnu"))] {
-                let name = tools.unwrap().first().unwrap().0;
+                let name = tools.next().unwrap().0;
                 assert_eq!(name, "a");
             } else if #[cfg(all(windows, target_env = "msvc"))] {
-                let name = tools.unwrap().first().unwrap().0;
+                let name = tools.next().unwrap().0;
                 assert_eq!(name, "b");
             } else if #[cfg(all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"))] {
-                let name = tools.unwrap().first().unwrap().0;
+                let name = tools.next().unwrap().0;
                 assert_eq!(name, "c");
             } else if #[cfg(all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"))] {
-                let name = tools.unwrap().first().unwrap().0;
+                let name = tools.next().unwrap().0;
                 assert_eq!(name, "d");
             } else {
                 assert!(tools.is_none());
@@ -499,5 +489,22 @@ vscode-installer = { version = "1.97.1", url = "https://example.com", kind = "in
         assert_eq!(target, "x86_64-pc-windows-msvc");
         assert_eq!(name, "vscode-installer");
         assert_eq!(info.kind(), Some(ToolKind::Installer));
+    }
+
+    #[test]
+    fn all_target_tools() {
+        let input = r#"
+[rust]
+version = "1.0.0"
+
+[tools.target.all]
+a = "0.1.0"
+"#;
+
+        let manifest = ToolkitManifest::from_str(input).unwrap();
+        let mut tools = manifest.current_target_tools();
+
+        assert_eq!(tools.next().unwrap().0, "a");
+        assert_eq!(tools.next(), None);
     }
 }

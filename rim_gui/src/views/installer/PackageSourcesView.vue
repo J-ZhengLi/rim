@@ -2,15 +2,12 @@
 import { useCustomRouter } from '@/router';
 import { CheckItem, Component, installConf, invokeCommand, invokeLabelList, RestrictedComponent } from '@/utils';
 import { open } from '@tauri-apps/api/dialog';
-import { computed, onMounted, Ref, ref } from 'vue';
+import { onMounted, Ref, ref, watch } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
 const labels = ref<Record<string, string>>({});
 const fields: Ref<RestrictedComponent[]> = ref([]);
-const allSourcesAreFilled = computed(() => fields.value.every((field) => {
-  const value = field.source || field.default;
-  return value && value.trim() !== '';
-}));
+const allSourcesAreFilled = ref(false);
 
 function handleOpen(index: number) {
   open({
@@ -56,6 +53,7 @@ onMounted(() => {
 
   const labelKeys = [
     'select_file',
+    'enter_path_or_url',
     'default_source_hint',
     'provide_package_source',
     'package_source_missing_info',
@@ -64,20 +62,29 @@ onMounted(() => {
     labels.value = results;
   });
 });
+
+watch(fields, (newVal) => {
+  allSourcesAreFilled.value = newVal.every((field) => {
+    const value = field.source || field.default;
+    return value && value.trim() !== '';
+  });
+});
 </script>
 
 <template>
   <div flex="~ col">
-    <div ml="12px">
-      <h4 mb="4px">{{ labels.provide_package_source }}</h4>
-      <p mt="4px">{{ labels.package_source_missing_info }}</p>
-      <p mt="4px" class="text-secondary">{{ labels.default_source_hint }}</p>
-    </div>
-    <base-card flex="1" mx="12px" overflow="auto">
-      <div class="input-field" v-for="(field, index) in fields" :key="index">
-        <p>{{ field.label }}</p>
-        <div flex="~ items-center">
-          <base-input v-bind:value="field.source" flex="1" type="text"
+    <span class="info-label">{{ labels.provide_package_source }}</span>
+    <p class="sub-info-label">{{ labels.package_source_missing_info }}<br></br>{{ labels.default_source_hint }}</p>
+    <base-card flex="1" mx="1rem" mt="1vh" mb="10vh" overflow="auto">
+      <div v-for="(field, index) in fields" :key="index">
+        <b text-regular>{{ field.label }}</b>
+        <inputton mt="1rem" h="6vh" v-bind:modelValue="field.source" :button-label="labels.select_file"
+          :placeholder="field.default ? field.default : labels.enter_path_or_url"
+          @change="(event: Event) => field.source = (event.target as HTMLInputElement).value"
+          @keydown.enter="(event: Event) => field.source = (event.target as HTMLInputElement).value"
+          @button-click="handleOpen(index)"
+        />
+          <!-- <base-input v-bind:value="field.source" flex="1" type="text"
             :placeholder="field.default ? field.default : '输入路径或 URL'" @change="
               (event: Event) =>
                 field.source = (event.target as HTMLInputElement).value
@@ -85,13 +92,9 @@ onMounted(() => {
             (event: Event) =>
               field.source = (event.target as HTMLInputElement).value
           " />
-          <base-button theme="primary" ml="12px" @click="handleOpen(index)">{{ labels.select_file }}</base-button>
-        </div>
+          <base-button theme="primary" ml="12px" @click="handleOpen(index)">{{ labels.select_file }}</base-button> -->
       </div>
     </base-card>
-    <div h="60px" flex="~ justify-end items-center">
-      <base-button theme="primary" mr="12px" @click="routerBack">上一步</base-button>
-      <base-button theme="primary" mr="12px" :disabled="!allSourcesAreFilled" @click="handleNextClick">下一步</base-button>
-    </div>
+    <page-nav-buttons :hideNext="!allSourcesAreFilled" @back-clicked="routerBack" @next-clicked="handleNextClick" />
   </div>
 </template>

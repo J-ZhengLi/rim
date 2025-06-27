@@ -268,14 +268,18 @@ fn read_component_selections<'a>(
 
 static SHOW_MISSING_PKG_SRC_ONCE: OnceLock<()> = OnceLock::new();
 
-fn ask_tool_source(name: String) -> Result<String> {
+fn ask_tool_source(name: String, default: Option<&str>) -> Result<String> {
     // print additional info for the first tool
     SHOW_MISSING_PKG_SRC_ONCE.get_or_init(|| {
         let mut stdout = std::io::stdout();
         _ = writeln!(&mut stdout, "\n{}\n", t!("package_source_missing_info"));
     });
 
-    common::question_str(t!("question_package_source", tool = name), None, "")
+    common::question_str(
+        t!("question_package_source", tool = name),
+        None,
+        default.unwrap_or_default(),
+    )
 }
 
 pub(super) fn execute_manager(manager: &ManagerSubcommands) -> Result<ExecStatus> {

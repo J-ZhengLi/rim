@@ -168,7 +168,7 @@ async fn updated_package_sources(
     mut selected: Vec<Component>,
 ) -> Result<Vec<Component>> {
     let mut manifest = cached_manifest().lock().await;
-    manifest.fill_missing_package_source(&mut selected, |name| {
+    manifest.fill_missing_package_source(&mut selected, |name, _| {
         raw.iter()
             .find(|rc| rc.name == name)
             .and_then(|rc| rc.source.clone())

@@ -209,5 +209,6 @@
     "installing_hint": "正在安装所选组件，请稍候...",
     "review_installation_hint": "请检查以下配置。点击「安装」开始安装，或点击「返回」修改设置。",
     "components_profile_hint": "选择配置方案继续。若不确定请选择「标准」方案。",
-    "select_components_gui_hint": "在左侧面板选择要安装的组件。点击任意组件可在右侧查看详情。必需组件无法取消选择。"
+    "select_components_gui_hint": "在左侧面板选择要安装的组件。点击任意组件可在右侧查看详情。必需组件无法取消选择。",
+    "enter_path_or_url": "输入路径或 URL"
 }
