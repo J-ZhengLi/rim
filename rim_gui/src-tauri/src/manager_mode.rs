@@ -3,8 +3,11 @@ use std::{
     time::Duration,
 };
 
-use crate::consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT};
 use crate::{common, error::Result};
+use crate::{
+    common::BaseConfiguration,
+    consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT},
+};
 use anyhow::Context;
 use rim::{
     components::Component,
@@ -31,11 +34,6 @@ pub(super) fn main(
     msg_recv: Receiver<String>,
     maybe_args: anyhow::Result<Box<rim::cli::Manager>>,
 ) -> Result<()> {
-    // store the cli args for future use
-    if let Ok(args) = &maybe_args {
-        common::update_shared_configs(args.as_ref());
-    }
-
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cmd| {
             let cli = match rim::cli::Manager::try_from(argv) {
@@ -45,7 +43,6 @@ pub(super) fn main(
                     return;
                 }
             };
-            common::update_shared_configs(&cli);
             common::handle_manager_args(app.clone(), cli);
         }))
         .invoke_handler(tauri::generate_handler![
@@ -108,7 +105,7 @@ fn install_toolkit(window: tauri::Window, components_list: Vec<Component>) -> Re
         common::install_toolkit_in_new_thread(
             window,
             components_list,
-            p.to_path_buf(),
+            BaseConfiguration::new(p),
             manifest.to_owned(),
             true,
         );

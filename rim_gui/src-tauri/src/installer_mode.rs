@@ -9,26 +9,21 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 use super::{common, INSTALL_DIR};
+use crate::common::BaseConfiguration;
 use crate::error::Result;
 use rim::components::Component;
-use rim::{get_toolkit_manifest, ToolkitManifestExt};
+use rim::{get_toolkit_manifest, GlobalOpts, ToolkitManifestExt};
 use rim_common::types::{ToolInfo, ToolSource, ToolkitManifest};
 use rim_common::utils;
 
 static TOOLSET_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
 
-pub(super) fn main(
-    msg_recv: Receiver<String>,
-    maybe_args: anyhow::Result<Box<rim::cli::Installer>>,
-) -> Result<()> {
-    if let Ok(args) = &maybe_args {
-        common::update_shared_configs(args.as_ref());
-    }
+pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cmd| {}))
         .invoke_handler(tauri::generate_handler![
             common::close_window,
-            default_install_dir,
+            default_configuration,
             check_install_path,
             get_component_list,
             get_restricted_components,
@@ -55,13 +50,14 @@ pub(super) fn main(
 }
 
 #[tauri::command]
-fn default_install_dir() -> String {
-    INSTALL_DIR
+fn default_configuration() -> BaseConfiguration {
+    // FIXME: fix support of GUI commandline args, then we can override
+    // this config using commandline args.
+    let path = INSTALL_DIR
         .get()
         .cloned()
-        .unwrap_or_else(rim::default_install_dir)
-        .to_string_lossy()
-        .to_string()
+        .unwrap_or_else(rim::default_install_dir);
+    BaseConfiguration::new(path)
 }
 
 /// Check if the given path could be used for installation, and return the reason if not.
@@ -177,17 +173,17 @@ async fn updated_package_sources(
     Ok(selected)
 }
 
-#[tauri::command(rename_all = "snake_case")]
+#[tauri::command]
 async fn install_toolchain(
     window: tauri::Window,
     components_list: Vec<Component>,
-    install_dir: String,
+    config: BaseConfiguration,
 ) {
-    let install_dir = PathBuf::from(install_dir);
+    GlobalOpts::set(false, false, false, false, !config.add_to_path);
     common::install_toolkit_in_new_thread(
         window,
         components_list,
-        install_dir,
+        config,
         cached_manifest().lock().await.to_owned(),
         false,
     );

@@ -11,21 +11,19 @@ use std::{
 use super::consts::*;
 use crate::error::Result;
 use rim::{
-    cli::{ComponentCommand, ExecutableCommand, ManagerSubcommands},
+    cli::{ExecutableCommand, ManagerSubcommands},
     components::Component,
     update::UpdateCheckBlocker,
     AppInfo, InstallConfiguration, UninstallConfiguration,
 };
 use rim_common::{types::ToolkitManifest, utils};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{App, AppHandle, Manager, Window, WindowUrl};
 use url::Url;
 
 #[allow(clippy::type_complexity)]
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
     LazyLock::new(|| Mutex::new(vec![]));
-
-static SHARED_CONFIGS: Mutex<SharedConfigs> = Mutex::new(SharedConfigs::new());
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs across threads.
@@ -92,13 +90,12 @@ fn emit<S: Serialize + Clone>(window: &Window, event: &str, msg: S) {
 pub(crate) fn install_toolkit_in_new_thread(
     window: tauri::Window,
     components_list: Vec<Component>,
-    install_dir: PathBuf,
+    config: BaseConfiguration,
     manifest: ToolkitManifest,
     is_update: bool,
 ) {
     UpdateCheckBlocker::block();
 
-    let rustup_dist_server = SHARED_CONFIGS.lock().unwrap().rustup_dist_server.clone();
     let handle = thread::spawn(move || -> anyhow::Result<()> {
         // FIXME: this is needed to make sure the other thread could receive the first couple messages
         // we sent in this thread. But it feels very wrong, there has to be better way.
@@ -111,14 +108,23 @@ pub(crate) fn install_toolkit_in_new_thread(
             |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
         let progress = utils::Progress::new(&pos_cb);
 
+        let install_dir = PathBuf::from(&config.path);
         // TODO: Use continuous progress
-        let config = InstallConfiguration::new(&install_dir, &manifest)?
+        let mut i_config = InstallConfiguration::new(&install_dir, &manifest)?
             .with_progress_indicator(Some(progress))
-            .with_rustup_dist_server(rustup_dist_server);
+            .with_rustup_dist_server(config.rustup_dist_server)
+            .with_rustup_update_root(config.rustup_update_root)
+            .insecure(config.insecure);
+        if let (Some(registry_name), Some(registry_value)) =
+            (config.cargo_registry_name, config.cargo_registry_value)
+        {
+            i_config = i_config.with_cargo_registry(registry_name, registry_value);
+        }
+
         if is_update {
-            config.update(components_list)?;
+            i_config.update(components_list)?;
         } else {
-            config.install(components_list)?;
+            i_config.install(components_list)?;
         }
 
         // 安装完成后，发送安装完成事件
@@ -339,48 +345,29 @@ pub(crate) fn handle_manager_args(app: AppHandle, cli: rim::cli::Manager) {
     }
 }
 
-pub(crate) struct SharedConfigs {
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BaseConfiguration {
+    pub(crate) path: PathBuf,
+    pub(crate) add_to_path: bool,
+    pub(crate) insecure: bool,
     pub(crate) rustup_dist_server: Option<Url>,
+    pub(crate) rustup_update_root: Option<Url>,
+    pub(crate) cargo_registry_name: Option<String>,
+    pub(crate) cargo_registry_value: Option<String>,
 }
 
-impl SharedConfigs {
-    pub(crate) const fn new() -> Self {
-        Self {
-            rustup_dist_server: None,
+impl BaseConfiguration {
+    pub(crate) fn new<P: Into<PathBuf>>(path: P) -> Self {
+        let (registry_name, registry_value) = rim::default_cargo_registry();
+        BaseConfiguration {
+            path: path.into(),
+            add_to_path: true,
+            insecure: false,
+            rustup_dist_server: Some(rim::default_rustup_dist_server().clone()),
+            rustup_update_root: Some(rim::default_rustup_update_root().clone()),
+            cargo_registry_name: Some(registry_name.to_string()),
+            cargo_registry_value: Some(registry_value.to_string()),
         }
     }
-}
-
-impl From<&rim::cli::Installer> for SharedConfigs {
-    fn from(value: &rim::cli::Installer) -> Self {
-        Self {
-            rustup_dist_server: value.rustup_dist_server.clone(),
-        }
-    }
-}
-
-impl From<&rim::cli::Manager> for SharedConfigs {
-    fn from(value: &rim::cli::Manager) -> Self {
-        let rustup_dist_server = value.command.as_ref().and_then(|cmd| match cmd {
-            ManagerSubcommands::Component {
-                command:
-                    ComponentCommand::Install {
-                        rustup_dist_server, ..
-                    },
-            }
-            | ManagerSubcommands::Install {
-                rustup_dist_server, ..
-            }
-            | ManagerSubcommands::Update {
-                rustup_dist_server, ..
-            } => rustup_dist_server.clone(),
-            _ => None,
-        });
-        Self { rustup_dist_server }
-    }
-}
-
-pub(crate) fn update_shared_configs<T: Into<SharedConfigs>>(value: T) {
-    let mut guard = SHARED_CONFIGS.lock().unwrap();
-    *guard = value.into();
 }

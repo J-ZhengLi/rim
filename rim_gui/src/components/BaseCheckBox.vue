@@ -26,7 +26,7 @@ function titleClick() {
 </script>
 
 <template>
-  <label flex="inline items-center" :class="disabled ? 'c-secondary' : 'c-regular'" :title="hint || title" cursor-pointer>
+  <label flex="inline items-center" :class="disabled ? 'c-disabled' : 'c-regular'" :title="hint || title" cursor-pointer>
     <span class="checkbox"
       :class="{
         'c-active': isGroup,
