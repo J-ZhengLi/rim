@@ -49,12 +49,14 @@ IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
 gui-only = true
 version = "1.99.32562"
 path = "tools/VSCodium-linux-x64-1.99.32562.tar.gz"
+kind = "custom"
 display-name = "VSCodium"
 
 [tools.target.x86_64-unknown-linux-gnu.vscode-rust-analyzer]
 gui-only = true
 version = "0.3.2379"
 path = "tools/rust-analyzer-linux-x64.vsix"
+kind = "plugin"
 display-name = "rust-analyzer (插件)"
 requires = ["vscodium"]
 
@@ -62,6 +64,7 @@ requires = ["vscodium"]
 optional = true
 version = "0.9.94"
 path = "tools/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz"
+kind = "executables"
 
 [tools.target.x86_64-unknown-linux-gnu.coding-guidelines-ruleset]
 version = "0.1.0"

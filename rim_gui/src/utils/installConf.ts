@@ -1,21 +1,40 @@
 import { ref, Ref } from 'vue';
-import { toChecked, type Component, type RestrictedComponent } from './types/Component';
+import { isRecommanded, toChecked, type Component, type RestrictedComponent } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
 import { AppInfo } from './types/AppInfo';
 
+interface BaseConfig {
+  path: string;
+  addToPath: boolean,
+  insecure: boolean,
+  /** Allowing user to modify the belowing options, which dictates where we fetching the packages.
+   * This Option should only be enabled if user choose to install native Rust toolchain.
+   */
+  allowSourceConfig: boolean,
+  rustupDistServer?: string,
+  rustupUpdateRoot?: string,
+  cargoRegistryName?: string,
+  cargoRegistryValue?: string,
+}
+
+const defaultBaseConfig: BaseConfig = {
+  path: '',
+  addToPath: false,
+  insecure: false,
+  allowSourceConfig: false,
+};
+
 class InstallConf {
-  path: Ref<string>;
+  config: Ref<BaseConfig>;
   info: Ref<AppInfo | null> = ref(null);
   checkComponents: Ref<CheckItem<Component>[]>;
-  isCustomInstall: boolean;
   version: Ref<string>;
   restrictedComponents: Ref<RestrictedComponent[]>;
 
-  constructor(path: string, components: CheckItem<Component>[]) {
-    this.path = ref(path);
-    this.checkComponents = ref(components);
-    this.isCustomInstall = true;
+  constructor() {
+    this.config = ref(defaultBaseConfig);
+    this.checkComponents = ref([]);
     this.version = ref('');
     this.restrictedComponents = ref([]);
   }
@@ -36,7 +55,7 @@ class InstallConf {
   }
 
   setPath(newPath: string) {
-    this.path.value = newPath;
+    this.config.value.path = newPath;
   }
 
   setComponents(newComponents: CheckItem<Component>[]) {
@@ -46,10 +65,6 @@ class InstallConf {
 
   setRestrictedComponents(comps: RestrictedComponent[]) {
     this.restrictedComponents.value = comps;
-  }
-
-  setCustomInstall(isCustomInstall: boolean) {
-    this.isCustomInstall = isCustomInstall;
   }
 
   getGroups(): CheckGroup<Component>[] {
@@ -80,24 +95,29 @@ class InstallConf {
         return item.value as Component;
       });
   }
+
+  mapCheckedComponents(callback: (comp: CheckItem<Component>) => CheckItem<Component>) {
+    this.checkComponents.value = this.checkComponents.value.map(callback)
+  }
   
   getRestrictedComponents(): RestrictedComponent[] {
     return this.restrictedComponents.value;
   }
 
-  loadManifest() {
-    invokeCommand("load_manifest_and_ret_version").then((ver) => {
-      if (typeof ver === 'string') {
-        this.version.value = ver;
-      }
-    });
+  allowSourceConfig(): boolean {
+    return this.config.value.allowSourceConfig;
   }
 
-  async loadDefaultPath() {
-    const defaultPath = await invokeCommand('default_install_dir');
-    if (typeof defaultPath === 'string' && defaultPath.trim() !== '') {
-      this.setPath(defaultPath);
+  async loadManifest() {
+    const ver = await invokeCommand("load_manifest_and_ret_version");
+    if (typeof ver === 'string') {
+      this.version.value = ver;
     }
+  }
+
+  async loadDefaultConfig() {
+    const defaultConfig = await invokeCommand('default_configuration') as BaseConfig;
+    this.config.value = defaultConfig;
   }
 
   async loadComponents() {
@@ -106,10 +126,13 @@ class InstallConf {
     )) as Component[];
     if (Array.isArray(componentList)) {
       componentList.sort((a, b) => {
-        if (a.required && !b.required) {
+        // list pre-selected components at front.
+        let aIsRecommanded = isRecommanded(a);
+        let bIsRecommanded = isRecommanded(b);
+        if (aIsRecommanded && !bIsRecommanded) {
           return -1;
         }
-        if (!a.required && b.required) {
+        if (!aIsRecommanded && bIsRecommanded) {
           return 1;
         }
         // 名称排序
@@ -122,9 +145,13 @@ class InstallConf {
   }
 
   async loadAll() {
-    await this.loadDefaultPath();
-    await this.loadComponents();
+    // make sure the manifest is loaded before loading components
+    // as it requires the manifest to be loaded.
+    this.loadManifest().then(async () => {
+      await this.loadDefaultConfig();
+      await this.loadComponents();
+    });
   }
 }
 
-export const installConf = new InstallConf('', []);
+export const installConf = new InstallConf();
