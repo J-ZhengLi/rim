@@ -56,11 +56,13 @@ static GLOBAL_OPTS: Mutex<Option<GlobalOpts>> = Mutex::new(None);
 static APP_INFO: OnceLock<AppInfo> = OnceLock::new();
 static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
-pub(crate) fn default_rustup_dist_server() -> &'static Url {
+/// Get the default rustup dist server url.
+pub fn default_rustup_dist_server() -> &'static Url {
     build_config().rustup_dist_server(env!("EDITION"))
 }
 
-pub(crate) fn default_rustup_update_root() -> &'static Url {
+/// Get the default rustup update root url.
+pub fn default_rustup_update_root() -> &'static Url {
     build_config().rustup_update_root(env!("EDITION"))
 }
 
@@ -74,7 +76,9 @@ pub(crate) fn rim_dist_server() -> Url {
     build_config().rim_dist_server(env!("EDITION")).clone()
 }
 
-pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {
+/// Get the default name and value of replaced cargo registry.
+/// (i.e.: ("mirror", "sparse+http://replaced-crates.io"))
+pub fn default_cargo_registry() -> (&'static str, &'static str) {
     let cfg = build_config();
 
     (&cfg.cargo.registry_name, &cfg.cargo.registry_url)
@@ -86,26 +90,18 @@ pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {
 /// This struct will be stored globally for easy access, also make
 /// sure the [`set`](GlobalOpts::set) function is called exactly once
 /// to initialize the global singleton.
-// TODO: add verbose and quiet options
 #[derive(Debug, Default, Clone, Copy)]
-pub(crate) struct GlobalOpts {
-    pub(crate) verbose: bool,
-    pub(crate) quiet: bool,
-    pub(crate) yes_to_all: bool,
+pub struct GlobalOpts {
+    pub verbose: bool,
+    pub quiet: bool,
+    pub yes_to_all: bool,
     no_modify_env: bool,
     no_modify_path: bool,
 }
 
 impl GlobalOpts {
-    /// Initialize a new object and store it globally, will also return a
-    /// static reference to the global stored value.
-    pub(crate) fn set(
-        verbose: bool,
-        quiet: bool,
-        yes: bool,
-        no_modify_env: bool,
-        no_modify_path: bool,
-    ) {
+    /// Initialize a new object and store it globally
+    pub fn set(verbose: bool, quiet: bool, yes: bool, no_modify_env: bool, no_modify_path: bool) {
         let opts = Self {
             verbose,
             quiet,
@@ -120,17 +116,17 @@ impl GlobalOpts {
     /// Get the stored global options.
     ///
     /// Fallback to default value if is not set.
-    pub(crate) fn get() -> Self {
+    pub fn get() -> Self {
         GLOBAL_OPTS.lock().unwrap().unwrap_or_default()
     }
 
     /// Return `true` if either one of `no-modify-path` or `no-modify-env` was set to `true`
-    pub(crate) fn no_modify_path(&self) -> bool {
+    pub fn no_modify_path(&self) -> bool {
         self.no_modify_path || self.no_modify_env
     }
 
     /// Return `true` if `no-modify-env` was set to `true`
-    pub(crate) fn no_modify_env(&self) -> bool {
+    pub fn no_modify_env(&self) -> bool {
         self.no_modify_env
     }
 }

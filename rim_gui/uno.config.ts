@@ -36,7 +36,7 @@ export default defineConfig({
       'darker-secondary': '#6a6a6a',
       secondary: '#878787',
       placeholder: '#adb0b8',
-      disabled: '#c0c4cc',
+      disabled: '#888888',
       reverse: '#ffffff',
       active: '#5e7ce0',
 

@@ -39,7 +39,7 @@ fn main() -> Result<()> {
         }
         Mode::Installer(maybe_args) => {
             run_cli_else_hide_console(&maybe_args)?;
-            installer_mode::main(msg_recv, maybe_args)?;
+            installer_mode::main(msg_recv)?;
         }
     }
     Ok(())

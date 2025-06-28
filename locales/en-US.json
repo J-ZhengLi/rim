@@ -214,5 +214,20 @@
     "review_installation_hint": "Review your settings below. Click 'Install' to proceed or 'Back' to modify.",
     "components_profile_hint": "Choose a profile to continue. If your are unclear which one to use, choose 'Standard'.",
     "select_components_gui_hint": "Select components in the left panel to install. Click any component to view details on the right. Required components cannot be deselected.",
-    "enter_path_or_url": "Enter Path or URL"
+    "enter_path_or_url": "Enter Path or URL",
+
+    "system_configuration": "System Configuration",
+    "source_configuration": "Source Configuration",
+    "add_to_path": "Add to PATH",
+    "add_to_path_hint": "Add program entries to PATH variable, disabling this option may limit functionality after installation",
+    "disable_ssl_cert_varification": "[Insecure] Disable SSL Certificate Verification",
+    "disable_ssl_cert_varification_hint": "Skip SSL certificate validation during package downloads (not recommended)",
+    "rustup_dist_server": "Rustup Dist Server",
+    "rustup_dist_server_hint": "URL to download Rust toolchain components",
+    "rustup_update_root": "Rustup Update Root",
+    "rustup_update_root_hint": "URL to download rustup executable",
+    "cargo_registry_name": "Cargo Registry Name",
+    "cargo_registry_name_hint": "Alternative name for crates.io registry",
+    "cargo_registry_index": "Cargo Registry Index",
+    "cargo_registry_index_hint": "URL for the registry's package index"
 }

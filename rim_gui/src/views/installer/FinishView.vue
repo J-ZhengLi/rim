@@ -8,7 +8,7 @@ const labels: Ref<Record<string, string>> = ref({});
 
 async function closeWindow() {
   await invokeCommand('post_installation_opts', {
-    installDir: installConf.path.value,
+    installDir: installConf.config.value.path,
     open: runApp.value,
     shortcut: createShortcut.value
   });

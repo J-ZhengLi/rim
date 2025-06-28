@@ -84,15 +84,6 @@ watch(fields, (newVal) => {
           @keydown.enter="(event: Event) => field.source = (event.target as HTMLInputElement).value"
           @button-click="handleOpen(index)"
         />
-          <!-- <base-input v-bind:value="field.source" flex="1" type="text"
-            :placeholder="field.default ? field.default : '输入路径或 URL'" @change="
-              (event: Event) =>
-                field.source = (event.target as HTMLInputElement).value
-            " @keydown.enter="
-            (event: Event) =>
-              field.source = (event.target as HTMLInputElement).value
-          " />
-          <base-button theme="primary" ml="12px" @click="handleOpen(index)">{{ labels.select_file }}</base-button> -->
       </div>
     </base-card>
     <page-nav-buttons :hideNext="!allSourcesAreFilled" @back-clicked="routerBack" @next-clicked="handleNextClick" />

@@ -4,7 +4,6 @@ import { useCustomRouter } from '@/router/index';
 import { computed, onMounted, ref } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
-const path = installConf.path;
 const labels = ref<Record<string, string>>({});
 
 const components = computed(() => {
@@ -16,8 +15,8 @@ const components = computed(() => {
 async function handleNextClick() {
   routerPush('/installer/install');
   await invokeCommand('install_toolchain', {
-    components_list: components.value as Component[],
-    install_dir: path.value as string,
+    componentsList: components.value as Component[],
+    config: installConf.config.value,
   });
 }
 
@@ -42,7 +41,7 @@ onMounted(() => {
     </div>
     <base-card flex="1" mx="1vw" mb="7%" overflow="auto">
       <p m="0" font="bold">{{ labels.installation_path }}:</p>
-      <p my="0.5rem" ml="2rem">{{ path }}</p>
+      <p my="0.5rem" ml="2rem">{{ installConf.config.value.path }}</p>
       <p m="0" font="bold">{{ labels.components }}:</p>
       <div ml="2rem">
         <p my="0.5rem" v-for="component in components" :key="component.displayName">

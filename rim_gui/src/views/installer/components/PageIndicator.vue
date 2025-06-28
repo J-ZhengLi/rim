@@ -20,6 +20,7 @@ interface PageMeta {
 function menuItemActive(orders: number[]) {
   const isFocus = orders.includes(router.currentRoute.value.meta.order as number);
   return {
+    'c-secondary': !isFocus,
     'text-3.2vh c-active': isFocus,
   };
 }
@@ -48,7 +49,6 @@ onMounted(() => {
       v-for="item in titles"
       :class="{ ...menuItemActive(item.orders) }"
       transition="all 0.3s"
-      c="secondary"
     >
     {{ item.title }}
     </div>
