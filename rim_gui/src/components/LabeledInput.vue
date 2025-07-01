@@ -55,7 +55,8 @@ const handleInput = (event: Event) => {
 .input-field {
     width: 100%;
     background: rgba(255, 255, 255, .7);
-    border: 1px solid transparent;
+    border: 1px solid rgba(0, 0, 0, .1);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     backdrop-filter: url(#frosted);
     -webkit-backdrop-filter: blur(25px);
     font-size: clamp(100%, 2vh, 20px);
@@ -70,7 +71,6 @@ const handleInput = (event: Event) => {
 .input-field:focus {
     --uno: 'b-active';
     outline: none;
-    box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
 }
 
 .hint-tooltip {

@@ -19,10 +19,6 @@ const toggleCheck = () => {
 
   isChecked.value = !isChecked.value;
 };
-
-function titleClick() {
-  emit('titleClick');
-}
 </script>
 
 <template>
@@ -32,14 +28,14 @@ function titleClick() {
         'c-active': isGroup,
         'bg-active border-active': isChecked,
         'bg-disabled-bg': disabled,
-        'hover:b-active': !isChecked && !disabled,
+        'hover:b-active': !disabled,
         'cursor-not-allowed': disabled,
       }" @click="toggleCheck">
       <slot name="icon">
         <i class="i-mdi:check" v-if="isChecked" c="active" />
       </slot>
     </span>
-    <span @click="titleClick" whitespace-nowrap>
+    <span @click="emit('titleClick')" whitespace-nowrap>
       <slot>
         <component v-if="labelComponent" :is="labelComponent" v-bind="labelComponentProps" />
         <span :class="isGroup ? 'cb-label-group' : 'cb-label'" v-else>{{ title }}</span>
@@ -54,8 +50,8 @@ function titleClick() {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 1rem;
-  width: 1rem;
+  min-width: 1rem;
+  min-height: 1rem;
   background: white;
   border: 2px solid rgb(204, 204, 204);
   border-radius: 3px;

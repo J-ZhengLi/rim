@@ -31,6 +31,7 @@ const themeClasses = computed(() => {
   <button p="x-3% y-1%" :class="[
     themeClasses,
     'rounded-[30vw] b-none hover:op-80', // Common classes
+    { 'cursor-pointer': !disabled }, // Disabled styles
     { 'opacity-50 cursor-not-allowed': disabled }, // Disabled styles
   ]" :disabled="disabled">
     <slot></slot>
@@ -45,7 +46,6 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
   transition:
     background-color 0.3s,
     border-color 0.3s;

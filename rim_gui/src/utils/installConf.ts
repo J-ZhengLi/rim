@@ -108,11 +108,16 @@ class InstallConf {
     return this.config.value.allowSourceConfig;
   }
 
-  async loadManifest() {
-    const ver = await invokeCommand("load_manifest_and_ret_version");
+  async loadManifest(path?: string) {
+    const ver = await invokeCommand("load_manifest_and_ret_version", { path: path });
     if (typeof ver === 'string') {
       this.version.value = ver;
-    }
+    };
+
+    // make sure the manifest is loaded before loading components
+    // as it requires the manifest to be loaded.
+    await this.loadDefaultConfig();
+    await this.loadComponents();
   }
 
   async loadDefaultConfig() {
@@ -142,15 +147,6 @@ class InstallConf {
       const newComponents = toChecked(componentList);
       this.setComponents(newComponents);
     }
-  }
-
-  async loadAll() {
-    // make sure the manifest is loaded before loading components
-    // as it requires the manifest to be loaded.
-    this.loadManifest().then(async () => {
-      await this.loadDefaultConfig();
-      await this.loadComponents();
-    });
   }
 }
 

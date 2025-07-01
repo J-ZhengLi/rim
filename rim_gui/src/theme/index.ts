@@ -3,7 +3,6 @@ import BaseButton from '../components/BaseButton.vue';
 import BaseInput from '../components/BaseInput.vue';
 import BaseCheckBox from '../components/BaseCheckBox.vue';
 import BaseProgress from '../components/BaseProgress.vue';
-import BaseRadio from '../components/BaseRadio.vue';
 import BaseTag from '@/components/BaseTag.vue';
 import Titlebar from '../components/Titlebar.vue';
 import LoadingMask from '../components/LoadingMask.vue';
@@ -15,6 +14,9 @@ import PageNavButtons from '@/components/PageNavButtons.vue';
 import BaseDetails from '@/components/BaseDetails.vue';
 import SplitBox from '@/components/SplitBox.vue';
 import LabeledInput from '@/components/LabeledInput.vue';
+import BasePanel from '@/components/BasePanel.vue';
+import BaseDropdownMenu from '@/components/BaseDropdownMenu.vue';
+import BaseRadioGroup from '@/components/BaseRadioGroup.vue';
 
 export default {
   install(app: App) {
@@ -22,7 +24,6 @@ export default {
     app.component('base-input', BaseInput);
     app.component('base-check-box', BaseCheckBox);
     app.component('base-progress', BaseProgress);
-    app.component('base-radio', BaseRadio);
     app.component('base-tag', BaseTag);
     app.component('titlebar', Titlebar);
     app.component('loading-mask', LoadingMask);
@@ -34,5 +35,8 @@ export default {
     app.component('base-details', BaseDetails);
     app.component('split-box', SplitBox);
     app.component('labeled-input', LabeledInput);
+    app.component('base-panel', BasePanel);
+    app.component('base-dropdown-menu', BaseDropdownMenu);
+    app.component('base-radio-group', BaseRadioGroup);
   },
 };

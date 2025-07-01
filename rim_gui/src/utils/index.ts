@@ -1,5 +1,5 @@
 export * from './types/Component';
-export * from './types/KitItem';
+export * from './types/Toolkit';
 export * from './types/CheckBoxGroup';
 export * from './installConf';
 export * from './invokeCommand';
