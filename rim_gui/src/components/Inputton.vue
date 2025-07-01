@@ -28,7 +28,7 @@ const emit = defineEmits<{
 <style scoped>
 .input-with-button {
     display: flex;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
     border-radius: 10vw;
     overflow: hidden;
 }
@@ -39,7 +39,7 @@ const emit = defineEmits<{
     outline: none;
     border-radius: 1px 0 0 1px;
     background: rgba(255, 255, 255, .45);
-    border: 2px solid transparent;
+    border: none;
     backdrop-filter: url(#frosted);
     -webkit-backdrop-filter: blur(25px);
     font-size: clamp(100%, 2vh, 20px);

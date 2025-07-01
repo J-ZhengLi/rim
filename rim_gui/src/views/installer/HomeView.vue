@@ -2,24 +2,48 @@
 import { onMounted, ref } from 'vue';
 import { useCustomRouter } from '@/router/index';
 import { installConf, invokeCommand, invokeLabelList } from '@/utils/index';
+import { open } from '@tauri-apps/api/dialog';
 
 const { routerPush } = useCustomRouter();
 
 const toolkitName = ref('');
 const labels = ref<Record<string, string>>({});
+const showCustomizePanel = ref(false);
+
+// “install other edtion” options
+const toolkitManifestPath = ref('');
 
 function handleInstallClick() {
   routerPush('/installer/configuration');
 }
 
-function selectOtherEdition() {
-  console.log("TODO: show a page to load toolkit form url or path");
+async function confirmCustomizedEdition() {
+  await installConf.loadManifest(toolkitManifestPath.value);
+  showCustomizePanel.value = false;
+  console.log(installConf.version);
+}
+
+async function pickToolkitSource() {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [{
+      name: 'TOML File',
+      extensions: ['toml']
+    }],
+  });
+  if (selected && typeof selected === 'string') {
+    toolkitManifestPath.value = selected;
+  }
 }
 
 onMounted(() => {
   const labelKeys = [
     'install',
-    'install_other_edition',
+    'install_using_toolkit_manifest',
+    'confirm',
+    'native',
+    'select_file',
   ];
   invokeLabelList(labelKeys).then((results) => {
     labels.value = results;
@@ -53,12 +77,28 @@ onMounted(() => {
           <div c="darker-secondary" font="bold" text="4vh">{{ toolkitName }}</div>
           <div c="secondary" text="3.5vh">{{ installConf.version }}</div>
         </div>
-        <base-button theme="primary" w="20vw" position="fixed" bottom="10vh"
-          @click="handleInstallClick()">{{ labels.install }}</base-button>
-        <span c="secondary" position="fixed" bottom="-5vh" cursor-pointer underline @click="selectOtherEdition">{{
-          labels.install_other_edition }}</span>
+        <base-button theme="primary" w="20vw" position="fixed" bottom="10vh" @click="handleInstallClick()">{{
+          labels.install }}</base-button>
+        <span c="secondary" position="fixed" bottom="-5vh" cursor-pointer underline @click="showCustomizePanel = true">
+          {{ labels.install_using_toolkit_manifest }}
+        </span>
       </div>
     </base-card>
+
+    <base-panel width="60%" :show="showCustomizePanel" @close="showCustomizePanel = false">
+      <div flex="~ col">
+        <b class="option-label">Toolkit Manifest Path</b>
+        <inputton m="1rem" h="5vh" v-bind:modelValue="toolkitManifestPath" :button-label="labels.select_file"
+          @change="(event: Event) => toolkitManifestPath = (event.target as HTMLInputElement).value"
+          @keydown.enter="(event: Event) => toolkitManifestPath = (event.target as HTMLInputElement).value"
+          @button-click="pickToolkitSource" />
+        <div flex="~ justify-center" mt="4vh">
+          <base-button :disabled="!toolkitManifestPath" w="20vw"
+            theme="primary" @click="confirmCustomizedEdition">{{ labels.confirm }}</base-button>
+        </div>
+      </div>
+    </base-panel>
+
     <div class="content-disclaimer">{{ labels.content_source }}</div>
   </div>
 </template>
@@ -83,5 +123,13 @@ onMounted(() => {
   position: fixed;
   font-size: 14px;
   bottom: 3vh;
+}
+
+.option-label {
+  --uno: 'c-regular';
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: clamp(0.5rem, 2.6vh, 1.5rem);
+  flex-shrink: 0;
 }
 </style>

@@ -7,6 +7,7 @@ use rim_common::{build_config, exe};
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tokio::sync::Mutex;
+use url::Url;
 
 use super::{common, INSTALL_DIR};
 use crate::common::BaseConfiguration;
@@ -92,29 +93,26 @@ fn toolkit_name() -> String {
 
 // Make sure this function is called first after launch.
 #[tauri::command]
-async fn load_manifest_and_ret_version() -> Result<String> {
+async fn load_manifest_and_ret_version(path: Option<PathBuf>) -> Result<String> {
     // TODO: Give an option for user to specify another manifest.
     // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
-    let mut manifest = get_toolkit_manifest(None, false).await?;
+    let path_url = path.as_ref().map(|p| Url::from_file_path(p))
+        .transpose()
+        .map_err(|_| anyhow!("unable to convert path '{path:?}' to URL"))?;
+    let mut manifest = get_toolkit_manifest(path_url, false).await?;
     manifest.adjust_paths()?;
     let version = manifest.version.clone().unwrap_or_default();
 
-    if TOOLSET_MANIFEST.set(Mutex::new(manifest)).is_err() {
-        error!(
-            "unable to set initialize manifest to desired one \
-            as it was already initialized somewhere else, \
-            returning the cached version instead"
-        );
-        Ok(cached_manifest()
-            .lock()
-            .await
-            .version
-            .clone()
-            .unwrap_or_default())
+    if let Some(existing) = TOOLSET_MANIFEST.get() {
+        // update the existing manifest
+        *existing.lock().await = manifest;
+        debug!("manifest updated");
     } else {
+        // This should be fine as the cell is garanteed to have no previous value.
+        _ = TOOLSET_MANIFEST.set(Mutex::new(manifest));
         debug!("manifest loaded");
-        Ok(version)
     }
+    Ok(version)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

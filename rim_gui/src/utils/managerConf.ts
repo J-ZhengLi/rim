@@ -1,5 +1,5 @@
 import { ref, Ref, shallowRef } from 'vue';
-import { KitItem } from './types/KitItem';
+import { KitItem } from './types/Toolkit';
 import { Component, ComponentType, componentUtils } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';

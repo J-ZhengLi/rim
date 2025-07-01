@@ -15,7 +15,7 @@ const transitionName = computed(() => {
   return '';
 });
 
-onBeforeMount(() => installConf.loadAll());
+onBeforeMount(() => installConf.loadManifest());
 </script>
 
 <template>

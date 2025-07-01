@@ -120,7 +120,7 @@ impl TryFrom<&ToolkitManifest> for Toolkit {
 /// The collection will always be cached to reduce the number of server requests.
 // TODO: track how many times this function was called, are all server requests necessary?
 // if not, cached them locally.
-pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>> {
+pub async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>> {
     let dist_server = super::rim_dist_server();
 
     // download dist manifest from server
