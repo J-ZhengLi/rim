@@ -24,4 +24,4 @@ pub use core::{
     get_toolkit_manifest,
 };
 
-i18n!("locales", fallback = "en");
+i18n!("locales", fallback = "en-US");
