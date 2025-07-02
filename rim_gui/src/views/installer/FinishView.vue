@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { onMounted, Ref, ref } from 'vue';
-import { installConf, invokeCommand, invokeLabelList } from '@/utils/index';
+import { ref } from 'vue';
+import { installConf, invokeCommand } from '@/utils/index';
 
 const runApp = ref(true);
 const createShortcut = ref(true);
-const labels: Ref<Record<string, string>> = ref({});
 
 async function closeWindow() {
   await invokeCommand('post_installation_opts', {
@@ -13,16 +12,6 @@ async function closeWindow() {
     shortcut: createShortcut.value
   });
 }
-
-onMounted(() => {
-  invokeLabelList([
-    'install_finish_info',
-    'finish',
-    'post_installation_hint',
-    'post_installation_open',
-    'post_installation_create_shortcut',
-  ]).then((res) => labels.value = res);
-});
 </script>
 
 <template>
@@ -30,15 +19,16 @@ onMounted(() => {
     <base-card class="info-card">
       <div flex="~ col items-center" h="full">
         <div text="center" class="finish-info">
-          <div c="darker-secondary" font="bold" text="4vh">{{ labels.install_finish_info  }}</div>
-          <div c="secondary" text="3vh">{{ labels.post_installation_hint }}</div>
+          <div c="darker-secondary" font="bold" text="4vh">{{ $t('install_finish_info') }}</div>
+          <div c="secondary" text="3vh">{{ $t('post_installation_hint') }}</div>
         </div>
         <div flex="~ col" gap="4vh">
-          <base-check-box v-model="runApp" :title="labels.post_installation_open"/>
-          <base-check-box v-model="createShortcut" :title="labels.post_installation_create_shortcut" />
+          <base-check-box v-model="runApp" :title="$t('post_installation_open')" />
+          <base-check-box v-model="createShortcut" :title="$t('post_installation_create_shortcut')" />
         </div>
-        <base-button theme="primary" w="20vw" position="fixed" bottom="5vh"
-          @click="closeWindow()">{{ labels.finish }}</base-button>
+        <base-button theme="primary" w="20vw" position="fixed" bottom="5vh" @click="closeWindow()">
+          {{ $t('finish') }}
+        </base-button>
       </div>
     </base-card>
   </div>

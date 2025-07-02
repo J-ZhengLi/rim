@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { CheckItem, Component, installConf, invokeCommand, invokeLabelList, RestrictedComponent } from '@/utils';
+import { CheckItem, Component, installConf, invokeCommand, RestrictedComponent } from '@/utils';
 import { open } from '@tauri-apps/api/dialog';
 import { onMounted, Ref, ref, watch } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
-const labels = ref<Record<string, string>>({});
 const fields: Ref<RestrictedComponent[]> = ref([]);
 const allSourcesAreFilled = ref(false);
 
@@ -48,20 +47,7 @@ function handleNextClick() {
   routerPush('/installer/confirmation');
 }
 
-onMounted(() => {
-  fields.value = installConf.getRestrictedComponents();
-
-  const labelKeys = [
-    'select_file',
-    'enter_path_or_url',
-    'default_source_hint',
-    'provide_package_source',
-    'package_source_missing_info',
-  ];
-  invokeLabelList(labelKeys).then((results) => {
-    labels.value = results;
-  });
-});
+onMounted(() => fields.value = installConf.getRestrictedComponents());
 
 watch(fields, (newVal) => {
   allSourcesAreFilled.value = newVal.every((field) => {
@@ -73,17 +59,16 @@ watch(fields, (newVal) => {
 
 <template>
   <div flex="~ col">
-    <span class="info-label">{{ labels.provide_package_source }}</span>
-    <p class="sub-info-label">{{ labels.package_source_missing_info }}<br></br>{{ labels.default_source_hint }}</p>
+    <span class="info-label">{{ $t('provide_package_source') }}</span>
+    <p class="sub-info-label">{{ $t('package_source_missing_info') }}<br></br>{{ $t('default_source_hint') }}</p>
     <base-card flex="1" mx="1rem" mt="1vh" mb="10vh" overflow="auto">
       <div v-for="(field, index) in fields" :key="index">
         <b text-regular>{{ field.label }}</b>
-        <inputton mt="1rem" h="6vh" v-bind:modelValue="field.source" :button-label="labels.select_file"
-          :placeholder="field.default ? field.default : labels.enter_path_or_url"
+        <inputton mt="1rem" h="6vh" v-bind:modelValue="field.source" :button-label="$t('select_file')"
+          :placeholder="field.default ? field.default : $t('enter_path_or_url')"
           @change="(event: Event) => field.source = (event.target as HTMLInputElement).value"
           @keydown.enter="(event: Event) => field.source = (event.target as HTMLInputElement).value"
-          @button-click="handleOpen(index)"
-        />
+          @button-click="handleOpen(index)" />
       </div>
     </base-card>
     <page-nav-buttons :hideNext="!allSourcesAreFilled" @back-clicked="routerBack" @next-clicked="handleNextClick" />

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
-import { componentUtils, installConf, invokeLabelList } from '@/utils/index';
+import { componentUtils, installConf } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
@@ -12,7 +12,6 @@ import CheckBoxGroup from '@/components/CheckBoxGroup.vue';
 import { handleRestrictedComponents } from '@/utils/common';
 
 const { routerBack, routerPush } = useCustomRouter();
-const labels = ref<Record<string, string>>({});
 const selectComponentId = ref(0);
 
 const groupComponents: Ref<CheckGroup<Component>[]> = ref([]);
@@ -121,30 +120,18 @@ function handleNextClick() {
 
 onMounted(() => {
   groupComponents.value = installConf.getGroups();
-  
-  invokeLabelList([
-    'select_components_to_install',
-    'select_components_gui_hint',
-    'components',
-    'description',
-    'select_all',
-    'type',
-    'type_desc'
-  ]).then((res) => {
-    labels.value = res;
-  });
 });
 </script>
 
 <template>
   <div flex="~ col" w="full" h="full">
-    <span class="info-label">{{ labels.select_components_to_install }}</span>
-    <p class="sub-info-label">{{ labels.select_components_gui_hint }}</p>
+    <span class="info-label">{{ $t('select_components_to_install') }}</span>
+    <p class="sub-info-label">{{ $t('select_components_gui_hint') }}</p>
     <split-box flex="1 ~" mb="10vh" mx="1vw">
       <template #left>
-        <b>{{ labels.components }}</b>
+        <b>{{ $t('components') }}</b>
         <div mt="0.5rem">
-          <base-check-box flex="~ items-center" v-model="checkedAllBundle" :title="labels.select_all">
+          <base-check-box flex="~ items-center" v-model="checkedAllBundle" :title="$t('select_all')">
             <template #icon>
               <span flex="~ items-center justify-center" w="full" h="full" @click="handleSelectAll">
                 <i class="i-mdi:check" v-show="checkedAll" c="active" />
@@ -159,14 +146,14 @@ onMounted(() => {
       </template>
 
       <template #right>
-        <b>{{ labels.description }}</b>
+        <b>{{ $t('description') }}</b>
         <p mr="1.5rem">{{ curCheckComponent?.value.desc }}</p>
         <div>
-          <b>{{ labels.type }}</b>
+          <b>{{ $t('type') }}</b>
           <p>{{ curCheckComponent?.value.kindDesc.name }}</p>
         </div>
         <div v-if="curCheckComponent?.value.kindDesc.help">
-          <b>{{ labels.type_desc }}</b>
+          <b>{{ $t('type_desc') }}</b>
           <p mr="1.5rem">{{ curCheckComponent?.value.kindDesc.help }}</p>
         </div>
       </template>

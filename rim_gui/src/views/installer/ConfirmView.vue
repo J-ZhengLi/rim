@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { installConf, invokeCommand, Component, invokeLabelList } from '@/utils/index';
+import { installConf, invokeCommand, Component } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
-const labels = ref<Record<string, string>>({});
 
 const components = computed(() => {
   const list = installConf.getCheckedComponents();
@@ -19,30 +18,18 @@ async function handleNextClick() {
     config: installConf.config.value,
   });
 }
-
-onMounted(() => {
-  invokeLabelList([
-    'install',
-    'review_configuration',
-    'review_installation_hint',
-    'installation_path',
-    'components',
-  ]).then((res) => {
-    labels.value = res;
-  })
-})
 </script>
 
 <template>
   <div flex="~ col">
     <div>
-      <span class="info-label">{{ labels.review_configuration }}</span>
-      <p class="sub-info-label">{{ labels.review_installation_hint }}</p>
+      <span class="info-label">{{ $t('review_configuration') }}</span>
+      <p class="sub-info-label">{{ $t('review_installation_hint') }}</p>
     </div>
     <base-card flex="1" mx="1vw" mb="7%" overflow="auto">
-      <p m="0" font="bold">{{ labels.installation_path }}:</p>
+      <p m="0" font="bold">{{ $t('installation_path') }}:</p>
       <p my="0.5rem" ml="2rem">{{ installConf.config.value.path }}</p>
-      <p m="0" font="bold">{{ labels.components }}:</p>
+      <p m="0" font="bold">{{ $t('components') }}:</p>
       <div ml="2rem">
         <p my="0.5rem" v-for="component in components" :key="component.displayName">
           {{
@@ -53,7 +40,7 @@ onMounted(() => {
     </base-card>
 
     <page-nav-buttons
-      :nextLabel="labels.install"
+      :nextLabel="$t('install')"
       @back-clicked="routerBack"
       @next-clicked="handleNextClick"
     />

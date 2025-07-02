@@ -37,7 +37,6 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             common::set_locale,
             common::get_locale,
             common::app_info,
-            common::get_label,
             get_home_page_url,
             common::get_build_cfg_locale_str,
         ])
@@ -96,7 +95,9 @@ fn toolkit_name() -> String {
 async fn load_manifest_and_ret_version(path: Option<PathBuf>) -> Result<String> {
     // TODO: Give an option for user to specify another manifest.
     // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
-    let path_url = path.as_ref().map(|p| Url::from_file_path(p))
+    let path_url = path
+        .as_ref()
+        .map(Url::from_file_path)
         .transpose()
         .map_err(|_| anyhow!("unable to convert path '{path:?}' to URL"))?;
     let mut manifest = get_toolkit_manifest(path_url, false).await?;

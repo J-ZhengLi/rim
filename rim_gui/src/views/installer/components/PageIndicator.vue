@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { invokeLabel } from '@/utils';
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+const { t } = useI18n();
 const menu = computed(() => {
   const index = router.options.routes.findIndex(
     (route) => route.name === 'Installer'
@@ -30,7 +31,7 @@ onMounted(() => {
     if (idx !== 0) {
       const label = item.meta?.title as string;
       const order = item.meta?.order as number;
-      const localized = await invokeLabel(label.split(':')[0]);
+      const localized = t(label.split(':')[0]);
 
       const existingTitle = titles.value.find((m) => m.title === localized);
       if (existingTitle) {
