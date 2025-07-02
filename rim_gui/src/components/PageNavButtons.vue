@@ -8,8 +8,10 @@
 </template>
 
 <script setup lang="ts">
-import { invokeLabel } from '@/utils';
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     backLabel: String,
@@ -37,21 +39,9 @@ const nextBtnLbl = ref('');
 
 // watch prop changes for async label loading
 watch(() => props.backLabel, () => {
-    if (props.backLabel) {
-        backBtnLbl.value = props.backLabel;
-    } else {
-        invokeLabel('back').then((res) => {
-            backBtnLbl.value = res;
-        });
-    }
+    backBtnLbl.value = props.backLabel ? props.backLabel : t('back');
 }, { immediate: true });
 watch(() => props.nextLabel, () => {
-    if (props.nextLabel) {
-        nextBtnLbl.value = props.nextLabel;
-    } else {
-        invokeLabel('next').then((res) => {
-            nextBtnLbl.value = res;
-        });
-    }
+    nextBtnLbl.value = props.nextLabel ? props.nextLabel : t('next');
 }, { immediate: true });
 </script>

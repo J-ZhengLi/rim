@@ -1,8 +1,8 @@
 <template>
   <div flex="~ col">
     <div flex="1">
-      <span class="info-label">{{ labels.question_components_profile }}</span>
-      <p class="sub-info-label">{{ labels.components_profile_hint }}</p>
+      <span class="info-label">{{ $t('question_components_profile') }}</span>
+      <p class="sub-info-label">{{ $t('components_profile_hint') }}</p>
       <div class="cards-container">
         <base-card class="profile-card" :interactive=true @click="selectProfile('minimal')">
           <svg class="profile-pic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -12,8 +12,8 @@
             <path d="M21 7.5L12 12M12 12L3 7.5M12 12V21.5" stroke="#000000" stroke-width="1.5" stroke-linecap="round">
             </path>
           </svg>
-          <span class="profile-name">{{ labels.minimal }}</span>
-          <span class="profile-desc">{{ labels.minimal_desc }}</span>
+          <span class="profile-name">{{ $t('minimal') }}</span>
+          <span class="profile-desc">{{ $t('minimal_desc') }}</span>
         </base-card>
         <base-card class="profile-card" :interactive=true @click="selectProfile('standard')">
           <svg class="profile-pic" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -24,8 +24,8 @@
               d="M21 7.5L17 9.5M12 12L3 7.5M12 12V21.5M12 12C12 12 14.7426 10.6287 16.5 9.75C16.6953 9.65237 17 9.5 17 9.5M17 9.5V13M17 9.5L7.5 4.5"
               stroke="#000000" stroke-width="1.5" stroke-linecap="round"></path>
           </svg>
-          <span class="profile-name">{{ labels.standard }}</span>
-          <span class="profile-desc">{{ labels.standard_desc }}</span>
+          <span class="profile-name">{{ $t('standard') }}</span>
+          <span class="profile-desc">{{ $t('standard_desc') }}</span>
         </base-card>
         <base-card class="profile-card" :interactive=true @click="selectProfile('custom')">
           <svg class="profile-pic" version="1.1" id="_x32_" xmlns="http://www.w3.org/2000/svg"
@@ -37,8 +37,8 @@
               d="M187.351,252.156c4.032-1.445,6.254-5.746,5.122-9.868l-5.898-28.854c-0.472-1.767,0.072-3.649,1.419-4.88 l18.263-16.621c1.338-1.222,3.284-1.588,4.97-0.946l27.961,8.466c3.989,1.508,8.485-0.294,10.306-4.166l8.297-17.656 c1.837-3.881,0.366-8.485-3.346-10.591l-24.339-16.14c-1.58-0.91-2.535-2.632-2.436-4.452l1.16-24.66 c0.098-1.829,1.186-3.444,2.838-4.194l26.008-13.874c3.898-1.74,5.781-6.218,4.336-10.215l-6.603-18.371 c-1.454-4.024-5.755-6.254-9.876-5.121l-28.863,5.879c-1.767,0.5-3.632-0.053-4.871-1.41L195.185,56.23 c-1.24-1.357-1.614-3.265-0.955-4.978l8.468-27.944c1.507-4.006-0.294-8.494-4.175-10.306l-17.648-8.306 c-3.872-1.821-8.494-0.366-10.608,3.354l-16.131,24.34c-0.902,1.58-2.623,2.533-4.444,2.445l-24.66-1.169 c-1.82-0.08-3.462-1.205-4.202-2.847L106.974,4.821c-1.758-3.898-6.219-5.782-10.234-4.336L78.379,7.096 c-4.024,1.446-6.254,5.738-5.112,9.859l5.888,28.872c0.482,1.748-0.062,3.64-1.418,4.862l-18.264,16.63 c-1.356,1.222-3.274,1.597-4.987,0.955l-27.944-8.476c-3.988-1.516-8.476,0.304-10.305,4.175L7.939,81.622 c-1.82,3.872-0.366,8.494,3.346,10.599l24.339,16.14c1.588,0.902,2.534,2.615,2.436,4.435l-1.16,24.66 c-0.071,1.838-1.187,3.444-2.837,4.193L8.055,155.522c-3.9,1.749-5.782,6.219-4.336,10.216l6.611,18.37 c1.445,4.024,5.746,6.254,9.859,5.131l28.881-5.906c1.749-0.482,3.64,0.071,4.862,1.427l16.612,18.255 c1.24,1.356,1.598,3.283,0.954,4.987l-8.466,27.944c-1.499,3.997,0.304,8.485,4.175,10.305l17.648,8.297 c3.881,1.829,8.493,0.357,10.608-3.346l16.122-24.348c0.91-1.57,2.623-2.534,4.452-2.428l24.661,1.16 c1.829,0.09,3.453,1.178,4.211,2.846l13.847,25.989c1.767,3.9,6.219,5.8,10.233,4.354L187.351,252.156z M148.229,172.296 c-11.394,4.095-23.714,3.524-34.68-1.633c-10.965-5.157-19.245-14.275-23.358-25.678c-4.095-11.402-3.524-23.714,1.634-34.67 c5.156-10.974,14.283-19.254,25.677-23.357c11.402-4.105,23.714-3.534,34.67,1.641c10.956,5.139,19.254,14.258,23.366,25.66 c4.096,11.403,3.516,23.706-1.632,34.672C168.731,159.886,159.621,168.183,148.229,172.296z">
             </path>
           </svg>
-          <span class="profile-name">{{ labels.customize }}</span>
-          <span class="profile-desc">{{ labels.customize_desc }}</span>
+          <span class="profile-name">{{ $t('customize') }}</span>
+          <span class="profile-desc">{{ $t('customize_desc') }}</span>
         </base-card>
       </div>
     </div>
@@ -47,12 +47,10 @@
 </template>
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { installConf, invokeLabelList } from '@/utils';
+import { installConf } from '@/utils';
 import { handleRestrictedComponents } from '@/utils/common';
-import { onMounted, ref } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
-const labels = ref<Record<string, string>>({});
 
 function selectProfile(name: string) {
   switch (name) {
@@ -83,21 +81,6 @@ function selectProfile(name: string) {
     () => routerPush('/installer/customize_package_sources'),
   );
 }
-
-onMounted(() => {
-  invokeLabelList([
-    'minimal',
-    'minimal_desc',
-    'standard',
-    'standard_desc',
-    'customize',
-    'customize_desc',
-    'question_components_profile',
-    'components_profile_hint',
-  ]).then(res => {
-    labels.value = res;
-  })
-});
 </script>
 <style lang="css" scoped>
 .cards-container {

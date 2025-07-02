@@ -57,7 +57,6 @@ pub(super) fn main(
             common::supported_languages,
             common::set_locale,
             common::app_info,
-            common::get_label,
             self_update_now,
             toolkit_update_now,
             common::get_build_cfg_locale_str,
