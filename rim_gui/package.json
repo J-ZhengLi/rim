@@ -11,6 +11,7 @@
     "@iconify-json/mdi": "^1.2.3",
     "@tauri-apps/api": "1",
     "vue": "^3.5.13",
+    "vue-i18n": "^11.1.7",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {

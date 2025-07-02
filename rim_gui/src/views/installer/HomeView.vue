@@ -44,6 +44,7 @@ onMounted(() => {
     'confirm',
     'native',
     'select_file',
+    'toolkit_manifest_path',
   ];
   invokeLabelList(labelKeys).then((results) => {
     labels.value = results;
@@ -87,7 +88,7 @@ onMounted(() => {
 
     <base-panel width="60%" :show="showCustomizePanel" @close="showCustomizePanel = false">
       <div flex="~ col">
-        <b class="option-label">Toolkit Manifest Path</b>
+        <b class="option-label">{{ labels.toolkit_manifest_path }}</b>
         <inputton m="1rem" h="5vh" v-bind:modelValue="toolkitManifestPath" :button-label="labels.select_file"
           @change="(event: Event) => toolkitManifestPath = (event.target as HTMLInputElement).value"
           @keydown.enter="(event: Event) => toolkitManifestPath = (event.target as HTMLInputElement).value"
