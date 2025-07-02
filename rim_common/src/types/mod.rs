@@ -1,10 +1,12 @@
 mod build_config;
+mod configuration;
 mod tool_info;
 mod tool_map;
 mod toolkit_manifest;
 
 // re-exports
 pub use build_config::*;
+pub use configuration::*;
 pub use tool_info::*;
 pub use tool_map::*;
 pub use toolkit_manifest::*;

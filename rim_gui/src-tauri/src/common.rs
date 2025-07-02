@@ -16,6 +16,7 @@ use rim::{
     update::UpdateCheckBlocker,
     AppInfo, InstallConfiguration, UninstallConfiguration,
 };
+use rim_common::types::Language as DisplayLanguage;
 use rim_common::{types::ToolkitManifest, utils};
 use serde::{Deserialize, Serialize};
 use tauri::{App, AppHandle, Manager, Window, WindowUrl};
@@ -169,44 +170,36 @@ pub(crate) fn uninstall_toolkit_in_new_thread(window: tauri::Window, remove_self
 
 #[derive(serde::Serialize)]
 pub struct Language {
-    pub id: String,
-    pub name: String,
+    id: String,
+    name: String,
 }
 
 #[tauri::command]
 pub(crate) fn supported_languages() -> Vec<Language> {
-    rim::Language::possible_values()
+    DisplayLanguage::possible_values()
         .iter()
         .map(|lang| {
-            let id = lang.as_str();
-            match lang {
-                rim::Language::EN => Language {
-                    id: id.to_string(),
-                    name: "English".to_string(),
-                },
-                rim::Language::CN => Language {
-                    id: id.to_string(),
-                    name: "简体中文".to_string(),
-                },
-                _ => Language {
-                    id: id.to_string(),
-                    name: id.to_string(),
-                },
-            }
+            let id = lang.locale_str().to_string();
+            let name = match lang {
+                DisplayLanguage::EN => "English".to_string(),
+                DisplayLanguage::CN => "简体中文".to_string(),
+                _ => id.clone(),
+            };
+            Language { id, name }
         })
         .collect()
 }
 
 #[tauri::command]
 pub(crate) fn set_locale(language: String) -> Result<()> {
-    let lang: rim::Language = language.parse()?;
+    let lang: DisplayLanguage = language.parse()?;
     utils::set_locale(lang.locale_str());
     Ok(())
 }
 
 #[tauri::command]
 pub(crate) fn get_locale() -> String {
-    rust_i18n::locale().to_string()
+    utils::get_locale()
 }
 
 #[tauri::command]

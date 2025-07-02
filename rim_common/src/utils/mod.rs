@@ -19,12 +19,15 @@ pub use progress_bar::*;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::{LazyLock, Mutex},
     time::Duration,
 };
 
 use anyhow::Result;
 use url::Url;
+
+use crate::types::{Configuration, Language};
 
 static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
 
@@ -188,10 +191,21 @@ pub fn to_string_lossy<S: AsRef<OsStr>>(s: S) -> String {
     s.as_ref().to_string_lossy().to_string()
 }
 
-/// Allowing the i18n framework to use the current system locale.
+/// Use configured locale or detect system's current locale.
 pub fn use_current_locale() {
-    let locale = sys_locale::get_locale().unwrap_or_else(|| "en".to_string());
-    set_locale(&locale);
+    set_locale(&get_locale());
+}
+
+/// Getting the current locale by:
+/// 1. Checking RIM configuration file, return the configured language if has.
+/// 2. Check system's current locale using [`sys_locale`] crate.
+/// 3. Fallback to english locale.
+pub fn get_locale() -> String {
+    Configuration::try_load_from_config_dir()
+        .and_then(|c| c.language)
+        .map(|lang| lang.locale_str().to_string())
+        .or_else(|| sys_locale::get_locale())
+        .unwrap_or_else(|| Language::EN.locale_str().to_string())
 }
 
 pub fn set_locale(loc: &str) {
@@ -199,6 +213,16 @@ pub fn set_locale(loc: &str) {
 
     // update the current locale
     *CURRENT_LOCALE.lock().unwrap() = loc.to_string();
+    // update persistant locale config, but don't fail the program,
+    // because locale setting is not that critical.
+    let set_locale_inner_ = || -> Result<()> {
+        Configuration::load_from_config_dir()
+            .set_language(Some(Language::from_str(loc)?))
+            .write()
+    };
+    if let Err(e) = set_locale_inner_() {
+        error!("unable to save locale settings after changing to '{loc}': {e}");
+    }
 }
 
 /// Get the configured locale string from `configuration.toml`

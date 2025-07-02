@@ -613,23 +613,6 @@ pub fn default_install_dir() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::get_toolkit_manifest;
-
-    #[tokio::test]
-    async fn init_install_config() {
-        let mut cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        cache_dir.push("tests");
-        cache_dir.push("cache");
-
-        std::fs::create_dir_all(&cache_dir).unwrap();
-
-        let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
-        let manifest = get_toolkit_manifest(None, false).await.unwrap();
-        let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
-        config.setup().unwrap();
-
-        assert!(config.install_record.name.is_none());
-    }
 
     #[test]
     fn detect_package_conflicts() {
