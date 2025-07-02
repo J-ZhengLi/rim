@@ -4,7 +4,7 @@ use std::sync::{Arc, OnceLock};
 use std::{env, sync::atomic::AtomicBool};
 
 use anyhow::{Context, Result};
-use rim_common::types::TomlParser;
+use rim_common::types::{Configuration, TomlParser, UpdateTarget};
 use rim_common::{build_config, utils};
 use semver::Version;
 use tokio::sync::Notify;
@@ -13,7 +13,6 @@ use url::Url;
 use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
 use super::{AppInfo, GlobalOpts};
-use crate::configuration::{Configuration, UpdateTarget};
 use crate::toolkit;
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.

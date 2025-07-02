@@ -14,11 +14,11 @@ use rim::{
     toolkit::{self, Toolkit},
     update::{self, UpdateCheckBlocker, UpdateOpt},
 };
-use rim::{
-    configuration::{Configuration, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION},
-    get_toolkit_manifest, AppInfo,
+use rim::{get_toolkit_manifest, AppInfo};
+use rim_common::types::{
+    Configuration, ToolkitManifest, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION,
 };
-use rim_common::{types::ToolkitManifest, utils};
+use rim_common::utils;
 use tauri::{async_runtime, AppHandle, Manager};
 use url::Url;
 
@@ -55,6 +55,7 @@ pub(super) fn main(
             check_updates_in_background,
             get_toolkit_from_url,
             common::supported_languages,
+            common::get_locale,
             common::set_locale,
             common::app_info,
             self_update_now,

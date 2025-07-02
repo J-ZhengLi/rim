@@ -8,7 +8,6 @@ mod custom_instructions;
 mod dependency_handler;
 pub(crate) mod directories;
 pub mod install;
-mod locales;
 pub(crate) mod os;
 pub(crate) mod parser;
 mod path_ext;
@@ -21,13 +20,16 @@ pub(crate) mod uninstall;
 pub mod update;
 
 // re-exports
-pub use locales::Language;
 pub(crate) use path_ext::PathExt;
 pub use toolkit_manifest_ext::*;
 
-use crate::{cli, configuration::Configuration, fingerprint::InstallationRecord};
+use crate::{cli, fingerprint::InstallationRecord};
 use anyhow::{bail, Result};
-use rim_common::{build_config, types::TomlParser, utils};
+use rim_common::{
+    build_config,
+    types::{Configuration, TomlParser},
+    utils,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     env,

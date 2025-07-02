@@ -196,3 +196,15 @@ fn install_record_created() {
     println!("record content: {record_content}");
     assert!(record_content.contains(&format!("{}", process.default_install_dir().display())));
 }
+
+#[rim_test]
+fn configuration_created() {
+    let process = default_install(false);
+    let config_dir = process.config_dir();
+
+    let config = config_dir.join("configuration.toml");
+    assert!(config.is_file());
+
+    let config_content = std::fs::read_to_string(config).unwrap();
+    assert!(config_content.contains("language ="));
+}

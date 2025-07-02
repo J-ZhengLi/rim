@@ -9,11 +9,12 @@ mod tryit;
 mod uninstall;
 mod update;
 
-use crate::core::{GlobalOpts, Language};
+use crate::core::GlobalOpts;
 use anyhow::{anyhow, bail, Result};
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand, ValueHint};
 use common::handle_user_choice;
+use rim_common::types::Language;
 use rim_common::utils;
 use std::{
     path::{Path, PathBuf},
@@ -132,6 +133,13 @@ impl ExecStatus {
     setter!(no_pause(self.no_pause, bool));
 }
 
+fn possible_lang() -> Vec<&'static str> {
+    Language::possible_values()
+        .iter()
+        .map(Language::as_str)
+        .collect()
+}
+
 /// Install rustup, rust toolchain, and various tools.
 // NOTE: If you changed anything in this struct, or any other child types that related to
 // this struct, make sure the README doc is updated as well,
@@ -173,7 +181,7 @@ pub struct Installer {
     insecure: bool,
 
     /// Specify another language to display
-    #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
+    #[arg(short, long, value_name = "LANG", value_parser = possible_lang())]
     pub lang: Option<String>,
     /// Set another path to install Rust.
     #[arg(long, value_name = "PATH", value_hint = ValueHint::DirPath)]
@@ -278,7 +286,7 @@ pub struct Manager {
     no_modify_env: bool,
 
     /// Specify another language to display
-    #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
+    #[arg(short, long, value_name = "LANG", value_parser = possible_lang())]
     pub lang: Option<String>,
     #[command(subcommand)]
     pub command: Option<ManagerSubcommands>,
@@ -623,6 +631,9 @@ fn setup(
     no_modify_path: bool,
     lang: Option<&str>,
 ) -> Result<()> {
+    // Setup logger
+    utils::Logger::new().verbose(verbose).quiet(quiet).setup()?;
+
     // Setup locale
     if let Some(lang_str) = lang {
         let parsed: Language = lang_str.parse()?;
@@ -630,8 +641,6 @@ fn setup(
     } else {
         utils::use_current_locale();
     }
-    // Setup logger
-    utils::Logger::new().verbose(verbose).quiet(quiet).setup()?;
     // Setup global options
     GlobalOpts::set(verbose, quiet, yes, no_modify_env, no_modify_path);
 
