@@ -3,6 +3,13 @@ import { installConf, invokeCommand } from "@/utils";
 import { appWindow } from "@tauri-apps/api/window";
 import { onMounted, ref } from "vue";
 import { event } from "@tauri-apps/api";
+import { useI18n } from "vue-i18n";
+
+interface MenuItem {
+    icon?: string,
+    label: string
+    action: () => void
+}
 
 const { isSetupMode } = defineProps({
     isSetupMode: {
@@ -10,15 +17,45 @@ const { isSetupMode } = defineProps({
         default: true,
     },
 });
+const { t } = useI18n();
 
 const exitDisabled = ref(false);
 const labels = ref<Record<string, string>>({});
 const appTitle = ref('');
 
+// Drop-dowm menu controls
+const showMenu = ref(false);
+const menuItems: MenuItem[] = [
+    {
+        icon: '/icons/settings.svg',
+        label: t('settings'),
+        action: () => showPanel('settings'),
+    },
+    {
+        icon: '/icons/help.svg',
+        label: t('help'),
+        action: () => showPanel('help'),
+    },
+    {
+        icon: '/icons/info.svg',
+        label: t('about'),
+        action: () => showPanel('about'),
+    },
+    {
+        icon: '/icons/exit.svg',
+        label: t('exit'),
+        action: () => close(),
+    }
+]
+
 function minimize() { appWindow.minimize(); }
 function maximize() { appWindow.toggleMaximize() }
 function close() {
     invokeCommand('close_window');
+}
+
+function showPanel(name: string) {
+    console.log("showing: ", name);
 }
 
 onMounted(() => {
@@ -27,7 +64,7 @@ onMounted(() => {
             labels.value.logoText = res
         }
     });
-    
+
     event.listen('toggle-exit-blocker', (event) => {
         if (typeof event.payload === 'boolean') {
             exitDisabled.value = event.payload;
@@ -50,12 +87,28 @@ onMounted(() => {
 
         <div data-tauri-drag-region class="titlebar-buttons" id="titlebar-buttons">
             <!-- FIXME: we need an English translation for GUI before enabling this -->
-            <div class="titlebar-button">
+            <div class="titlebar-button" @click="showMenu = !showMenu">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 18 24">
-                    <path d="M2 8C2 7.44772 2.44772 7 3 7H21C21.5523 7 22 7.44772 22 8C22 8.55228 21.5523 9 21 9H3C2.44772 9 2 8.55228 2 8Z"></path>
-                    <path d="M2 12C2 11.4477 2.44772 11 3 11H21C21.5523 11 22 11.4477 22 12C22 12.5523 21.5523 13 21 13H3C2.44772 13 2 12.5523 2 12Z"></path>
-                    <path d="M3 15C2.44772 15 2 15.4477 2 16C2 16.5523 2.44772 17 3 17H15C15.5523 17 16 16.5523 16 16C16 15.4477 15.5523 15 15 15H3Z"></path>
+                    <path
+                        d="M2 8C2 7.44772 2.44772 7 3 7H21C21.5523 7 22 7.44772 22 8C22 8.55228 21.5523 9 21 9H3C2.44772 9 2 8.55228 2 8Z">
+                    </path>
+                    <path
+                        d="M2 12C2 11.4477 2.44772 11 3 11H21C21.5523 11 22 11.4477 22 12C22 12.5523 21.5523 13 21 13H3C2.44772 13 2 12.5523 2 12Z">
+                    </path>
+                    <path
+                        d="M3 15C2.44772 15 2 15.4477 2 16C2 16.5523 2.44772 17 3 17H15C15.5523 17 16 16.5523 16 16C16 15.4477 15.5523 15 15 15H3Z">
+                    </path>
                 </svg>
+                <div class="menu-wrapper">
+                    <transition name="dropdown">
+                        <ul v-if="showMenu" class="dropdown-menu">
+                            <li v-for="(item, index) in menuItems" :key="index" class="menu-item" @click="item.action">
+                                <img :src="item.icon" class="icon" />
+                                <span class="label">{{ item.label }}</span>
+                            </li>
+                        </ul>
+                    </transition>
+                </div>
             </div>
 
             <div class="titlebar-button" id="titlebar-minimize" @click="minimize">
@@ -66,7 +119,8 @@ onMounted(() => {
 
             <div class="titlebar-button" id="titlebar-maximize" @click="maximize">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 16 16">
-                    <path d="M4.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3zM5 4.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V5a.5.5 0 0 1 .5-.5" />
+                    <path
+                        d="M4.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3zM5 4.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V5a.5.5 0 0 1 .5-.5" />
                 </svg>
             </div>
 
@@ -124,7 +178,7 @@ onMounted(() => {
     border-radius: 3px;
     margin-inline: 3px;
     padding: 0;
-    fill:rgb(155, 155, 155);
+    fill: rgb(155, 155, 155);
 }
 
 .titlebar-button:hover {
@@ -142,36 +196,62 @@ onMounted(() => {
     font-size: 2.3vh;
 }
 
-.sub-menu {
+.menu-wrapper {
+    position: relative;
+    margin-top: 5vh;
+}
+
+.dropdown-menu {
     position: absolute;
-    background-color: rgba(2, 2, 10, 0.8);
-    transform: translateY(70%);
-    border-radius: 3px;
-}
-
-.sub-menu ul {
-    margin: 0;
+    right: 0;
     padding: 0;
-}
-
-.sub-menu ul li {
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .5);
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 16px 32px rgba(0, 0, 0, .12);
+    backdrop-filter: url(#frosted);
+    -webkit-backdrop-filter: blur(20px);
+    overflow: hidden;
     list-style: none;
+    transform-origin: top center;
+}
+
+.menu-item {
     display: flex;
-    padding: 1rem;
-    color: white;
-    font-size: 14px;
-    text-decoration: none;
+    align-items: center;
+    padding: 2vh 4vw;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    gap: 2vw;
 }
 
-.sub-menu ul li:hover {
-  background-color: #526ecc;
+.menu-item:hover {
+    --uno: 'bg-light-primary';
 }
 
-.fade-leave-active {
-    transition: all .5s ease-out;
+.icon {
+    position: absolute;
+    left: 15%;
+    width: 1.5rem;
+    height: 1.5rem;
 }
 
-.fade-leave-to {
+.label {
+    margin-left: 30%;
+    font-weight: 500;
+    font-size: clamp(0.5rem, 2.6vh, 1.5rem);
+    --uno: 'text-regular';
+}
+
+/* Animation classes */
+.dropdown-enter-active,
+.dropdown-leave-active {
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
     opacity: 0;
+    transform: scaleY(0.8) translateY(-10px);
 }
 </style>
