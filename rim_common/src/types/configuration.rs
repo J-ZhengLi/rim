@@ -1,10 +1,12 @@
 //! The major configuration file for this app, containing information about which version to skip,
 //! when the updates are checked, how long until next updates will be checked etc.
 
+use crate::setter;
+use crate::{dirs::rim_config_dir, types::TomlParser};
 use anyhow::Result;
 use chrono::{NaiveDateTime, Utc};
-use rim_common::{dirs::rim_config_dir, types::TomlParser};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::{collections::HashMap, fmt::Display, time::Duration};
 
 /// Default update check timeout is 1440 minutes (1 day)
@@ -13,26 +15,10 @@ const DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES: u64 = 1440;
 pub const DEFAULT_UPDATE_CHECK_DURATION: Duration =
     Duration::from_secs(60 * DEFAULT_UPDATE_CHECK_TIMEOUT_IN_MINUTES);
 
-fn default_autostart_policy() -> bool {
-    // We don't have a setting for auto-start yet,
-    // therefore it'd better to disable auto-start by default so it won't annoys the user.
-    false
-}
-
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Configuration {
-    #[serde(default = "default_autostart_policy")]
-    pub autostart: bool,
+    pub language: Option<Language>,
     pub update: UpdateCheckerOpt,
-}
-
-impl Default for Configuration {
-    fn default() -> Self {
-        Self {
-            autostart: default_autostart_policy(),
-            update: UpdateCheckerOpt::default(),
-        }
-    }
 }
 
 impl TomlParser for Configuration {
@@ -53,12 +39,17 @@ impl Configuration {
         self
     }
 
-    /// Try loading from [`rim_config_dir`].
+    /// Try loading from [`rim_config_dir`], return `None` if it doesn't exists yet.
+    pub fn try_load_from_config_dir() -> Option<Self> {
+        Self::load_from_dir(rim_config_dir()).ok()
+    }
+
+    /// Loading from [`rim_config_dir`] or return default.
     ///
     /// This guarantee to return a [`VersionSkip`] object,
     /// even if the file does not exists, the default will got returned.
     pub fn load_from_config_dir() -> Self {
-        Self::load_from_dir(rim_config_dir()).unwrap_or_default()
+        Self::try_load_from_config_dir().unwrap_or_default()
     }
 
     /// Write the configuration to [`rim_config_dir`].
@@ -68,6 +59,51 @@ impl Configuration {
 
     pub fn update_skipped<T: AsRef<str>>(&self, target: UpdateTarget, version: T) -> bool {
         self.update.is_skipped(target, version)
+    }
+
+    setter!(set_language(self.language, Option<Language>));
+}
+
+#[derive(Debug, Deserialize, Serialize, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Language {
+    CN,
+    #[default]
+    EN,
+}
+
+impl Language {
+    pub fn possible_values() -> &'static [Language] {
+        &[Self::CN, Self::EN]
+    }
+    /// Returns the string representation of this enum,
+    /// this will be the same one that parsed from commandline input.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::CN => "cn",
+            Self::EN => "en",
+        }
+    }
+    /// This is the `str` used for setting locale,
+    /// make sure the values match the filenames under `<root>/locales`.
+    pub fn locale_str(&self) -> &str {
+        match self {
+            Self::CN => "zh-CN",
+            Self::EN => "en-US",
+        }
+    }
+}
+
+impl FromStr for Language {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "cn" | "zh-cn" => Ok(Self::CN),
+            "en" | "en-us" => Ok(Self::EN),
+            _ => Err(anyhow::anyhow!(
+                "invalid or unsupported language option: {s}"
+            )),
+        }
     }
 }
 
@@ -243,5 +279,20 @@ manager = { last-run = "1970-01-01T00:00:00" }"#;
         assert_eq!(expected.conf_mut(manager).timeout, Some(60));
         expected = expected.remind_later(manager, 60);
         assert_eq!(expected.conf_mut(manager).timeout, Some(120));
+    }
+
+    #[test]
+    fn lang_config() {
+        let input = r#"language = "CN"
+
+[update]
+"#;
+
+        let expected = Configuration::from_str(input).unwrap();
+        assert_eq!(expected.language, Some(Language::CN));
+
+        // check if the language consistance since we have a `FromStr` impl for it.
+        let back_to_str = toml::to_string(&expected).unwrap();
+        assert_eq!(back_to_str, input);
     }
 }

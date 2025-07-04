@@ -40,9 +40,20 @@ impl TomlParser for ToolkitManifest {
 }
 
 impl ToolkitManifest {
-    /// Get a list of all optional components in rust toolchain.
-    pub fn optional_toolchain_components(&self) -> &[String] {
-        self.rust.optional_components.as_slice()
+    /// Get a iterator of all optional component names in rust toolchain, along
+    /// with a flag indicating whether it is an optional component or not.
+    pub fn toolchain_components(&self) -> Vec<(&str, bool)> {
+        self.rust
+            .components
+            .iter()
+            .map(|s| (s.as_str(), false))
+            .chain(
+                self.rust
+                    .optional_components
+                    .iter()
+                    .map(|s| (s.as_str(), true)),
+            )
+            .collect()
     }
 
     /// Get the description of a specific tool.
@@ -495,8 +506,16 @@ optional-components = ["opt_c1", "opt_c2"]
 "#;
 
         let expected = ToolkitManifest::from_str(input).unwrap();
-        let opt_components = expected.optional_toolchain_components();
-        assert_eq!(opt_components, &["opt_c1", "opt_c2"]);
+        let components = expected.toolchain_components();
+        assert_eq!(
+            components,
+            &[
+                ("c1", false),
+                ("c2", false),
+                ("opt_c1", true),
+                ("opt_c2", true)
+            ]
+        );
     }
 
     #[test]

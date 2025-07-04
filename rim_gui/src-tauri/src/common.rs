@@ -11,21 +11,20 @@ use std::{
 use super::consts::*;
 use crate::error::Result;
 use rim::{
-    cli::{ComponentCommand, ExecutableCommand, ManagerSubcommands},
+    cli::{ExecutableCommand, ManagerSubcommands},
     components::Component,
     update::UpdateCheckBlocker,
     AppInfo, InstallConfiguration, UninstallConfiguration,
 };
+use rim_common::types::Language as DisplayLanguage;
 use rim_common::{types::ToolkitManifest, utils};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{App, AppHandle, Manager, Window, WindowUrl};
 use url::Url;
 
 #[allow(clippy::type_complexity)]
 static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
     LazyLock::new(|| Mutex::new(vec![]));
-
-static SHARED_CONFIGS: Mutex<SharedConfigs> = Mutex::new(SharedConfigs::new());
 
 /// Configure the logger to use a communication channel ([`mpsc`]),
 /// allowing us to send logs across threads.
@@ -92,13 +91,12 @@ fn emit<S: Serialize + Clone>(window: &Window, event: &str, msg: S) {
 pub(crate) fn install_toolkit_in_new_thread(
     window: tauri::Window,
     components_list: Vec<Component>,
-    install_dir: PathBuf,
+    config: BaseConfiguration,
     manifest: ToolkitManifest,
     is_update: bool,
 ) {
     UpdateCheckBlocker::block();
 
-    let rustup_dist_server = SHARED_CONFIGS.lock().unwrap().rustup_dist_server.clone();
     let handle = thread::spawn(move || -> anyhow::Result<()> {
         // FIXME: this is needed to make sure the other thread could receive the first couple messages
         // we sent in this thread. But it feels very wrong, there has to be better way.
@@ -111,14 +109,23 @@ pub(crate) fn install_toolkit_in_new_thread(
             |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
         let progress = utils::Progress::new(&pos_cb);
 
+        let install_dir = PathBuf::from(&config.path);
         // TODO: Use continuous progress
-        let config = InstallConfiguration::new(&install_dir, &manifest)?
+        let mut i_config = InstallConfiguration::new(&install_dir, &manifest)?
             .with_progress_indicator(Some(progress))
-            .with_rustup_dist_server(rustup_dist_server);
+            .with_rustup_dist_server(config.rustup_dist_server)
+            .with_rustup_update_root(config.rustup_update_root)
+            .insecure(config.insecure);
+        if let (Some(registry_name), Some(registry_value)) =
+            (config.cargo_registry_name, config.cargo_registry_value)
+        {
+            i_config = i_config.with_cargo_registry(registry_name, registry_value);
+        }
+
         if is_update {
-            config.update(components_list)?;
+            i_config.update(components_list)?;
         } else {
-            config.install(components_list)?;
+            i_config.install(components_list)?;
         }
 
         // 安装完成后，发送安装完成事件
@@ -163,44 +170,36 @@ pub(crate) fn uninstall_toolkit_in_new_thread(window: tauri::Window, remove_self
 
 #[derive(serde::Serialize)]
 pub struct Language {
-    pub id: String,
-    pub name: String,
-}
-
-#[tauri::command]
-pub(crate) fn get_label(key: &str) -> String {
-    t!(key).into()
+    id: String,
+    name: String,
 }
 
 #[tauri::command]
 pub(crate) fn supported_languages() -> Vec<Language> {
-    rim::Language::possible_values()
+    DisplayLanguage::possible_values()
         .iter()
         .map(|lang| {
-            let id = lang.as_str();
-            match lang {
-                rim::Language::EN => Language {
-                    id: id.to_string(),
-                    name: "English".to_string(),
-                },
-                rim::Language::CN => Language {
-                    id: id.to_string(),
-                    name: "简体中文".to_string(),
-                },
-                _ => Language {
-                    id: id.to_string(),
-                    name: id.to_string(),
-                },
-            }
+            let id = lang.locale_str().to_string();
+            let name = match lang {
+                DisplayLanguage::EN => "English".to_string(),
+                DisplayLanguage::CN => "简体中文".to_string(),
+                _ => id.clone(),
+            };
+            Language { id, name }
         })
         .collect()
 }
 
 #[tauri::command]
 pub(crate) fn set_locale(language: String) -> Result<()> {
-    let lang: rim::Language = language.parse()?;
+    let lang: DisplayLanguage = language.parse()?;
     utils::set_locale(lang.locale_str());
     Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn get_locale() -> String {
+    utils::get_locale()
 }
 
 #[tauri::command]
@@ -221,32 +220,6 @@ pub(crate) fn close_window(win: Window) {
 #[tauri::command]
 pub(crate) fn get_build_cfg_locale_str(key: &str) -> &str {
     utils::build_cfg_locale(key)
-}
-
-/// Simple representation of a Rust's function signature, typically got sent
-/// to the frontend, therefore the frontend knows which and how to invoke a
-/// certain Rust function.
-#[derive(Clone, Debug, Serialize)]
-pub(crate) struct FrontendFunctionPayload {
-    pub(crate) name: String,
-    pub(crate) args: Vec<(&'static str, String)>,
-    /// The **identifier** of function return, not the actual return value,
-    /// because the frontend can retrieve the return value itself, but it
-    /// need to known how to deal with it base on an unique identifier.
-    pub(crate) ret_id: Option<&'static str>,
-}
-
-impl FrontendFunctionPayload {
-    pub(crate) fn new<S: Into<String>>(name: S) -> Self {
-        Self {
-            name: name.into(),
-            args: vec![],
-            ret_id: None,
-        }
-    }
-
-    setter!(with_args(self.args, Vec<(&'static str, String)>));
-    setter!(with_ret_id(self.ret_id, identifier: &'static str) { Some(identifier) });
 }
 
 /// Build the installer window with shared configuration.
@@ -305,18 +278,23 @@ pub(crate) fn setup_manager_window(
 
 fn setup_window_(app: &mut App, label: &str, url: WindowUrl, visible: bool) -> Result<Window> {
     let window = tauri::WindowBuilder::new(app, label, url)
-        .inner_size(800.0, 600.0)
-        .min_inner_size(640.0, 480.0)
+        .inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
+        .min_inner_size(WINDOW_WIDTH, WINDOW_HEIGHT)
         .decorations(false)
-        .transparent(true)
         .title(AppInfo::name())
         .visible(visible)
         .build()?;
 
-    #[cfg(not(target_os = "linux"))]
-    if let Err(e) = window_shadows::set_shadow(&window, true) {
-        log::error!("unable to apply window effects: {e}");
-    }
+    // when opening the application, there's a chance that everything appear
+    // to be un-arranged after loaded due to WebView not being fully initialized,
+    // therefore we add 1 second delay to hide it after the content was loaded.
+    // FIXME: maybe it's better to have a simple splash screen
+    window.eval(
+        "window.addEventListener('DOMContentLoaded', () => {
+    document.body.style.visibility = 'hidden';
+    setTimeout(() => { document.body.style.visibility = 'visible' }, 1000);
+});",
+    )?;
 
     // enable dev console only on debug mode
     #[cfg(debug_assertions)]
@@ -355,48 +333,29 @@ pub(crate) fn handle_manager_args(app: AppHandle, cli: rim::cli::Manager) {
     }
 }
 
-pub(crate) struct SharedConfigs {
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BaseConfiguration {
+    pub(crate) path: PathBuf,
+    pub(crate) add_to_path: bool,
+    pub(crate) insecure: bool,
     pub(crate) rustup_dist_server: Option<Url>,
+    pub(crate) rustup_update_root: Option<Url>,
+    pub(crate) cargo_registry_name: Option<String>,
+    pub(crate) cargo_registry_value: Option<String>,
 }
 
-impl SharedConfigs {
-    pub(crate) const fn new() -> Self {
-        Self {
-            rustup_dist_server: None,
+impl BaseConfiguration {
+    pub(crate) fn new<P: Into<PathBuf>>(path: P) -> Self {
+        let (registry_name, registry_value) = rim::default_cargo_registry();
+        BaseConfiguration {
+            path: path.into(),
+            add_to_path: true,
+            insecure: false,
+            rustup_dist_server: Some(rim::default_rustup_dist_server().clone()),
+            rustup_update_root: Some(rim::default_rustup_update_root().clone()),
+            cargo_registry_name: Some(registry_name.to_string()),
+            cargo_registry_value: Some(registry_value.to_string()),
         }
     }
-}
-
-impl From<&rim::cli::Installer> for SharedConfigs {
-    fn from(value: &rim::cli::Installer) -> Self {
-        Self {
-            rustup_dist_server: value.rustup_dist_server.clone(),
-        }
-    }
-}
-
-impl From<&rim::cli::Manager> for SharedConfigs {
-    fn from(value: &rim::cli::Manager) -> Self {
-        let rustup_dist_server = value.command.as_ref().and_then(|cmd| match cmd {
-            ManagerSubcommands::Component {
-                command:
-                    ComponentCommand::Install {
-                        rustup_dist_server, ..
-                    },
-            }
-            | ManagerSubcommands::Install {
-                rustup_dist_server, ..
-            }
-            | ManagerSubcommands::Update {
-                rustup_dist_server, ..
-            } => rustup_dist_server.clone(),
-            _ => None,
-        });
-        Self { rustup_dist_server }
-    }
-}
-
-pub(crate) fn update_shared_configs<T: Into<SharedConfigs>>(value: T) {
-    let mut guard = SHARED_CONFIGS.lock().unwrap();
-    *guard = value.into();
 }
