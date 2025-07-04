@@ -24,7 +24,8 @@ const labels = ref<Record<string, string>>({});
 const appTitle = ref('');
 
 // Drop-dowm menu controls
-const showMenu = ref(false);
+const isMenuShown = ref(false);
+const isPanelShown = ref(false);
 const menuItems: MenuItem[] = [
     {
         icon: '/icons/settings.svg',
@@ -46,7 +47,7 @@ const menuItems: MenuItem[] = [
         label: t('exit'),
         action: () => close(),
     }
-]
+];
 
 function minimize() { appWindow.minimize(); }
 function maximize() { appWindow.toggleMaximize() }
@@ -56,6 +57,7 @@ function close() {
 
 function showPanel(name: string) {
     console.log("showing: ", name);
+    isPanelShown.value = true;
 }
 
 onMounted(() => {
@@ -87,7 +89,7 @@ onMounted(() => {
 
         <div data-tauri-drag-region class="titlebar-buttons" id="titlebar-buttons">
             <!-- FIXME: we need an English translation for GUI before enabling this -->
-            <div class="titlebar-button" @click="showMenu = !showMenu">
+            <div class="titlebar-button" @click="isMenuShown = !isMenuShown">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 18 24">
                     <path
                         d="M2 8C2 7.44772 2.44772 7 3 7H21C21.5523 7 22 7.44772 22 8C22 8.55228 21.5523 9 21 9H3C2.44772 9 2 8.55228 2 8Z">
@@ -101,7 +103,7 @@ onMounted(() => {
                 </svg>
                 <div class="menu-wrapper">
                     <transition name="dropdown">
-                        <ul v-if="showMenu" class="dropdown-menu">
+                        <ul v-if="isMenuShown" class="dropdown-menu">
                             <li v-for="(item, index) in menuItems" :key="index" class="menu-item" @click="item.action">
                                 <img :src="item.icon" class="icon" />
                                 <span class="label">{{ item.label }}</span>
@@ -133,6 +135,15 @@ onMounted(() => {
             </div>
         </div>
     </div>
+    <base-panel
+        width="80%"
+        height="80%"
+        :show="isPanelShown"
+        class="extra-panel" 
+        @close="isPanelShown = false"
+    >
+        TODO
+    </base-panel>
 </template>
 
 <style scoped>
@@ -241,6 +252,9 @@ onMounted(() => {
     font-weight: 500;
     font-size: clamp(0.5rem, 2.6vh, 1.5rem);
     --uno: 'text-regular';
+}
+
+.extra-panel {
 }
 
 /* Animation classes */

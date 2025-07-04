@@ -141,7 +141,6 @@ document.addEventListener('click', closeOnClickOutside);
     background-color: white;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     list-style: none;
-    z-index: 100;
     max-height: 200px;
     overflow-y: auto;
 }

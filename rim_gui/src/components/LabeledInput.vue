@@ -83,7 +83,7 @@ const handleInput = (event: Event) => {
     border-radius: 4px;
     font-size: 13px;
     white-space: nowrap;
-    z-index: 1000;
+    z-index: 999;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     pointer-events: none;
 }
