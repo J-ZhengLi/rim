@@ -30,11 +30,11 @@ pub fn panic_error(what: &str, err: impl Into<anyhow::Error>) -> ! {
     pe(what, err);
     #[track_caller]
     fn pe(what: &str, err: anyhow::Error) -> ! {
-        let mut result = format!("{}\nerror: {}", what, err);
+        let mut result = format!("{what}\nerror: {err}");
         for cause in err.chain().skip(1) {
             let _ = writeln!(result, "\nCaused by:");
-            let _ = write!(result, "{}", cause);
+            let _ = write!(result, "{cause}");
         }
-        panic!("\n{}", result);
+        panic!("\n{result}");
     }
 }

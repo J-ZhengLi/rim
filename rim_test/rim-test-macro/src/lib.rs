@@ -10,7 +10,7 @@ pub fn rim_test(attr: TokenStream, item: TokenStream) -> TokenStream {
             "ignore" => {
                 ignore = true;
             }
-            _ => panic!("unknown rule: {:?}", rule),
+            _ => panic!("unknown rule: {rule:?}"),
         }
     }
 
