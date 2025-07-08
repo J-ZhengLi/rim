@@ -23,10 +23,7 @@ rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
 mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
-vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
-vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
 codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
-vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
 coding-guidelines-ruleset = "Rust 编程规范的代码检查规则集，提供了基于该规范要求或建议的全部自定义检查规则 (lint)。"
 ylong_json = "ylong_json 是一个通用的 JSON 语法解析库，提供了 JSON 文本和特定数据结构之间的相互转换功能。"
@@ -44,7 +41,7 @@ ylong_macros：实现 ylong_runtime 所需的过程宏，目前主要用于提�
 [tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
 "Rust 优选工具集" = ["cargo-nextest"]
-IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
+IDE = ["codearts-rust"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
@@ -154,19 +151,6 @@ version = "1.0.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"
 
-[tools.target.x86_64-unknown-linux-gnu.vscodium]
-gui-only = true
-version = "1.99.32562"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz"
-display-name = "VSCodium"
-
-[tools.target.x86_64-unknown-linux-gnu.vscode-rust-analyzer]
-gui-only = true
-version = "0.3.2379"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-x64.vsix"
-display-name = "rust-analyzer (插件)"
-requires = ["vscodium"]
-
 [tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
 optional = true
 version = "0.9.94"
@@ -208,19 +192,6 @@ optional = true
 version = "1.0.0"
 url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip"
 kind = "crate"
-
-[tools.target.aarch64-unknown-linux-gnu.vscodium]
-gui-only = true
-version = "1.99.32562"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-arm64-1.99.32562.tar.gz"
-display-name = "VSCodium"
-
-[tools.target.aarch64-unknown-linux-gnu.vscode-rust-analyzer]
-gui-only = true
-version = "0.3.2379"
-url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-arm64.vsix"
-display-name = "rust-analyzer (插件)"
-requires = ["vscodium"]
 
 [tools.target.aarch64-unknown-linux-gnu.cargo-nextest]
 optional = true
