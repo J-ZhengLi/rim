@@ -70,8 +70,6 @@ mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust
 # ========================= Manifest For Community Toolkit START =========================
 [toolkit.community.config]
 date = "2025-05-15"
-# These tools does not allow re-distribution
-web-only = [ "buildtools", "vscode" ]
 
 [toolkit.community.value]
 name = "Rust 中国社区发行版"
@@ -94,10 +92,7 @@ rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
 mingw64 = "编译器在 x86_64 Windows GNU 环境下的依赖组件"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
-vscode = "Visual Studio Code (简称 VS Code) 将代码编辑器的简洁性与开发者核心的 编辑-构建-调试 流程相结合。它提供全面的代码编辑、导航和理解支持，同时具备轻量级调试功能、丰富的扩展模型，并可与现有工具无缝集成，提升开发效率。"
-vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
 codearts-rust = "CodeArts IDE 定位华为云开发者桌面，是利用自主可控技术内核，面向华为云开发者提供的智能化可扩展桌面集成开发环境（IDE），结合华为云行业和产业开发套件，实现极致的一站式用云和开发体验。"
-vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 buildtools = "Visual Studio 构建/生成工具允许您通过命令行界面构建 Visual Studio 项目，支持的项目类型包括：ASP.NET、Azure、C++ 桌面应用等。对于 msvc 目标平台，要将程序编译为 `.exe` 文件，Rust 需要一个链接器、库以及 Windows API 的导入库。而这些工具和库可以通过安装此组件来获取。"
 coding-guidelines-ruleset = "Rust 编程规范的代码检查规则集，提供了基于该规范要求或建议的全部自定义检查规则 (lint)。"
 ylong_json = "ylong_json 是一个通用的 JSON 语法解析库，提供了 JSON 文本和特定数据结构之间的相互转换功能。"
@@ -109,7 +104,7 @@ ylong_runtime = "Rust 异步运行时库，用于生成并执行异步任务。�
 [toolkit.community.value.tools.group]
 "Rust 基础工具集" = ["mingw64", "buildtools"]
 "Rust 优选工具集" = ["cargo-nextest"]
-IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
+IDE = ["codearts-rust"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
@@ -136,8 +131,6 @@ ylong_http = { optional = true, kind = "crate", version = "1.0.0", url = "https:
 ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
 
 [toolkit.community.value.tools.target.x86_64-unknown-linux-gnu]
-vscodium = { gui-only = true, display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz" }
-vscode-rust-analyzer = { gui-only = true, display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2379", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-x64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz" }
 coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = ["rust"], kind = "rule-set", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-unknown-linux-gnu.tar.xz" }
 ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip" }
@@ -147,8 +140,6 @@ ylong_http = { optional = true, kind = "crate", version = "1.0.0", url = "https:
 ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
 
 [toolkit.community.value.tools.target.aarch64-unknown-linux-gnu]
-vscodium = { gui-only = true, display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-arm64-1.99.32562.tar.gz" }
-vscode-rust-analyzer = { gui-only = true, display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2379", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-arm64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-aarch64-unknown-linux-gnu.tar.gz" }
 coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = ["rust"], kind = "rule-set", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-aarch64-unknown-linux-gnu.tar.xz" }
 ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip" }
@@ -161,8 +152,6 @@ ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "htt
 # ========================= Manifest For BiSheng Toolkit START =========================
 [toolkit.bisheng.config]
 date = "2023-08-24"
-# These tools does not allow re-distribution
-web-only = [ "buildtools", "vscode" ]
 
 [toolkit.bisheng.config.override]
 rust-server = "https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng"
@@ -201,8 +190,6 @@ rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个
 rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
-vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
-vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 coding-guidelines-ruleset = "Rust 编程规范的代码检查规则集，提供了基于该规范要求或建议的全部自定义检查规则 (lint)。"
 ylong_json = "ylong_json 是一个通用的 JSON 语法解析库，提供了 JSON 文本和特定数据结构之间的相互转换功能。"
 ylong_light_actor = "ylong_light_actor 提供了两个功能模块：Actor 和 EventHandler. Actor 编程模型是一种并发编程模型，旨在解决并发编程中使用传统的内存共享模型带来的数据竞争以及加锁导致的性能损失及死锁等问题。EventHandler 提供一种机制，用于处理线程间通信，可以通过创建新线程，将耗时的操作放到新线程上执行。这样既不阻塞原来的线程，任务又可以得到合理的处理。"
@@ -212,13 +199,11 @@ ylong_runtime = "Rust 异步运行时库，用于生成并执行异步任务。�
 
 [toolkit.bisheng.value.tools.group]
 "Rust 优选工具集" = ["cargo-nextest"]
-IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
+IDE = ["codearts-rust"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
 [toolkit.bisheng.value.tools.target.x86_64-unknown-linux-gnu]
-vscodium = { gui-only = true, display-name = "VSCodium", version = "1.99.32562", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codium/1.99.32562/VSCodium-linux-x64-1.99.32562.tar.gz" }
-vscode-rust-analyzer = { gui-only = true, display-name = "rust-analyzer (插件)", requires = ["vscodium"], version = "0.3.2379", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/rust-analyzer/0.3.2379/rust-analyzer-linux-x64.vsix" }
 cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-unknown-linux-gnu.tar.gz" }
 coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = ["rust"], kind = "rule-set", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-unknown-linux-gnu.tar.xz" }
 ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip" }
