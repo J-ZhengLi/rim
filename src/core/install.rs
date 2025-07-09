@@ -648,13 +648,16 @@ no_proxy = "localhost,.example.com,.foo.com"
 "#;
 
         let manifest = ToolkitManifest::from_str(raw).unwrap();
-        let install_dir = tempfile::tempdir().unwrap();
-        let install_cfg = InstallConfiguration::new(install_dir.path(), &manifest).unwrap();
+
+        let mut cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        cache_dir.push("tests");
+        cache_dir.push("cache");
+        std::fs::create_dir_all(&cache_dir).unwrap();
+        let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
+
+        let install_cfg = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
 
         // Temporarily modify no_proxy var to test inheritance.
-        // FIXME (master): Later commits introduces mocked env tests, make sure to tesk this
-        // with mocked env, that we don't need to set no_proxy var here and potentially
-        // mess up other concurrent test cases.
         let no_proxy_backup = std::env::var("no_proxy");
         std::env::remove_var("no_proxy");
 
