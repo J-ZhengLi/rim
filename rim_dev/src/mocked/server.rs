@@ -484,7 +484,7 @@ fn calculate_sha256(file_path: &Path) -> Result<String> {
 
     // Finalize and get the checksum as a hex string
     let result = hasher.finalize();
-    Ok(format!("{:x}", result))
+    Ok(format!("{result:x}"))
 }
 
 pub(crate) fn generate_rim_server_files() -> Result<()> {

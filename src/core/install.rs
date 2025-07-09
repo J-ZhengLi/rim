@@ -215,7 +215,18 @@ impl<'a> InstallConfiguration<'a> {
                 env_vars.push(("https_proxy", url.to_string()));
             }
             if let Some(s) = &proxy.no_proxy {
-                env_vars.push(("no_proxy", s.to_string()));
+                // keep use's original no_proxy var.
+                #[cfg(windows)]
+                let prev_np = std::env::var("no_proxy").unwrap_or_default();
+                #[cfg(unix)]
+                let prev_np = "$no_proxy";
+
+                let no_proxy = if prev_np.is_empty() {
+                    s.to_string()
+                } else {
+                    format!("{s},{prev_np}")
+                };
+                env_vars.push(("no_proxy", no_proxy));
             }
         }
 
@@ -624,5 +635,57 @@ c = { version = "0.1.0", conflicts = ["d", "a"] }
 
         let error = conflicts.expect_err("has conflicts");
         println!("{error}");
+    }
+
+    #[test]
+    fn no_proxy_env_var() {
+        let raw = r#"
+[rust]
+version = "1.0.0"
+
+[proxy]
+no_proxy = "localhost,.example.com,.foo.com"
+"#;
+
+        let manifest = ToolkitManifest::from_str(raw).unwrap();
+        let install_dir = tempfile::tempdir().unwrap();
+        let install_cfg = InstallConfiguration::new(install_dir.path(), &manifest).unwrap();
+
+        // Temporarily modify no_proxy var to test inheritance.
+        // FIXME (master): Later commits introduces mocked env tests, make sure to tesk this
+        // with mocked env, that we don't need to set no_proxy var here and potentially
+        // mess up other concurrent test cases.
+        let no_proxy_backup = std::env::var("no_proxy");
+        std::env::remove_var("no_proxy");
+
+        let env_vars = install_cfg.env_vars().unwrap();
+        let new_no_proxy_var = &env_vars.iter().find(|(k, _)| *k == "no_proxy").unwrap().1;
+
+        #[cfg(windows)]
+        assert_eq!(new_no_proxy_var, "localhost,.example.com,.foo.com");
+        #[cfg(unix)]
+        assert_eq!(
+            new_no_proxy_var,
+            "localhost,.example.com,.foo.com,$no_proxy"
+        );
+
+        std::env::set_var("no_proxy", ".bar.com,baz.com");
+        let env_vars = install_cfg.env_vars().unwrap();
+        let new_no_proxy_var = &env_vars.iter().find(|(k, _)| *k == "no_proxy").unwrap().1;
+
+        #[cfg(windows)]
+        assert_eq!(
+            new_no_proxy_var,
+            "localhost,.example.com,.foo.com,.bar.com,baz.com"
+        );
+        #[cfg(unix)]
+        assert_eq!(
+            new_no_proxy_var,
+            "localhost,.example.com,.foo.com,$no_proxy"
+        );
+
+        if let Ok(bck) = no_proxy_backup {
+            std::env::set_var("no_proxy", bck);
+        }
     }
 }

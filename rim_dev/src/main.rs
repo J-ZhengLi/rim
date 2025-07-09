@@ -1,3 +1,5 @@
+#![allow(clippy::obfuscated_if_else)]
+
 mod common;
 mod dist;
 mod mocked;

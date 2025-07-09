@@ -124,7 +124,7 @@ where
     }
     // print extra info, such as a list of selectable options.
     if let Some(ex) = extra {
-        writeln!(&mut stdout, "\n{}", ex)?;
+        writeln!(&mut stdout, "\n{ex}")?;
     }
 
     loop {

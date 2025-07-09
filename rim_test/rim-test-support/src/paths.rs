@@ -35,7 +35,7 @@ pub fn test_root() -> TempDir {
     let id = TEST_ID.with(|n| n.borrow().expect("Failed to get test thread id"));
 
     let test_root_dir = global_root_dir();
-    let prefix = format!("t{}", id);
+    let prefix = format!("t{id}");
     TempDir::with_prefix_in(prefix, test_root_dir).expect("Failed to create temp test dir")
 }
 

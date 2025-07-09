@@ -24,8 +24,6 @@ rustc-dev = "将编译器作为库来内部 API。大多数用户不需要这个
 rust-docs = "本地 Rust 文档副本，允许用户使用 rustup doc 命令在 Web 浏览器中打开文档"
 rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。注: 这是 rust-analyzer 的服务端, 若需要在编辑器 (如 VS Code) 中使用其代码补全、跳转到定义等功能, 只需选择列表中相应的编辑器插件即可。"
 cargo-nextest = "新一代 Rust 项目测试运行程序，相比传统 cargo test 而言更快速，界面更简洁明了"
-vscodium = "一个由社区维护的、采用自由许可的 VS Code 二进制发行版 —— 基于微软开源的 VS Code 源代码（MIT 许可），但去除了微软的品牌标识和遥测功能，提供了一个完全开源、无数据追踪的开发环境，适用于希望避免微软官方构建限制的用户。"
-vscode-rust-analyzer = "Rust 编程语言的 语言服务器协议 (LSP) 实现。为 VS Code 等编辑器或 IDE 提供代码补全、跳转到定义等功能，提升 Rust 开发体验。"
 coding-guidelines-ruleset = "Rust 编程规范的代码检查规则集，提供了基于该规范要求或建议的全部自定义检查规则 (lint)。"
 ylong_json = "ylong_json 是一个通用的 JSON 语法解析库，提供了 JSON 文本和特定数据结构之间的相互转换功能。"
 ylong_light_actor = "ylong_light_actor 提供了两个功能模块：Actor 和 EventHandler. Actor 编程模型是一种并发编程模型，旨在解决并发编程中使用传统的内存共享模型带来的数据竞争以及加锁导致的性能损失及死锁等问题。EventHandler 提供一种机制，用于处理线程间通信，可以通过创建新线程，将耗时的操作放到新线程上执行。这样既不阻塞原来的线程，任务又可以得到合理的处理。"
@@ -41,22 +39,9 @@ ylong_macros：实现 ylong_runtime 所需的过程宏，目前主要用于提�
 
 [tools.group]
 "Rust 优选工具集" = ["cargo-nextest"]
-IDE = ["vscode", "vscodium", "codearts-rust", "vscode-rust-analyzer"]
+IDE = ["codearts-rust"]
 "Rust 代码检查工具集" = ["coding-guidelines-ruleset"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
-
-[tools.target.x86_64-unknown-linux-gnu.vscodium]
-gui-only = true
-version = "1.99.32562"
-path = "tools/VSCodium-linux-x64-1.99.32562.tar.gz"
-display-name = "VSCodium"
-
-[tools.target.x86_64-unknown-linux-gnu.vscode-rust-analyzer]
-gui-only = true
-version = "0.3.2379"
-path = "tools/rust-analyzer-linux-x64.vsix"
-display-name = "rust-analyzer (插件)"
-requires = ["vscodium"]
 
 [tools.target.x86_64-unknown-linux-gnu.cargo-nextest]
 optional = true
