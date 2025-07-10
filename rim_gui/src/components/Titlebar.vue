@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { installConf, invokeCommand } from "@/utils";
 import { appWindow } from "@tauri-apps/api/window";
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref, shallowRef, watch } from "vue";
 import { event } from "@tauri-apps/api";
 import { useI18n } from "vue-i18n";
+import SettingsLayout from "@/layouts/SettingsLayout.vue";
+import AboutLayout from "@/layouts/AboutLayout.vue";
+import HelpLayout from "@/layouts/HelpLayout.vue";
 
 interface MenuItem {
     icon?: string,
@@ -17,15 +20,17 @@ const { isSetupMode } = defineProps({
         default: true,
     },
 });
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const exitDisabled = ref(false);
 const labels = ref<Record<string, string>>({});
 const appTitle = ref('');
 
-// Drop-dowm menu controls
-const showMenu = ref(false);
-const menuItems: MenuItem[] = [
+// Drop-down menu controls
+const isMenuShown = ref(false);
+const isPanelShown = ref(false);
+const layoutToShow = shallowRef<any>(null);
+const menuItems = computed<MenuItem[]>(() => [
     {
         icon: '/icons/settings.svg',
         label: t('settings'),
@@ -46,7 +51,7 @@ const menuItems: MenuItem[] = [
         label: t('exit'),
         action: () => close(),
     }
-]
+]);
 
 function minimize() { appWindow.minimize(); }
 function maximize() { appWindow.toggleMaximize() }
@@ -55,15 +60,29 @@ function close() {
 }
 
 function showPanel(name: string) {
-    console.log("showing: ", name);
+    switch (name) {
+        case 'settings':
+            layoutToShow.value = SettingsLayout;
+            break;
+        case 'about':
+            layoutToShow.value = AboutLayout;
+            break;
+        case 'help':
+            layoutToShow.value = HelpLayout;
+            break;
+        default:
+            layoutToShow.value = null;
+            break;
+    }
+    isPanelShown.value = true;
 }
 
-onMounted(() => {
-    invokeCommand('get_build_cfg_locale_str', { key: 'logo_text' }).then((res) => {
-        if (typeof res === 'string') {
-            labels.value.logoText = res
-        }
-    });
+async function refreshLabels() {
+    labels.value.logoText = await invokeCommand('get_build_cfg_locale_str', { key: 'logo_text' }) as string;
+}
+
+onMounted(async () => {
+    await refreshLabels();
 
     event.listen('toggle-exit-blocker', (event) => {
         if (typeof event.payload === 'boolean') {
@@ -71,10 +90,10 @@ onMounted(() => {
         }
     });
 
-    installConf.appNameWithVersion().then((res) => {
-        appTitle.value = res
-    });
-})
+    appTitle.value = await installConf.appNameWithVersion();
+});
+
+watch(locale, (_) => refreshLabels());
 </script>
 
 <template>
@@ -87,7 +106,7 @@ onMounted(() => {
 
         <div data-tauri-drag-region class="titlebar-buttons" id="titlebar-buttons">
             <!-- FIXME: we need an English translation for GUI before enabling this -->
-            <div class="titlebar-button" @click="showMenu = !showMenu">
+            <div class="titlebar-button" @click="isMenuShown = !isMenuShown">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 18 24">
                     <path
                         d="M2 8C2 7.44772 2.44772 7 3 7H21C21.5523 7 22 7.44772 22 8C22 8.55228 21.5523 9 21 9H3C2.44772 9 2 8.55228 2 8Z">
@@ -101,7 +120,7 @@ onMounted(() => {
                 </svg>
                 <div class="menu-wrapper">
                     <transition name="dropdown">
-                        <ul v-if="showMenu" class="dropdown-menu">
+                        <ul v-if="isMenuShown" class="dropdown-menu">
                             <li v-for="(item, index) in menuItems" :key="index" class="menu-item" @click="item.action">
                                 <img :src="item.icon" class="icon" />
                                 <span class="label">{{ item.label }}</span>
@@ -133,6 +152,9 @@ onMounted(() => {
             </div>
         </div>
     </div>
+    <base-panel :show="isPanelShown" @close="isPanelShown = false">
+        <component :is="layoutToShow" />
+    </base-panel>
 </template>
 
 <style scoped>
@@ -175,14 +197,15 @@ onMounted(() => {
     align-items: center;
     width: 4vw;
     height: 4vh;
-    border-radius: 3px;
+    border-radius: 5px;
     margin-inline: 3px;
-    padding: 0;
+    padding: 5px 2px;
     fill: rgb(155, 155, 155);
 }
 
 .titlebar-button:hover {
-    background: #696969;
+    background: rgb(145, 145, 145);
+    fill: white;
 }
 
 #titlebar-close:hover {
@@ -209,7 +232,7 @@ onMounted(() => {
     background: rgba(255, 255, 255, .5);
     border: 2px solid transparent;
     box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 16px 32px rgba(0, 0, 0, .12);
-    backdrop-filter: url(#frosted);
+    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     overflow: hidden;
     list-style: none;
@@ -217,6 +240,7 @@ onMounted(() => {
 }
 
 .menu-item {
+    min-width: 5vw;
     display: flex;
     align-items: center;
     padding: 2vh 4vw;

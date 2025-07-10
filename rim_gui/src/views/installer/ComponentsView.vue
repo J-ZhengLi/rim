@@ -159,6 +159,6 @@ onMounted(() => {
       </template>
     </split-box>
 
-    <page-nav-buttons @back-clicked="routerBack" @next-clicked="handleNextClick" />
+    <page-nav-buttons :backLabel="$t('back')" :nextLabel="$t('next')" @back-clicked="routerBack" @next-clicked="handleNextClick" />
   </div>
 </template>

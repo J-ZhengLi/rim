@@ -71,6 +71,7 @@ watch(fields, (newVal) => {
           @button-click="handleOpen(index)" />
       </div>
     </base-card>
-    <page-nav-buttons :hideNext="!allSourcesAreFilled" @back-clicked="routerBack" @next-clicked="handleNextClick" />
+    <page-nav-buttons :backLabel="$t('back')" :nextLabel="allSourcesAreFilled ? $t('next') : undefined"
+      @back-clicked="routerBack" @next-clicked="handleNextClick" />
   </div>
 </template>

@@ -1,15 +1,17 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useCustomRouter } from '@/router/index';
 import { installConf, invokeCommand } from '@/utils/index';
 import { open } from '@tauri-apps/api/dialog';
+import { useI18n } from 'vue-i18n';
 
 const { routerPush } = useCustomRouter();
+const { locale } = useI18n();
 
 const labels = ref<Record<string, string>>({});
 const showCustomizePanel = ref(false);
 
-// “install other edtion” options
+// “install other edition” options
 const toolkitManifestPath = ref('');
 
 function handleInstallClick() {
@@ -36,19 +38,13 @@ async function pickToolkitSource() {
   }
 }
 
-onMounted(() => {
-  invokeCommand('toolkit_name').then((lb) => {
-    if (typeof lb === 'string') {
-      labels.value.toolkitName = lb;
-    }
-  });
+async function refreshLabels() {
+  labels.value.toolkitName = await invokeCommand('toolkit_name') as string;
+  labels.value.content_source = await invokeCommand('get_build_cfg_locale_str', { key: 'content_source' }) as string;
+}
 
-  invokeCommand('get_build_cfg_locale_str', { key: 'content_source' }).then((res) => {
-    if (typeof res === 'string') {
-      labels.value.content_source = res
-    }
-  });
-});
+onMounted(async () => await refreshLabels());
+watch(locale, async (_newVal) => await refreshLabels());
 </script>
 
 <template>
@@ -59,7 +55,8 @@ onMounted(() => {
           <div c="darker-secondary" font="bold" text="4vh">{{ labels.toolkitName }}</div>
           <div c="secondary" text="3.5vh">{{ installConf.version }}</div>
         </div>
-        <base-button theme="primary" w="20vw" position="fixed" bottom="10vh" @click="handleInstallClick()">{{ $t('install') }}</base-button>
+        <base-button theme="primary" w="20vw" position="fixed" bottom="10vh" @click="handleInstallClick()">{{
+          $t('install') }}</base-button>
         <span c="secondary" position="fixed" bottom="-5vh" cursor-pointer underline @click="showCustomizePanel = true">
           {{ $t('install_using_toolkit_manifest') }}
         </span>
@@ -74,8 +71,8 @@ onMounted(() => {
           @keydown.enter="(event: Event) => toolkitManifestPath = (event.target as HTMLInputElement).value"
           @button-click="pickToolkitSource" />
         <div flex="~ justify-center" mt="4vh">
-          <base-button :disabled="!toolkitManifestPath" w="20vw"
-            theme="primary" @click="confirmCustomizedEdition">{{ $t('confirm') }}</base-button>
+          <base-button :disabled="!toolkitManifestPath" w="20vw" theme="primary" @click="confirmCustomizedEdition">{{
+            $t('confirm') }}</base-button>
         </div>
       </div>
     </base-panel>

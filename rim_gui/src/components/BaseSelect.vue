@@ -27,10 +27,6 @@ const props = defineProps({
     height: {
         type: String,
         default: 'auto'
-    },
-    default: {
-        type: Object,
-        default: null
     }
 });
 
@@ -103,7 +99,7 @@ document.addEventListener('click', closeOnClickOutside);
     background: rgba(255, 255, 255, .7);
     border: 1px solid rgba(0, 0, 0, .1);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    backdrop-filter: url(#frosted);
+    backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     font-size: clamp(100%, 2vh, 20px);
     padding: 0.3rem 1rem;
@@ -141,7 +137,6 @@ document.addEventListener('click', closeOnClickOutside);
     background-color: white;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     list-style: none;
-    z-index: 100;
     max-height: 200px;
     overflow-y: auto;
 }
@@ -161,7 +156,6 @@ document.addEventListener('click', closeOnClickOutside);
     --uno: 'c-active'
 }
 
-/* Transition effects */
 .dropdown-enter-active,
 .dropdown-leave-active {
     transition: all 0.3s ease;

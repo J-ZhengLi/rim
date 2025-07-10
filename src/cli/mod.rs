@@ -636,8 +636,7 @@ fn setup(
 
     // Setup locale
     if let Some(lang_str) = lang {
-        let parsed: Language = lang_str.parse()?;
-        utils::set_locale(parsed.locale_str());
+        utils::set_locale(lang_str.parse()?);
     } else {
         utils::use_current_locale();
     }

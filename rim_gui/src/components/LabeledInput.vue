@@ -57,8 +57,6 @@ const handleInput = (event: Event) => {
     background: rgba(255, 255, 255, .7);
     border: 1px solid rgba(0, 0, 0, .1);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    backdrop-filter: url(#frosted);
-    -webkit-backdrop-filter: blur(25px);
     font-size: clamp(100%, 2vh, 20px);
     padding: 0.3rem 1rem;
     box-sizing: border-box;
@@ -83,7 +81,7 @@ const handleInput = (event: Event) => {
     border-radius: 4px;
     font-size: 13px;
     white-space: nowrap;
-    z-index: 1000;
+    z-index: 999;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     pointer-events: none;
 }
