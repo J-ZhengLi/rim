@@ -186,8 +186,12 @@ pub(super) fn collect_components_to_add() -> Result<Vec<String>> {
         .build();
     // ask user input in a loop, breaks if user confirms the selection
     loop {
-        let choices =
-            common::question_multi_choices(t!("select_components_to_install"), &list_of_comps, "")?;
+        let question = format!(
+            "{}: ({})",
+            t!("select_components_to_install"),
+            t!("select_components_cli_hint")
+        );
+        let choices = common::question_multi_choices(question, &list_of_comps, "")?;
         // convert input vec to set for faster lookup
         // Note: user input index are started from 1.
         let index_set: HashSet<usize> = choices.into_iter().collect();

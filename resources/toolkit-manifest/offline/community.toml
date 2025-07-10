@@ -54,17 +54,20 @@ IDE = ["codearts-rust"]
 required = true
 version = "14.2.0-rt_v12-rev2"
 path = "tools/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z"
+kind = "dir-with-bin"
 display-name = "MinGW-w64"
 
 [tools.target.x86_64-pc-windows-gnu.codearts-rust]
 version = "3.2.0"
 path = "tools/codearts-rust.zip"
+kind = "custom"
 display-name = "CodeArts IDE"
 
 [tools.target.x86_64-pc-windows-gnu.cargo-nextest]
 optional = true
 version = "0.9.94"
 path = "tools/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
+kind = "executables"
 
 [tools.target.x86_64-pc-windows-gnu.coding-guidelines-ruleset]
 version = "0.1.0"
@@ -107,17 +110,20 @@ kind = "crate"
 required = true
 restricted = true
 default = "https://aka.ms/vs/17/release/vs_BuildTools.exe"
+kind = "custom"
 display-name = "Visual Studio Build Tools"
 
 [tools.target.x86_64-pc-windows-msvc.codearts-rust]
 version = "3.2.0"
 path = "tools/codearts-rust.zip"
+kind = "custom"
 display-name = "CodeArts IDE"
 
 [tools.target.x86_64-pc-windows-msvc.cargo-nextest]
 optional = true
 version = "0.9.94"
 path = "tools/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip"
+kind = "executables"
 
 [tools.target.x86_64-pc-windows-msvc.coding-guidelines-ruleset]
 version = "0.1.0"

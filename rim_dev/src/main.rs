@@ -1,3 +1,4 @@
+// bool::then_some().unwrap_or*() is much clean, clippy, why be a hater?
 #![allow(clippy::obfuscated_if_else)]
 
 mod common;
