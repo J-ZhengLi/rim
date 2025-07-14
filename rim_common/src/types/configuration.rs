@@ -64,7 +64,7 @@ impl Configuration {
     setter!(set_language(self.language, Option<Language>));
 }
 
-#[derive(Debug, Deserialize, Serialize, Default, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Default, PartialEq, Eq, Clone, Copy)]
 #[non_exhaustive]
 pub enum Language {
     CN,

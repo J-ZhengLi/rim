@@ -29,7 +29,7 @@ function progressFormat(value: number) {
   overflow: hidden;
   background: rgba(255, 255, 255, .4);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 16px 32px rgba(0, 0, 0, .12);
-  backdrop-filter: url(#frosted);
+  backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   outline: 0;
 }

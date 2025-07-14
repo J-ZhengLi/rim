@@ -19,7 +19,6 @@ pub use progress_bar::*;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::{LazyLock, Mutex},
     time::Duration,
 };
@@ -29,7 +28,7 @@ use url::Url;
 
 use crate::types::{Configuration, Language};
 
-static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+static CURRENT_LOCALE: LazyLock<Mutex<Language>> = LazyLock::new(|| Mutex::new(Language::EN));
 
 /// Insert a `.exe` postfix to given input.
 ///
@@ -193,42 +192,43 @@ pub fn to_string_lossy<S: AsRef<OsStr>>(s: S) -> String {
 
 /// Use configured locale or detect system's current locale.
 pub fn use_current_locale() {
-    set_locale(&get_locale());
+    set_locale(get_locale());
 }
 
 /// Getting the current locale by:
 /// 1. Checking RIM configuration file, return the configured language if has.
 /// 2. Check system's current locale using [`sys_locale`] crate.
 /// 3. Fallback to english locale.
-pub fn get_locale() -> String {
+pub fn get_locale() -> Language {
     Configuration::try_load_from_config_dir()
         .and_then(|c| c.language)
-        .map(|lang| lang.locale_str().to_string())
-        .or_else(|| sys_locale::get_locale())
-        .unwrap_or_else(|| Language::EN.locale_str().to_string())
+        .or_else(|| sys_locale::get_locale().and_then(|s| s.parse().ok()))
+        .unwrap_or_default()
 }
 
-pub fn set_locale(loc: &str) {
+pub fn set_locale(lang: Language) {
+    let loc = lang.locale_str();
     rust_i18n::set_locale(loc);
 
     // update the current locale
-    *CURRENT_LOCALE.lock().unwrap() = loc.to_string();
-    // update persistant locale config, but don't fail the program,
+    *CURRENT_LOCALE.lock().unwrap() = lang;
+    // update persistent locale config, but don't fail the program,
     // because locale setting is not that critical.
     let set_locale_inner_ = || -> Result<()> {
         Configuration::load_from_config_dir()
-            .set_language(Some(Language::from_str(loc)?))
+            .set_language(Some(lang))
             .write()
     };
     if let Err(e) = set_locale_inner_() {
         error!("unable to save locale settings after changing to '{loc}': {e}");
     }
+    debug!("locale successfully set to: {loc}");
 }
 
 /// Get the configured locale string from `configuration.toml`
 pub fn build_cfg_locale(key: &str) -> &str {
     let cur_locale = &*CURRENT_LOCALE.lock().unwrap();
-    crate::cfg_locale!(cur_locale, key)
+    crate::cfg_locale!(cur_locale.locale_str(), key)
 }
 
 /// Waits until `duration` has elapsed.

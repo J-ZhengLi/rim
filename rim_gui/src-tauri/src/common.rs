@@ -192,14 +192,13 @@ pub(crate) fn supported_languages() -> Vec<Language> {
 
 #[tauri::command]
 pub(crate) fn set_locale(language: String) -> Result<()> {
-    let lang: DisplayLanguage = language.parse()?;
-    utils::set_locale(lang.locale_str());
+    utils::set_locale(language.parse()?);
     Ok(())
 }
 
 #[tauri::command]
 pub(crate) fn get_locale() -> String {
-    utils::get_locale()
+    utils::get_locale().locale_str().into()
 }
 
 #[tauri::command]

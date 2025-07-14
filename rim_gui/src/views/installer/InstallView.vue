@@ -85,7 +85,7 @@ watch(output.value, () => {
         </div>
       </base-card>
     </base-details>
-    <page-nav-buttons :hideBack="true" :hideNext="progress < 100"
+    <page-nav-buttons :nextLabel="progress < 100 ? undefined : $t('next')" :hideNext="progress < 100"
       @next-clicked="() => routerPush('/installer/finish')" />
   </div>
 </template>

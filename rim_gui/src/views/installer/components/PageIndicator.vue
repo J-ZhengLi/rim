@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -11,7 +11,26 @@ const menu = computed(() => {
   );
   return router.options.routes[index].children || [];
 });
-const titles = ref<PageMeta[]>([]);
+const titles = computed<PageMeta[]>(() => {
+  let nonRepeatingTitles: PageMeta[] = [];
+  
+  menu.value.forEach(async (item, idx) => {
+    if (idx !== 0) {
+      const label = item.meta?.title as string;
+      const order = item.meta?.order as number;
+      const localized = t(label.split(':')[0]);
+
+      const existingTitle = nonRepeatingTitles.find((m) => m.title === localized);
+      if (existingTitle) {
+        existingTitle.orders.push(order);
+      } else {
+        nonRepeatingTitles.push({ title: localized, orders: [order] });
+      }
+    }
+  });
+
+  return nonRepeatingTitles;
+});
 
 interface PageMeta {
   title: string,
@@ -25,23 +44,6 @@ function menuItemActive(orders: number[]) {
     'text-3.2vh c-active': isFocus,
   };
 }
-
-onMounted(() => {
-  menu.value.forEach(async (item, idx) => {
-    if (idx !== 0) {
-      const label = item.meta?.title as string;
-      const order = item.meta?.order as number;
-      const localized = t(label.split(':')[0]);
-
-      const existingTitle = titles.value.find((m) => m.title === localized);
-      if (existingTitle) {
-        existingTitle.orders.push(order);
-      } else {
-        titles.value.push({ title: localized, orders: [order] });
-      }
-    }
-  });
-})
 </script>
 
 <template>

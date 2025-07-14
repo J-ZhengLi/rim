@@ -40,6 +40,7 @@ async function handleNextClick() {
     </base-card>
 
     <page-nav-buttons
+      :backLabel="$t('back')"
       :nextLabel="$t('install')"
       @back-clicked="routerBack"
       @next-clicked="handleNextClick"

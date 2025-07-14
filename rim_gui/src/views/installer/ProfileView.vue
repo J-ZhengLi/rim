@@ -42,7 +42,7 @@
         </base-card>
       </div>
     </div>
-    <page-nav-buttons @back-clicked="routerBack" :hideNext="true" />
+    <page-nav-buttons :backLabel="$t('back')" @back-clicked="routerBack" />
   </div>
 </template>
 <script setup lang="ts">

@@ -37,11 +37,12 @@ const emit = defineEmits(['close']);
     left: 0;
     width: 100vw;
     height: 100vh;
-    backdrop-filter: url(#frosted);
+    backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 999;
 }
 
 .panel-content {

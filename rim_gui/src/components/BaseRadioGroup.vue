@@ -87,7 +87,7 @@ const alignmentClass = computed(() => `align-${props.alignment}`);
     border-radius: 4px;
     font-size: 12px;
     white-space: nowrap;
-    z-index: 100;
+    z-index: 999;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     pointer-events: none;
 }
