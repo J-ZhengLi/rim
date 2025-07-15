@@ -132,9 +132,13 @@ fn list_component_output(process: &TestProcess, rim: &Path) -> String {
     if !list_comp_output.status.success() {
         panic!("{}", String::from_utf8_lossy(&list_comp_output.stderr));
     }
+    // output might contains debug messages, which will not appear after release
+    // anyway, filter those out for test as well.
     String::from_utf8_lossy(&list_comp_output.stdout)
-        .trim()
-        .to_string()
+        .lines()
+        .filter(|line| !line.is_empty() && !line.starts_with("\u{1b}[35mdebug\u{1b}[0m"))
+        .collect::<Vec<&str>>()
+        .join("\n")
 }
 
 fn add_or_rm_component(process: &TestProcess, rim: &Path, comp: &str, remove: bool) {

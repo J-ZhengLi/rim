@@ -41,7 +41,7 @@ function menuItemActive(orders: number[]) {
   const isFocus = orders.includes(router.currentRoute.value.meta.order as number);
   return {
     'c-secondary': !isFocus,
-    'text-3.2vh c-active': isFocus,
+    'indicator-bar-active': isFocus,
   };
 }
 </script>
@@ -60,11 +60,17 @@ function menuItemActive(orders: number[]) {
 
 <style scoped>
 .indicator-bar {
-  margin-top: 2vh;
+  margin-inline: 4vh;
+  margin-top: 1.2vh;
   width: 100%;
   display: flex;
   text-align: center;
-  font-size: 2.6vh;
+  font-size: 2.5vh;
+}
+.indicator-bar-active {
+  --uno: 'text-3.2vh c-active';
+  padding-bottom: 1.5vh;
+  border-bottom: 2px solid #5e7ce0;
 }
 .indicator-bar>* {
   flex: 1;

@@ -2,65 +2,66 @@
 
 本文档是该程序 (RIM) 的使用说明，旨在帮助您掌握 RIM 提供的所有功能。
 
-尽管我们力求涵盖所有细节以便于使用 RIM，但仍有部分文档可能表述不清或完全缺失。若遇到这种情况，欢迎随时在此处提交新问题通知我们，或者更佳的方式是：通过改进我们的文档并提交拉取请求 (pull-request) 来为该项目做贡献。
+尽管我们力求涵盖所有细节以便于使用 RIM，但仍有部分文档可能表述不清或完全缺失。若遇到这种情况，欢迎随时在[此处](https://gitcode.com/xuanwu/custom-rust-dist/issues)提交新 issue 通知我们。
+当然更佳的方式是：通过改进我们的文档并提交拉取请求 (pull-request) 来为该项目做贡献。
 
-无论如何，让我们首先介绍这个程序是什么、它是如何工作的以及为什么需要它。
+让我们首先了解一下这个程序是什么、它是如何工作的以及为什么需要它。
 
 ## 什么是 RIM？
 
-RIM，全称 Rust 安装管理器 (Rust Installation Manager)。它是一个程序，允许您通过图形用户界面 (GUI) 或交互式命令行界面 (CLI) 轻松管理您的 Rust 安装。
+RIM，全称 Rust 安装管理器 (**Rust Installation Manager**)。它是一个允许您通过图形用户界面 (GUI) 或交互式命令行界面 (CLI) 轻松管理您的 Rust 安装的应用程序。
 
 使用 RIM，您可以：
 
-    1. 使用 rustup 安装 Rust 工具链（稍后详述）。
-    2. 通过依赖关系控制安装第三方工具。
-    3. 更新您的 Rust 套件。
-    4. 修改您安装的 Rust 套件，例如添加或移除组件。
-    5. 检查您的 Rust 代码并以不同格式导出报告。（开发中/WIP）
-    6. 导出项目模板。（开发中/WIP）
+1. 使用 `rustup` 安装 Rust 工具链（稍后详述）。
+2. 通过依赖关系控制安装第三方工具。
+3. 更新您的 Rust 套件。
+4. 修改您安装的 Rust 套件，例如添加或移除组件。
+5. 检查您的 Rust 代码并以不同格式导出报告。（开发中/WIP）
+6. 导出项目模板。（开发中/WIP）
 
 （更多功能即将到来...）
 
 ## 它是如何工作的？
 
-RIM 有两个版本：GUI 版本（您现在使用的版本），以及一个轻量级 CLI 版本，通常在没有桌面环境的操作系统（或 Docker 容器）中使用。
+RIM 有两个版本：GUI 版本（您现在使用的版本）；以及一个轻量级 CLI 版本，通常在没有桌面环境的操作系统（或 Docker 容器）中使用。
 
-此 GUI 版本也支持命令行界面，只要在执行其二进制文件时传递 --no-gui 标志即可。如需更多信息，请在终端中使用 --no-gui --help 参数启动本程序。
+此 GUI 版本也支持命令行界面，只要在执行其二进制文件时传递 `--no-gui` 标志即可。如需更多信息，请在终端中使用 `--no-gui --help` 参数启动本程序。
 
 ### GUI
 
-虽然 GUI 和 CLI 版本共享同一个 Rust 后端，但 RIM 的 GUI 是使用 Tauri 框架编写的，具体开发语言是 VueJS 配合 TypeScript。
+RIM 的 GUI 是使用 [`Tauri`](https://v2.tauri.app/) 框架编写的，具体开发语言是 [`VueJS`](https://vuejs.org/) 配合 [`TypeScript`](https://www.typescriptlang.org/)。
 
 ### 工具套件 (Toolkit)
 
-众所周知，Rust 本身提供了一套工具进行分发，例如 rustc、cargo、rust-std 等。但与 Rust 的工具链不同，RIM 通过安装一个工具套件 (toolkit) 来安装 Rust。一个工具套件本质上是一个 Rust 工具链加上一组官方 Rust 未提供的扩展工具，例如二进制程序、IDE、插件，甚至是 crate 等。
+众所周知，Rust 本身提供了一套工具进行分发，例如 `rustc`、`cargo`、`rust-std` 等。但与 Rust 的工具链不同，RIM 通过安装一个工具套件 (**toolkit**) 来安装 Rust。一个工具套件本质上是一个 Rust 工具链加上一组官方 Rust 未提供的扩展工具，例如二进制程序、IDE、插件，甚至是 crate 等。
 
-RIM 依赖 rustup（Rust 官方的工具链管理器）来安装 Rust 工具链，因此您不必担心它会改变您使用 Rust 的习惯。
+RIM 依赖 [`rustup`](https://github.com/rust-lang/rustup)（Rust 官方的工具链管理器）来安装 Rust 工具链，因此您不必担心它会改变您使用 Rust 的习惯。
 
-RIM 提供了更灵活的方式来安装第三方工具，而不是像 rustup 那样依赖于单一包结构。以下是一些包处理方式的示例：
+RIM 提供了更灵活的方式来安装第三方工具，而不是像 `rustup` 那样依赖于单一包结构。以下是一些包处理方式的示例：
 
-    - 二进制文件
-  
-        将归档文件中的所有二进制文件直接放置到 <INSTALL_ROOT>/cargo/bin/ 目录下。
+ - 二进制文件
 
-    - Crate (二进制程序)
+     将归档文件中的所有二进制文件直接放置到 `<INSTALL_ROOT>/cargo/bin/` 目录下。
 
-        通过调用 cargo install 从源代码编译，并将产物放入 <INSTALL_ROOT>/cargo/bin/。
+ - Crate (二进制程序)
 
-    - Crate (依赖库)
+     通过调用 cargo install 从源代码编译，并将产物放入 `<INSTALL_ROOT>/cargo/bin/`。
 
-        将 crate 的源代码存储在 <INSTALL_ROOT>/crates/ 中，并修改 <INSTALL_ROOT>/cargo/config.toml 以将其作为补丁使用。
+ - Crate (依赖库)
 
-        > 注意：这有一个非常明显的副作用，即当编译一个不依赖此类 crate 的 Rust 项目时会触发警告。我们仍在寻找更好的解决方案。
+     将 crate 的源代码存储在 `<INSTALL_ROOT>/crates/` 中，并修改 `<INSTALL_ROOT>/cargo/config.toml` 以将其作为补丁使用。
 
-所有这些都由一个配置文件控制，也称为工具套件清单 (toolkit manifest)。
+     > 注意：这有一个非常明显的副作用，即当编译一个不依赖此类 crate 的 Rust 项目时会触发警告。我们仍在寻找更好的解决方案。
+
+所有这些都由一个配置文件控制，也称为工具套件清单 (**toolkit manifest**)。
 
 ### 工具套件清单
 
 一个工具套件清单控制着关于该套件的所有信息，例如其名称、版本，以及：
 
-    - Rust 工具链及其获取来源。
-    - 可以安装哪些工具以及它们的获取来源。
+- Rust 工具链及其获取来源。
+- 可以安装哪些工具以及它们的获取来源。
 
 这意味着您可以通过提供包来源来制作自己的 Rust 发行版，并将您的工具套件清单分发给用户！
 
@@ -68,11 +69,11 @@ RIM 提供了更灵活的方式来安装第三方工具，而不是像 rustup �
 
 使用传统方式安装 Rust 时，您需要进行一些准备工作或配置。这包括：
 
-1. 如果您不想将 Rust 安装在 C:/ 盘，则需要设置 CARGO_HOME 和 RUSTUP_HOME 环境变量；
-2. 如果您所在国家/地区的官方服务器速度慢如蜗牛，还需要设置 RUSTUP_DIST_SERVER、RUSTUP_UPDATE_ROOT。
+1. 如果您不想将 Rust 安装在 `C:/` 盘，则需要设置 `CARGO_HOME` 和 `RUSTUP_HOME` 环境变量；
+2. 如果您所在国家/地区的官方服务器速度慢如蜗牛，还需要设置 `RUSTUP_DIST_SERVER`、`RUSTUP_UPDATE_ROOT`。
 
 但 RIM 会为您完成所有这些设置。
 
-当您使用 Rust 时，可能需要一些第三方工具，例如先决条件（VS Build Tools 或 MinGW），RIM 也可以为您处理这些。
+当您使用 Rust 时，可能需要一些第三方工具，例如运行依赖（VS Build Tools 或 MinGW），RIM 也可以为您处理这些。
 
 通常，对于经验丰富的 Rust 开发者来说，这可能不是麻烦事。但对于无数刚刚进入 Rust 生态系统的用户而言，RIM 是一个帮助他们快速开始 Rust 开发的便捷工具。

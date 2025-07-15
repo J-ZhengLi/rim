@@ -22,6 +22,8 @@ import { ref, computed, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { marked } from 'marked'
 import { shell } from '@tauri-apps/api';
+import hljs from 'highlight.js'
+import 'highlight.js/styles/atom-one-dark.css';
 
 const { locale } = useI18n();
 
@@ -50,6 +52,26 @@ const selectDoc = (name: string) => {
 // Markdown rendering
 const rawContent = ref('');
 const renderedContent = ref('');
+marked.use({
+  async: false,
+  renderer: {
+    code({ text, lang }) {
+      const validLang = lang && hljs.getLanguage(lang)
+      const highlighted = validLang
+        ? hljs.highlight(text, { language: lang }).value
+        : hljs.highlightAuto(text).value
+      return `<pre><code class="hljs language-${lang}">${highlighted}</code></pre>`
+    },
+    image({href, title, text}) {
+      // If relative, prepend your own base path
+      if (href && !href.startsWith('http') && !href.startsWith('/')) {
+        const resolved = `/help/en-US/${href}` // dynamically set this per doc
+        return `<img src="${resolved}" alt="${text}" title="${title || ''}" />`
+      }
+      return `<img src="${href}" alt="${text}" title="${title || ''}" />`
+    },
+  },
+});
 
 const fetchMarkdown = async () => {
     const path = `/help/${locale.value}/${currentDoc.value}.md`;
@@ -128,16 +150,35 @@ watchEffect(fetchMarkdown);
     padding-inline: 1.5rem;
     margin-top: 0px;
 }
+</style>
 
+<style>
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3 {
     margin-top: 1.5rem;
-    border-bottom: 1px solid #eee;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #eee;
 }
 
-.markdown-content p {
-    line-height: 1.6;
-    margin: 1rem 0;
+.markdown-content pre {
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+/* Inline code only (not inside <pre>) */
+.markdown-content :not(pre) > code {
+  background-color: #f0f0f0c5;
+  color: #d83378;
+  font-size: 0.95em;
+  padding: 0.1em 0.5em;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #d3d3d3;
+  padding: 0.5em 1em;
+  background-color: #ffffffda;
+  color: #555;
+  margin: 1.5em 0;
 }
 </style>

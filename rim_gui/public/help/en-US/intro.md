@@ -37,8 +37,7 @@ if you need more information, try starting this program with `--no-gui --help` o
 
 ### GUI
 
-While the GUI and CLI version both shared a Rust back-end,
-the GUI of RIM is written with [`Tauri`](https://v2.tauri.app/) framework,
+The GUI of RIM is written with [`Tauri`](https://v2.tauri.app/) framework,
 and it is written using [`VueJS`](https://vuejs.org/) with [`TypeScript`](https://www.typescriptlang.org/).
 
 ### Toolkit
@@ -48,7 +47,7 @@ But different from Rust's toolchain, RIM installs Rust by installing a **toolkit
 which is basically a Rust toolchain plus a set of extended tools that are not provided by official Rust,
 such as binaries, IDE, plugins, or even crates, etc.
 
-RIM relies on `rustup` (Rust's official toolchain manager) to install Rust toolchain,
+RIM relies on [`rustup`](https://github.com/rust-lang/rustup) (Rust's official toolchain manager) to install Rust toolchain,
 so you don't have to worry that it might breaks your habits of how you use Rust.
 
 RIM provides a more flexible way to install third-party tools instead of relying on a single package structure
@@ -79,7 +78,7 @@ A toolkit manifest controls all the information about a toolkit, such as its nam
 Which means you can literally make your own Rust distribution by providing the package sources,
 and distributes your toolkit manifest to the users!
 
-## Why need RIM?
+## Why it's Needed?
 
 When installing Rust using the traditional way, you need some preparations or configurations, that includes
 setting the `CARGO_HOME` and `RUSTUP_HOME` environment variables if you don't want to install Rust in your `C:/` drive,
