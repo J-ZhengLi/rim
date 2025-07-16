@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { DropdownItem } from '@/components/BaseSelect.vue';
 import { invokeCommand } from '@/utils';
-import { ref, reactive, watch, computed, onMounted } from 'vue';
+import { ref, reactive, watch, computed, onMounted, toRaw } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const { locale, availableLocales, t } = useI18n();
@@ -85,6 +85,7 @@ const settings = reactive({
     autoCheckToolkitUpdate: true,
     rimUpdateChannel: 'stable',
 });
+const previousSettings = ref(structuredClone(toRaw(settings)));
 
 function langName(lang: string): string {
     switch (lang) {
@@ -102,11 +103,20 @@ onMounted(() => {
 });
 
 // Automatically apply settings on change
-watch(settings, (newVal) => {
-    // TODO: avoid re-config irrelevant settings.
-    console.log(newVal);
-    locale.value = newVal.language;
-    invokeCommand('set_locale', { language: newVal.language });
+watch(settings, () => {
+    const current = toRaw(settings);
+    const previous = previousSettings.value;
+
+    if (current == previous) {
+        console.log("skip identical settings");
+        return;
+    }
+
+    locale.value = current.language;
+    invokeCommand('set_locale', { language: current.language });
+
+    // backup current settings
+    previousSettings.value = structuredClone(current);
 }, { deep: true });
 </script>
 

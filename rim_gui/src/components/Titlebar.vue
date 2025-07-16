@@ -90,7 +90,7 @@ onMounted(async () => {
         }
     });
 
-    appTitle.value = await installConf.appNameWithVersion();
+    appTitle.value = await installConf.appNameWithShortVersion();
 });
 
 watch(locale, (_) => refreshLabels());

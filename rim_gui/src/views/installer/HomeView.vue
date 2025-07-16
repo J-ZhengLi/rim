@@ -21,7 +21,6 @@ function handleInstallClick() {
 async function confirmCustomizedEdition() {
   await installConf.loadManifest(toolkitManifestPath.value);
   showCustomizePanel.value = false;
-  console.log(installConf.version);
 }
 
 async function pickToolkitSource() {

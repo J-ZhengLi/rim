@@ -263,7 +263,7 @@ impl Default for AppInfo {
     fn default() -> Self {
         Self {
             name: env!("CARGO_PKG_NAME").to_string(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
+            version: rim_common::get_version_info!(),
             is_manager: false,
         }
     }

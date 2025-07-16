@@ -78,7 +78,6 @@ const fetchMarkdown = async () => {
     try {
         const res = await fetch(path);
         const text = await res.text();
-        console.log(text);
         rawContent.value = text;
         renderedContent.value = await marked.parse(text);
     } catch (err) {

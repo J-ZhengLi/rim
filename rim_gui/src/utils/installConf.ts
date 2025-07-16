@@ -40,12 +40,16 @@ class InstallConf {
   }
 
   /** The name and version of this application joined as a string. */
-  async appNameWithVersion() {
+  async appNameWithShortVersion() {
+    const shortenVersion = (ver: string) => {
+      return ver.split(' ')[0];
+    };
+
     if (this.info.value) {
-      return this.info.value.version ? this.info.value.name + ' ' + this.info.value.version : this.info.value.name;
+      return this.info.value.version ? this.info.value.name + ' ' + shortenVersion(this.info.value.version) : this.info.value.name;
     }
     let info = await this.cacheAppInfo();
-    return info.version ? info.name + ' ' + info.version : info.name;
+    return info.version ? info.name + ' ' + shortenVersion(info.version) : info.name;
   }
 
   async cacheAppInfo() {
@@ -99,7 +103,7 @@ class InstallConf {
   mapCheckedComponents(callback: (comp: CheckItem<Component>) => CheckItem<Component>) {
     this.checkComponents.value = this.checkComponents.value.map(callback)
   }
-  
+
   getRestrictedComponents(): RestrictedComponent[] {
     return this.restrictedComponents.value;
   }
