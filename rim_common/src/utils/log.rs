@@ -65,7 +65,9 @@ impl Logger {
     /// - If [`quiet`](Logger::quiet) was called with `true`, this will not output any message
     ///   on `stdout`, but will still output them into log file.
     pub fn setup(self) -> Result<()> {
-        let mut dispatch = fern::Dispatch::new().level(LevelFilter::Trace);
+        let mut dispatch = fern::Dispatch::new()
+            .level(LevelFilter::Trace)
+            .level_for("tao", LevelFilter::Error);
         let filter_log_for_output = move |md: &log::Metadata| -> bool {
             md.level() <= self.level && md.level() != LevelFilter::Trace
         };

@@ -22,8 +22,12 @@ import { ref, computed, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { marked } from 'marked'
 import { shell } from '@tauri-apps/api';
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/core';
 import 'highlight.js/styles/atom-one-dark.css';
+
+// Add more lang when needed
+import rust from 'highlight.js/lib/languages/rust';
+hljs.registerLanguage('rust', rust);
 
 const { locale } = useI18n();
 
