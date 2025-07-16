@@ -63,15 +63,20 @@ impl RunMode {
         #[cfg(windows)]
         std::env::set_var("USERPROFILE", home);
 
+        // use test toolkit by default unless specified
+        let edition = std::env::var("DEBUG_EDITION").unwrap_or("test".to_string());
+
         match self {
             Self::Installer { no_gui } => {
                 let status = if *no_gui {
                     Command::new("cargo")
+                        .env("EDITION", edition)
                         .args(["run", "--"])
                         .args(args)
                         .status()?
                 } else {
                     common::pnpm_cmd()
+                        .env("EDITION", edition)
                         .args(["run", "tauri", "dev", "--"])
                         .args(args)
                         .status()?
