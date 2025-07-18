@@ -2,17 +2,16 @@ use serde::Deserialize;
 use std::{collections::HashMap, sync::OnceLock};
 use url::Url;
 
+use crate::types::CargoRegistry;
+
 type LocaleMap = HashMap<String, String>;
 
 static BUILD_CFG_SINGLETON: OnceLock<BuildConfig> = OnceLock::new();
 
-macro_rules! overridden {
-    ($name:ident (&self) -> &$ret:ty) => {
-        pub fn $name<'a>(&'a self, toolkit_name_: &str) -> &'a $ret {
-            self.overrides
-                .get(toolkit_name_)
-                .map(|cfg_| &cfg_.$name)
-                .unwrap_or(&self.overridable.$name)
+macro_rules! getter {
+    ($name:ident: &$ret:ty) => {
+        pub fn $name(&self) -> &$ret {
+            &self.config.$name
         }
     };
 }
@@ -22,24 +21,16 @@ pub struct BuildConfig {
     pub identifier: String,
     pub home_page_url: Url,
     #[serde(flatten)]
-    overridable: OverridableConfig,
-    pub cargo: CargoConfig,
+    config: SourceConfig,
+    pub registry: CargoRegistry,
     pub locale: HashMap<String, LocaleMap>,
-    #[serde(rename = "override")]
-    overrides: HashMap<String, OverridableConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct OverridableConfig {
+struct SourceConfig {
     rustup_dist_server: Url,
     rustup_update_root: Url,
     rim_dist_server: Url,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct CargoConfig {
-    pub registry_name: String,
-    pub registry_url: String,
 }
 
 impl BuildConfig {
@@ -55,7 +46,7 @@ impl BuildConfig {
         format!("{}-manager", self.identifier)
     }
 
-    overridden!(rustup_dist_server(&self) -> &Url);
-    overridden!(rustup_update_root(&self) -> &Url);
-    overridden!(rim_dist_server(&self) -> &Url);
+    getter!(rustup_dist_server: &Url);
+    getter!(rustup_update_root: &Url);
+    getter!(rim_dist_server: &Url);
 }

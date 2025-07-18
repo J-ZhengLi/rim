@@ -36,17 +36,18 @@ components = [
     "rust-analyzer",
 ]
 
-# ========================= Manifest For Basic (test) Toolkit START =========================
-[toolkit.basic.config]
+# ========================= Manifest For Test Toolkit START =========================
+# ===================== This Toolkit Is For Testing Purpose Only! ===================
+[toolkit.test.config]
 date = "2025-04-03"
 
-[toolkit.basic.value]
-name = "XuanWu Rust Development Kit"
+[toolkit.test.value]
+name = "Test-Only Toolkit"
 version = "stable v1.86.0"
-edition = "basic"
+edition = "test"
 
-[toolkit.basic.value.rust]
-display-name = "Basic"
+[toolkit.test.value.rust]
+display-name = "Minimal"
 description = "Basic set of tools to use Rust properly"
 profile = "minimal"
 version = "1.86.0"
@@ -54,18 +55,21 @@ group = "Rust"
 components = ["clippy", "rustfmt", "rust-src"]
 optional-components = ["llvm-tools", "rust-docs"]
 
-[toolkit.basic.value.tools.descriptions]
+[toolkit.test.value.tools.descriptions]
+clippy = "A collection of lints to catch common mistakes and improve your Rust code."
+rustfmt = "A tool for formatting Rust code according to style guidelines."
+rust-src = "A local copy of the source code of the Rust standard library. This can be used by some tools, such as rust-analyzer, to provide auto-completion for functions within the standard library."
 llvm-tools = "Contains a collection of LLVM tools. Note that this component has not been stabilized and may change in the future and is provided as-is"
 rustc-dev = "Contains the compiler as a library. Most users will not need this; it is only needed for development of tools that link to the compiler, such as making modifications to Clippy."
 rust-docs = "A local copy of the Rust documentation. Allowing user to open the documentation in a web browser using the `rustup doc` command"
 mingw64 = "(windows only) Requirement for Windows GNU toolchain"
 
-[toolkit.basic.value.tools.group]
+[toolkit.test.value.tools.group]
 Prerequisites = ["mingw64"]
 
-[toolkit.basic.value.tools.target.x86_64-pc-windows-gnu]
-mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z" }
-# ========================= Manifest For Basic (test) Toolkit END =========================
+[toolkit.test.value.tools.target.x86_64-pc-windows-gnu]
+mingw64 = { required = true, version = "14.2.0-rt_v12-rev0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev0.7z", kind = "dir-with-bin" }
+# ========================= Manifest For Test Toolkit END =========================
 
 # ========================= Manifest For Community Toolkit START =========================
 [toolkit.community.config]
@@ -75,6 +79,9 @@ date = "2025-05-15"
 name = "Rust 中国社区发行版"
 version = "stable v1.87.0"
 edition = "community"
+rustup-dist-server = "https://xuanwu.base.atomgit.com"
+rustup-update-root = "https://xuanwu.base.atomgit.com/rustup"
+cargo-registry = { name = "xuanwu-sparse", index = "sparse+https://xuanwu.base.atomgit.com/index/" }
 
 [toolkit.community.value.rust]
 display-name = "Rust 官方工具"
@@ -109,9 +116,9 @@ IDE = ["codearts-rust"]
 "Rust 优选开发库" = ["ylong_json", "ylong_light_actor", "ylong_xml", "ylong_http", "ylong_runtime"]
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-gnu]
-mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev2", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z" }
-codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
-cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip" }
+mingw64 = { display-name = "MinGW-w64", required = true, version = "14.2.0-rt_v12-rev2", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/mingw64/14.2.0-rt_v12-rev2/x86_64-14.2.0-release-posix-seh-ucrt-rt_v12-rev2.7z", kind = "dir-with-bin" }
+codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip", kind = "custom" }
+cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip", kind = "executables" }
 coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = ["rust"], kind = "rule-set", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-gnu.tar.xz" }
 ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip" }
 ylong_light_actor = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip" }
@@ -120,9 +127,9 @@ ylong_http = { optional = true, kind = "crate", version = "1.0.0", url = "https:
 ylong_runtime = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_runtime/1.0.0/commonlibrary_rust_ylong_runtime-master.zip" }
 
 [toolkit.community.value.tools.target.x86_64-pc-windows-msvc]
-buildtools = { required = true, display-name = "Visual Studio Build Tools", restricted = true, default = "https://aka.ms/vs/17/release/vs_BuildTools.exe" }
-codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip" }
-cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip" }
+buildtools = { required = true, display-name = "Visual Studio Build Tools", restricted = true, default = "https://aka.ms/vs/17/release/vs_BuildTools.exe", kind = "custom" }
+codearts-rust = { display-name = "CodeArts IDE", version = "3.2.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/codearts/3.2.0/codearts-rust.zip", kind = "custom" }
+cargo-nextest = { optional = true, version = "0.9.94", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/cargo-nextest/0.9.94/cargo-nextest-0.9.94-x86_64-pc-windows-msvc.zip", kind = "executables" }
 coding-guidelines-ruleset = { display-name = "编程规范规则集", requires = ["rust"], kind = "rule-set", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/coding-guidelines-ruleset/0.1.0/rust-1.74.0-x86_64-pc-windows-msvc.tar.xz" }
 ylong_json = { optional = true, kind = "crate", version = "1.0.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_json/1.0.0/commonlibrary_rust_ylong_json-master.zip" }
 ylong_light_actor = { optional = true, kind = "crate", version = "0.1.0", url = "https://rust-mirror.obs.cn-north-4.myhuaweicloud.com/dist/toolset/ylong_light_actor/0.1.0/commonlibrary_rust_ylong_light_actor-master.zip" }
@@ -174,6 +181,9 @@ components = [
 name = "Rust 中国社区发行版 (毕昇)"
 version = "bisheng v1.72.0"
 edition = "bisheng"
+rustup-dist-server = "https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng"
+rustup-update-root = "https://xuanwu.base.atomgit.com/rustup"
+cargo-registry = { name = "xuanwu-sparse", index = "sparse+https://xuanwu.base.atomgit.com/index/" }
 
 [toolkit.bisheng.value.rust]
 display-name = "Rust 官方工具"

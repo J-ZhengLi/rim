@@ -10,7 +10,7 @@ pub mod version_info;
 
 use types::BuildConfig;
 
-i18n!("../locales", fallback = "en");
+i18n!("../locales", fallback = "en-US");
 
 /// Loads build configurations, such as the default URLs that this program needs.
 pub fn build_config() -> &'static BuildConfig {

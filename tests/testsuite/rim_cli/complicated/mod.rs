@@ -132,9 +132,13 @@ fn list_component_output(process: &TestProcess, rim: &Path) -> String {
     if !list_comp_output.status.success() {
         panic!("{}", String::from_utf8_lossy(&list_comp_output.stderr));
     }
+    // output might contains debug messages, which will not appear after release
+    // anyway, filter those out for test as well.
     String::from_utf8_lossy(&list_comp_output.stdout)
-        .trim()
-        .to_string()
+        .lines()
+        .filter(|line| !line.is_empty() && !line.starts_with("\u{1b}[35mdebug\u{1b}[0m"))
+        .collect::<Vec<&str>>()
+        .join("\n")
 }
 
 fn add_or_rm_component(process: &TestProcess, rim: &Path, comp: &str, remove: bool) {
@@ -157,7 +161,10 @@ fn manage_components_using_linked_rim() {
     let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
-        "Basic (installed)
+        "Minimal (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools
 rust-docs"
     );
@@ -168,7 +175,10 @@ rust-docs"
     let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
-        "Basic (installed)
+        "Minimal (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools (installed)
 rust-docs (installed)"
     );
@@ -178,7 +188,10 @@ rust-docs (installed)"
     let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
-        "Basic (installed)
+        "Minimal (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 rust-docs (installed)
 llvm-tools"
     );
@@ -197,7 +210,10 @@ fn install_with_specific_components() {
         .to_string();
     // output contains debug log output
     assert!(list_output.ends_with(
-        "Basic
+        "Minimal
+clippy
+rustfmt
+rust-src
 llvm-tools
 rust-docs"
     ));
@@ -219,7 +235,10 @@ rust-docs"
     let installed_components = list_component_output(&process, &rim);
     assert_eq!(
         installed_components,
-        "Basic (installed)
+        "Minimal (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 rust-docs (installed)
 llvm-tools"
     );
@@ -288,7 +307,10 @@ fn configs_migration() {
     assert!(new_rec_path.is_file());
     assert_eq!(
         list_output,
-        "Basic (installed)
+        "Minimal (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools
 rust-docs"
     );
@@ -298,7 +320,10 @@ rust-docs"
     let list_output = list_component_output(&process, &rim);
     assert_eq!(
         list_output,
-        "Basic (installed)
+        "Minimal (installed)
+clippy (installed)
+rustfmt (installed)
+rust-src (installed)
 llvm-tools
 rust-docs"
     );

@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use url::Url;
 
+use crate::cli::common::warn_enforced_config;
 use crate::components::Component;
 use crate::core::toolkit::Toolkit;
 use crate::core::update::UpdateOpt;
@@ -79,6 +80,13 @@ async fn update_toolkit_(
             )
         })?;
     let manifest = get_toolkit_manifest(Some(manifest_url), insecure).await?;
+
+    warn_enforced_config!(
+        manifest.config.rustup_dist_server.as_ref(),
+        rustup_dist_server.as_ref(),
+        "rustup-dist-server"
+    );
+
     let new_components = manifest.current_target_components(false)?;
 
     // notify user that we will install the latest update to replace their current installation

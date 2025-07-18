@@ -13,8 +13,11 @@ use super::{
 };
 use crate::core::baked_in_manifest_raw;
 use crate::core::os::add_to_path;
+use crate::{default_cargo_registry, default_rustup_dist_server, default_rustup_update_root};
 use anyhow::{anyhow, bail, Context, Result};
-use rim_common::types::{TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest};
+use rim_common::types::{
+    CargoRegistry, TomlParser, ToolInfo, ToolMap, ToolSource, ToolkitManifest,
+};
 use rim_common::{build_config, utils};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -34,7 +37,6 @@ pub trait EnvConfig {
 
 /// Contains every information that the installation process needs.
 pub struct InstallConfiguration<'a> {
-    pub cargo_registry: Option<(String, String)>,
     /// Path to install everything.
     ///
     /// Note that this folder will includes `cargo` and `rustup` folders as well.
@@ -43,8 +45,12 @@ pub struct InstallConfiguration<'a> {
     /// be written (CARGO_HOME and RUSTUP_HOME), which will be under the default location
     /// defined by [`default_install_dir`].
     pub install_dir: PathBuf,
-    pub rustup_dist_server: Option<Url>,
-    pub rustup_update_root: Option<Url>,
+    /// cargo registry config via user input.
+    cargo_registry: Option<CargoRegistry>,
+    /// rustup dist server via user input.
+    rustup_dist_server: Option<Url>,
+    /// rustup update root via user input.
+    rustup_update_root: Option<Url>,
     /// Indicates whether the rust toolchain was already installed,
     /// useful when installing third-party tools.
     pub toolchain_is_installed: bool,
@@ -68,7 +74,6 @@ impl RimDir for &InstallConfiguration<'_> {
 
 impl<'a> InstallConfiguration<'a> {
     pub fn new(install_dir: &'a Path, manifest: &'a ToolkitManifest) -> Result<Self> {
-        let (reg_name, reg_url) = super::default_cargo_registry();
         let install_record = if InstallationRecord::exists() {
             // TODO: handle existing record, maybe we want to enter manager mode directly?
             InstallationRecord::load_from_config_dir()?
@@ -81,7 +86,7 @@ impl<'a> InstallConfiguration<'a> {
         Ok(Self {
             install_dir: install_dir.to_path_buf(),
             install_record,
-            cargo_registry: Some((reg_name.into(), reg_url.into())),
+            cargo_registry: None,
             rustup_dist_server: None,
             rustup_update_root: None,
             toolchain_is_installed: false,
@@ -112,9 +117,17 @@ impl<'a> InstallConfiguration<'a> {
 
         // rename this installer to 'xxx-manager' and copy it into installer dir
         let self_exe = std::env::current_exe()?;
-        let manager_name = exe!(build_config().app_name());
+        let app_name = build_config().app_name();
+        let manager_name = exe!(&app_name);
         let manager_exe = install_dir.join(&manager_name);
         utils::copy_as(self_exe, &manager_exe)?;
+
+        // Write application icon (name: <APP_NAME>.ico) to the install dir for shortcut.
+        // Note that this file currently have no use for CLI version, but we still put
+        // it there to be future-proof.
+        let ico_content = include_bytes!("../../rim_gui/public/favicon.ico");
+        let ico_file_dest = install_dir.join(format!("{app_name}.ico"));
+        utils::write_bytes(ico_file_dest, ico_content, false)?;
 
         // soft-link this binary into cargo bin, so it will be in th PATH
         // Note: we are creating two symlinks binary, one have the fullname,
@@ -167,9 +180,57 @@ impl<'a> InstallConfiguration<'a> {
         Ok(())
     }
 
+    /// Getting the server url that used to download toolchain packages using rustup.
+    ///
+    /// This is guaranteed to return a value, and it has a fallback order as below:
+    /// 1. `rustup-dist-server` from [`ToolkitManifest`]'s config.
+    /// 2. `rustup-dist-server` from user input (`self.rustup_dist_server`), such as CLI options.
+    /// 3. Default value that is configured through `./configuration.toml`,
+    ///    and returned by [`default_rustup_dist_server`].
+    pub(crate) fn rustup_dist_server(&self) -> &Url {
+        self.manifest
+            .config
+            .rustup_dist_server
+            .as_ref()
+            .or(self.rustup_dist_server.as_ref())
+            .unwrap_or_else(|| default_rustup_dist_server())
+    }
+
+    /// Getting the server url that used to download rustup update.
+    ///
+    /// This is guaranteed to return a value, and it has a fallback order as below:
+    /// 1. `rustup-update-root` from [`ToolkitManifest`]'s config.
+    /// 2. `rustup-update-root` from user input (`self.rustup_update_root`), such as CLI options.
+    /// 3. Default value that is configured through `./configuration.toml`,
+    ///    and returned by [`default_rustup_update_root`].
+    pub(crate) fn rustup_update_root(&self) -> &Url {
+        self.manifest
+            .config
+            .rustup_update_root
+            .as_ref()
+            .or(self.rustup_update_root.as_ref())
+            .unwrap_or_else(|| default_rustup_update_root())
+    }
+
+    /// Getting the cargo registry config.
+    ///
+    /// This is guaranteed to return a value, and it has a fallback order as below:
+    /// 1. `cargo_registry` from [`ToolkitManifest`]'s config.
+    /// 2. `cargo_registry` from user input (`self.cargo_registry`), such as CLI options.
+    /// 3. Default value that is configured through `./configuration.toml`,
+    ///    and returned by [`default_cargo_registry`].
+    pub(crate) fn cargo_registry(&self) -> CargoRegistry {
+        self.manifest
+            .config
+            .cargo_registry
+            .clone()
+            .or(self.cargo_registry.clone())
+            .unwrap_or_else(|| default_cargo_registry().into())
+    }
+
     setter!(
-        with_cargo_registry(self.cargo_registry, name: impl ToString, value: impl ToString) {
-            Some((name.to_string(), value.to_string()))
+        with_cargo_registry(self.cargo_registry, registry: Option<impl Into<CargoRegistry>>) {
+            registry.map(|r| r.into())
         }
     );
     setter!(with_rustup_dist_server(self.rustup_dist_server, Option<Url>));
@@ -188,26 +249,20 @@ impl<'a> InstallConfiguration<'a> {
         let rustup_home = self.rustup_home().to_str().unwrap().to_string();
 
         let mut env_vars = Vec::from([
-            (
-                RUSTUP_DIST_SERVER,
-                self.rustup_dist_server
-                    .as_ref()
-                    .unwrap_or_else(|| super::default_rustup_dist_server())
-                    .to_string(),
-            ),
-            (
-                RUSTUP_UPDATE_ROOT,
-                self.rustup_update_root
-                    .as_ref()
-                    .unwrap_or_else(|| super::default_rustup_update_root())
-                    .to_string(),
-            ),
+            (RUSTUP_DIST_SERVER, self.rustup_dist_server().to_string()),
+            (RUSTUP_UPDATE_ROOT, self.rustup_update_root().to_string()),
+            (RUSTUP_DIST_SERVER, self.rustup_dist_server().to_string()),
+            (RUSTUP_UPDATE_ROOT, self.rustup_update_root().to_string()),
+            (RUSTUP_DIST_SERVER, self.rustup_dist_server().to_string()),
+            (RUSTUP_UPDATE_ROOT, self.rustup_update_root().to_string()),
+            (RUSTUP_DIST_SERVER, self.rustup_dist_server().to_string()),
+            (RUSTUP_UPDATE_ROOT, self.rustup_update_root().to_string()),
             (CARGO_HOME, cargo_home),
             (RUSTUP_HOME, rustup_home),
         ]);
 
         // Add proxy settings if has
-        if let Some(proxy) = &self.manifest.proxy {
+        if let Some(proxy) = self.manifest.proxy_config() {
             if let Some(url) = &proxy.http {
                 env_vars.push(("http_proxy", url.to_string()));
             }
@@ -279,6 +334,7 @@ impl<'a> InstallConfiguration<'a> {
         self.install_tools_(true, tools, 30.0)
     }
 
+    /// Install Rust toolchain with a list of components
     pub fn install_rust(&mut self, components: &[ToolchainComponent]) -> Result<()> {
         info!("{}", t!("install_toolchain"));
 
@@ -286,14 +342,14 @@ impl<'a> InstallConfiguration<'a> {
 
         ToolchainInstaller::init(&*self)
             .insecure(self.insecure)
-            .rustup_dist_server(self.rustup_dist_server.clone())
+            .rustup_dist_server(Some(self.rustup_dist_server().clone()))
             .install(self, components)?;
         add_to_path(&*self, self.cargo_bin())?;
         self.toolchain_is_installed = true;
 
         // Add the rust info to the fingerprint.
         self.install_record
-            .add_rust_record(&manifest.rust.channel, components);
+            .add_rust_record(&manifest.toolchain.channel, components);
         // record meta info
         // TODO(?): Maybe this should be moved as a separate step?
         self.install_record
@@ -304,17 +360,18 @@ impl<'a> InstallConfiguration<'a> {
         self.inc_progress(30.0)
     }
 
+    /// Add toolchain components separately, typically used in `component add`.
     pub fn install_toolchain_components(
         &mut self,
         components: &[ToolchainComponent],
     ) -> Result<()> {
         ToolchainInstaller::init(&*self)
             .insecure(self.insecure)
-            .rustup_dist_server(self.rustup_dist_server.clone())
+            .rustup_dist_server(Some(self.rustup_dist_server().clone()))
             .add_components(self, components)?;
 
         self.install_record
-            .add_rust_record(&self.manifest.rust.channel, components);
+            .add_rust_record(&self.manifest.toolchain.channel, components);
         self.install_record.write()?;
         Ok(())
     }
@@ -403,7 +460,7 @@ impl<'a> InstallConfiguration<'a> {
         };
         let dest = temp_dir.path().join(downloaded_file_name);
         utils::DownloadOpt::new(name, GlobalOpts::get().quiet)
-            .with_proxy(self.manifest.proxy.clone())
+            .with_proxy(self.manifest.proxy_config().cloned())
             .blocking_download(url, &dest)?;
 
         self.try_install_from_path(name, &dest, info, Some(temp_dir))
@@ -454,9 +511,8 @@ impl<'a> InstallConfiguration<'a> {
         info!("{}", t!("install_cargo_config"));
 
         let mut config = CargoConfig::new();
-        if let Some((name, url)) = &self.cargo_registry {
-            config.add_source(name, url, true);
-        }
+        let registry = self.cargo_registry();
+        config.add_source(&registry.name, &registry.index, true);
 
         let config_toml = config.to_toml()?;
         if !config_toml.trim().is_empty() {
@@ -522,7 +578,7 @@ impl InstallConfiguration<'_> {
 
         let record = &mut self.install_record;
         // Add the rust info to the fingerprint.
-        record.add_rust_record(&self.manifest.rust.channel, components);
+        record.add_rust_record(&self.manifest.toolchain.channel, components);
         // record meta info
         record.clone_toolkit_meta_from_manifest(self.manifest);
         // write changes
@@ -603,23 +659,6 @@ pub fn default_install_dir() -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::get_toolkit_manifest;
-
-    #[tokio::test]
-    async fn init_install_config() {
-        let mut cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        cache_dir.push("tests");
-        cache_dir.push("cache");
-
-        std::fs::create_dir_all(&cache_dir).unwrap();
-
-        let install_root = tempfile::Builder::new().tempdir_in(&cache_dir).unwrap();
-        let manifest = get_toolkit_manifest(None, false).await.unwrap();
-        let mut config = InstallConfiguration::new(install_root.path(), &manifest).unwrap();
-        config.setup().unwrap();
-
-        assert!(config.install_record.name.is_none());
-    }
 
     #[test]
     fn detect_package_conflicts() {

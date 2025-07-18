@@ -161,6 +161,9 @@ fn modify_path<T: RimDir + Copy>(config: T, path: &Path, remove: bool) -> Result
 
     // modifying the env shell script by modifying and replacing the `env` script
     // in install dir.
+    if GlobalOpts::get().no_modify_path() {
+        return Ok(());
+    }
     for sh in shell::get_available_shells() {
         let script = sh.env_script();
         let script_path = config.install_dir().join(script.name);
@@ -184,13 +187,11 @@ fn modify_path<T: RimDir + Copy>(config: T, path: &Path, remove: bool) -> Result
             })?;
         }
 
-        if !GlobalOpts::get().no_modify_path() {
-            ensure_env_config_in_rcs(
-                config,
-                &sh,
-                sh.update_rcs().iter().filter(|rc| rc.is_file()),
-            )?;
-        }
+        ensure_env_config_in_rcs(
+            config,
+            &sh,
+            sh.update_rcs().iter().filter(|rc| rc.is_file()),
+        )?;
     }
 
     Ok(())
