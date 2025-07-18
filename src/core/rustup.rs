@@ -10,7 +10,6 @@ use url::Url;
 use super::check::RUNNER_TOOLCHAIN_NAME;
 use super::components::ToolchainComponent;
 use super::default_rustup_dist_server;
-use super::default_rustup_update_root;
 use super::directories::RimDir;
 use super::install::InstallConfiguration;
 use super::uninstall::UninstallConfiguration;
@@ -79,12 +78,12 @@ impl ToolchainInstaller {
             .collect::<Vec<_>>()
             .join(",");
 
-        let version = &config.manifest.rust.channel;
+        let version = &config.manifest.toolchain.channel;
         let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update",);
         if !components_arg.is_empty() {
             cmd.args(["-c", &components_arg]);
         }
-        if let Some(profile) = config.manifest.rust.profile() {
+        if let Some(profile) = config.manifest.toolchain.profile() {
             cmd.args(["--profile", profile]);
         }
 
@@ -137,7 +136,7 @@ impl ToolchainInstaller {
         let rustup = &ensure_rustup(config, self.insecure)?;
 
         // check if toolchain is installed
-        let version = &config.manifest.rust.channel;
+        let version = &config.manifest.toolchain.channel;
         let toolchain_list_cmd = cmd!(rustup, "toolchain", "list");
         let toolchain_list_output = utils::command_output(toolchain_list_cmd)?;
         if toolchain_list_output
@@ -282,7 +281,7 @@ impl ToolchainInstaller {
         manifest: &ToolkitManifest,
         use_offline_server: bool,
     ) -> Result<()> {
-        if use_offline_server && manifest.rust.offline_dist_server.is_some() {
+        if use_offline_server && manifest.toolchain.offline_dist_server.is_some() {
             let local_server = manifest
                 .offline_dist_server()?
                 .unwrap_or_else(|| unreachable!("already checked in if condition"));
@@ -330,11 +329,8 @@ fn ensure_rustup(config: &InstallConfiguration, insecure: bool) -> Result<PathBu
             // Download rustup-init.
             download_rustup_init(
                 &rustup_init,
-                config
-                    .rustup_update_root
-                    .as_ref()
-                    .unwrap_or_else(|| default_rustup_update_root()),
-                config.manifest.proxy.as_ref(),
+                config.rustup_update_root(),
+                config.manifest.proxy_config(),
                 insecure,
             )?;
             (rustup_init, Some(temp_dir))

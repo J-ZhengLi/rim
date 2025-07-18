@@ -1,28 +1,25 @@
 import { ref, Ref } from 'vue';
-import { isRecommanded, toChecked, type Component, type RestrictedComponent } from './types/Component';
+import { isRecommended, toChecked, type Component, type RestrictedComponent } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
 import { AppInfo } from './types/AppInfo';
+
+type EnforceableOption = [string, boolean];
 
 interface BaseConfig {
   path: string;
   addToPath: boolean,
   insecure: boolean,
-  /** Allowing user to modify the belowing options, which dictates where we fetching the packages.
-   * This Option should only be enabled if user choose to install native Rust toolchain.
-   */
-  allowSourceConfig: boolean,
-  rustupDistServer?: string,
-  rustupUpdateRoot?: string,
-  cargoRegistryName?: string,
-  cargoRegistryValue?: string,
+  rustupDistServer?: EnforceableOption,
+  rustupUpdateRoot?: EnforceableOption,
+  cargoRegistryName?: EnforceableOption,
+  cargoRegistryValue?: EnforceableOption,
 }
 
 const defaultBaseConfig: BaseConfig = {
   path: '',
   addToPath: false,
   insecure: false,
-  allowSourceConfig: false,
 };
 
 class InstallConf {
@@ -108,12 +105,8 @@ class InstallConf {
     return this.restrictedComponents.value;
   }
 
-  allowSourceConfig(): boolean {
-    return this.config.value.allowSourceConfig;
-  }
-
   async loadManifest(path?: string) {
-    const ver = await invokeCommand("load_manifest_and_ret_version", { path: path });
+    const ver = await invokeCommand("toolkit_version", { path: path });
     if (typeof ver === 'string') {
       this.version.value = ver;
     };
@@ -136,12 +129,12 @@ class InstallConf {
     if (Array.isArray(componentList)) {
       componentList.sort((a, b) => {
         // list pre-selected components at front.
-        let aIsRecommanded = isRecommanded(a);
-        let bIsRecommanded = isRecommanded(b);
-        if (aIsRecommanded && !bIsRecommanded) {
+        let aIsRecommended = isRecommended(a);
+        let bIsRecommended = isRecommended(b);
+        if (aIsRecommended && !bIsRecommended) {
           return -1;
         }
-        if (!aIsRecommanded && bIsRecommanded) {
+        if (!aIsRecommended && bIsRecommended) {
           return 1;
         }
         // 名称排序

@@ -1,4 +1,5 @@
 mod build_config;
+mod cargo_registry;
 mod configuration;
 mod tool_info;
 mod tool_map;
@@ -6,6 +7,7 @@ mod toolkit_manifest;
 
 // re-exports
 pub use build_config::*;
+pub use cargo_registry::*;
 pub use configuration::*;
 pub use tool_info::*;
 pub use tool_map::*;

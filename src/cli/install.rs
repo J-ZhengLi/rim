@@ -5,11 +5,11 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use crate::cli::common::{self, Confirm};
+use crate::cli::common::{self, warn_enforced_config, Confirm};
 use crate::cli::GlobalOpts;
 use crate::components::Component;
 use crate::core::install::InstallConfiguration;
-use crate::core::{default_cargo_registry, get_toolkit_manifest, try_it, ToolkitManifestExt};
+use crate::core::{get_toolkit_manifest, try_it, ToolkitManifestExt};
 use crate::default_install_dir;
 
 use super::common::{
@@ -18,6 +18,7 @@ use super::common::{
 use super::{ExecStatus, Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
+use rim_common::types::ToolkitManifest;
 use rim_common::utils;
 
 /// Perform installer actions.
@@ -49,7 +50,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
         super::list::list_components(false, false, Some(&manifest))?;
         return Ok(ExecStatus::new_executed().no_pause(true));
     }
-
+    warn_enforced_download_source(installer, &manifest);
     manifest.adjust_paths()?;
 
     let component_list = manifest.current_target_components(true)?;
@@ -64,14 +65,11 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     // fill potentially missing package sources
     manifest.fill_missing_package_source(&mut user_opt.components, ask_tool_source)?;
 
-    let (registry_name, registry_value) = registry_url
-        .as_deref()
-        .map(|u| (registry_name.as_str(), u))
-        .unwrap_or(default_cargo_registry());
+    let maybe_registry = registry_url.as_ref().map(|u| (registry_name, u));
     let install_dir = user_opt.prefix;
 
     InstallConfiguration::new(&install_dir, &manifest)?
-        .with_cargo_registry(registry_name, registry_value)
+        .with_cargo_registry(maybe_registry)
         .with_rustup_dist_server(rustup_dist_server.clone())
         .with_rustup_update_root(rustup_update_root.clone())
         .insecure(*insecure)
@@ -102,6 +100,26 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     }
 
     Ok(ExecStatus::new_executed())
+}
+
+fn warn_enforced_download_source(installer: &Installer, manifest: &ToolkitManifest) {
+    warn_enforced_config!(
+        manifest.config.rustup_dist_server,
+        installer.rustup_dist_server,
+        "rustup-dist-server"
+    );
+    warn_enforced_config!(
+        manifest.config.rustup_update_root,
+        installer.rustup_update_root,
+        "rustup-update-root"
+    );
+    if manifest.config.cargo_registry.is_some()
+        && installer.registry_url.is_some()
+        && manifest.config.cargo_registry.as_ref().map(|r| &r.index)
+            != installer.registry_url.as_ref()
+    {
+        warn!("{}", t!("enforced_toolkit_config", key = "registry-url"));
+    }
 }
 
 /// Contains customized install options that will be collected from user input.

@@ -5,7 +5,7 @@ name = "Test-Only Toolkit"
 version = "stable v1.86.0"
 edition = "test"
 
-[rust]
+[toolchain]
 channel = "1.86.0"
 profile = "minimal"
 display-name = "Minimal"
@@ -14,7 +14,7 @@ components = ["clippy", "rustfmt", "rust-src"]
 optional-components = ["llvm-tools", "rust-docs"]
 group = "Rust"
 
-[rust.rustup]
+[toolchain.rustup]
 
 [tools.descriptions]
 clippy = "A collection of lints to catch common mistakes and improve your Rust code."

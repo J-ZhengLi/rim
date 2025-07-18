@@ -161,7 +161,7 @@ fn manage_components_using_linked_rim() {
     let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
-        "Basic (installed)
+        "Minimal (installed)
 clippy (installed)
 rustfmt (installed)
 rust-src (installed)
@@ -175,7 +175,7 @@ rust-docs"
     let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
-        "Basic (installed)
+        "Minimal (installed)
 clippy (installed)
 rustfmt (installed)
 rust-src (installed)
@@ -188,7 +188,7 @@ rust-docs (installed)"
     let output = list_component_output(&process, &rim);
     assert_eq!(
         output,
-        "Basic (installed)
+        "Minimal (installed)
 clippy (installed)
 rustfmt (installed)
 rust-src (installed)
@@ -210,7 +210,7 @@ fn install_with_specific_components() {
         .to_string();
     // output contains debug log output
     assert!(list_output.ends_with(
-        "Basic
+        "Minimal
 clippy
 rustfmt
 rust-src
@@ -235,7 +235,7 @@ rust-docs"
     let installed_components = list_component_output(&process, &rim);
     assert_eq!(
         installed_components,
-        "Basic (installed)
+        "Minimal (installed)
 clippy (installed)
 rustfmt (installed)
 rust-src (installed)
@@ -307,7 +307,7 @@ fn configs_migration() {
     assert!(new_rec_path.is_file());
     assert_eq!(
         list_output,
-        "Basic (installed)
+        "Minimal (installed)
 clippy (installed)
 rustfmt (installed)
 rust-src (installed)
@@ -320,7 +320,7 @@ rust-docs"
     let list_output = list_component_output(&process, &rim);
     assert_eq!(
         list_output,
-        "Basic (installed)
+        "Minimal (installed)
 clippy (installed)
 rustfmt (installed)
 rust-src (installed)

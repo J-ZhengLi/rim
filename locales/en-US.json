@@ -51,6 +51,7 @@
 	"downloading_latest_manager": "downloading the latest manager release (version '%{version}')...",
 	"downloading_rustup_init": "downloading rustup-init...",
 	"duplicated_config_files": "duplicated config file detected at these locations:\n1. %{first}\n2. %{second}\nconfiguration of the first one will be used",
+	"enforced_toolkit_config": "value of '%{key}' was enforced by the toolkit and cannot be changed",
 	"enter_choice_below": "please enter the index of your choice below",
 	"enter_path_or_url": "Enter Path or URL",
 	"executables": "executables",

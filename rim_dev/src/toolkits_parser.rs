@@ -182,7 +182,7 @@ impl Toolkit {
     /// #          -----
     /// ```
     pub(crate) fn rust_version(&self) -> &str {
-        &self.manifest.rust.channel
+        &self.manifest.toolchain.channel
     }
 
     /// Convenient method the get the toolkit's release date,

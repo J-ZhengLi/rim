@@ -66,6 +66,18 @@ macro_rules! handle_user_choice {
 }
 pub(crate) use handle_user_choice;
 
+macro_rules! warn_enforced_config {
+    ($manifest_config:expr, $input_config:expr, $key:literal) => {
+        if $manifest_config.is_some()
+            && $input_config.is_some()
+            && $manifest_config != $input_config
+        {
+            log::warn!("{}", rust_i18n::t!("enforced_toolkit_config", key = $key));
+        }
+    };
+}
+pub(crate) use warn_enforced_config;
+
 use super::GlobalOpts;
 
 /// A map representing a component's version difference related to it's name.

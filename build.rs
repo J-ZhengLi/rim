@@ -2,7 +2,7 @@ use std::env;
 
 const TARGET_OVERRIDE_ENV: &str = "HOST_TRIPLE";
 const EDITION_OVERRIDE_ENV: &str = "EDITION";
-const DEFAULT_EDITION: &str = "community";
+const DEFAULT_EDITION: &str = "test";
 const FILES_TO_TRIGGER_REBUILD: &[&str] = &["locales/en.json", "locales/zh-CN.json"];
 
 fn main() {

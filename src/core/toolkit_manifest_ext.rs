@@ -99,13 +99,13 @@ impl ToolkitManifestExt for ToolkitManifest {
     fn rustup_bin(&self) -> Result<Option<PathBuf>> {
         let cur_target = env!("TARGET");
         let par_dir = self.package_root()?;
-        let rel_path = self.rust.rustup.get(cur_target);
+        let rel_path = self.toolchain.rustup.get(cur_target);
 
         Ok(rel_path.map(|p| par_dir.join(p)))
     }
 
     fn offline_dist_server(&self) -> Result<Option<Url>> {
-        let Some(server) = &self.rust.offline_dist_server else {
+        let Some(server) = &self.toolchain.offline_dist_server else {
             return Ok(None);
         };
         let par_dir = self.package_root()?;
@@ -133,14 +133,18 @@ impl ToolkitManifestExt for ToolkitManifest {
     }
 
     fn current_target_components(&self, check_for_existence: bool) -> Result<Vec<Component>> {
-        let tc_channel = &self.rust.channel;
+        let tc_channel = &self.toolchain.channel;
 
-        let profile_name = self.rust.name();
+        let profile_name = self.toolchain.name();
         let default_cate_name = t!("other").to_string();
-        let tc_group = self.rust.group.as_deref().unwrap_or(&default_cate_name);
+        let tc_group = self
+            .toolchain
+            .group
+            .as_deref()
+            .unwrap_or(&default_cate_name);
         // Add a component that represents rust toolchain
         let mut components = vec![Component::new(profile_name)
-            .with_description(self.rust.description())
+            .with_description(self.toolchain.description())
             .with_category(tc_group)
             .with_type(ComponentType::ToolchainProfile)
             .required(true)
@@ -309,13 +313,17 @@ pub async fn get_toolkit_manifest(url: Option<Url>, insecure: bool) -> Result<To
 
     // ========== We don't have it yet, so, load the manifest and cache it ============
     let manifest = if let Some(url) = &url {
-        debug!("downloading toolset manifest from {url}");
-        let temp = utils::make_temp_file("toolset-manifest-", None)?;
-        utils::DownloadOpt::new("toolset manifest", GlobalOpts::get().quiet)
-            .insecure(insecure)
-            .download(url, temp.path())
-            .await?;
-        ToolkitManifest::load(temp.path())?
+        if let Ok(path) = url.to_file_path() {
+            ToolkitManifest::load(path)?
+        } else {
+            debug!("downloading toolset manifest from {url}");
+            let temp = utils::make_temp_file("toolset-manifest-", None)?;
+            utils::DownloadOpt::new("toolset manifest", GlobalOpts::get().quiet)
+                .insecure(insecure)
+                .download(url, temp.path())
+                .await?;
+            ToolkitManifest::load(temp.path())?
+        }
     } else {
         debug!("loading built-in toolset manifest");
         cfg_if::cfg_if! {
@@ -436,12 +444,12 @@ x86_64-unknown-linux-gnu = "tools/rustup-init"
 
     #[test]
     fn complex_tools_deser_and_ser() {
-        let input = r#"[rust]
+        let input = r#"[toolchain]
 channel = "1.0.0"
 components = []
 optional-components = []
 
-[rust.rustup]
+[toolchain.rustup]
 
 [tools.descriptions]
 

@@ -51,6 +51,7 @@
 	"downloading_latest_manager": "正在下载最新管理工具 (版本 '%{version}')...",
 	"downloading_rustup_init": "正在下载 rustup-init...",
 	"duplicated_config_files": "检查到以下重复配置文件:\n1. %{first}\n2. %{second}\n将读取第一个文件",
+	"enforced_toolkit_config": "'%{key}' 的值已由工具套件强制指定，无法被修改",
 	"enter_choice_below": "请在下方输入选项序号",
 	"enter_path_or_url": "输入路径或 URL",
 	"executables": "可执行文件",

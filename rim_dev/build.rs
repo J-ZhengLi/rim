@@ -3,7 +3,7 @@ use std::env;
 const TARGET_OVERRIDE_ENV: &str = "HOST_TRIPLE";
 const FILES_TO_TRIGGER_REBUILD: &[&str] = &["../locales/en.json", "../locales/zh-CN.json"];
 const EDITION_OVERRIDE_ENV: &str = "EDITION";
-const DEFAULT_EDITION: &str = "community";
+const DEFAULT_EDITION: &str = "test";
 
 fn main() {
     println!("cargo:rerun-if-env-changed={TARGET_OVERRIDE_ENV}");

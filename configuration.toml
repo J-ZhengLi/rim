@@ -6,13 +6,11 @@ identifier = "xuanwu-rust"
 # For GUI
 home_page_url = 'https://xuanwu.beta.atomgit.com/'
 
+# Default download sources
 rustup_dist_server = 'https://xuanwu.base.atomgit.com'
 rustup_update_root = 'https://xuanwu.base.atomgit.com/rustup'
 rim_dist_server = 'https://rust-mirror.obs.cn-north-4.myhuaweicloud.com'
-
-[cargo]
-registry_name = 'xuanwu-sparse'
-registry_url = 'sparse+https://xuanwu.base.atomgit.com/index/'
+registry = { name = 'xuanwu-sparse', index = 'sparse+https://xuanwu.base.atomgit.com/index/' }
 
 [locale.en-US]
 logo_text = "XuanWu"
@@ -27,8 +25,3 @@ vendor = "Rust 中国社区"
 product = "Rust 中国社区发行版"
 app_name = "Rust 安装管理器"
 content_source = "内容来源：Rust 中国社区，Rust 原生社区，第三方开源社区"
-
-[override.bisheng]
-rustup_dist_server = 'https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng'
-rustup_update_root = 'https://xuanwu.base.atomgit.com/rustup'
-rim_dist_server = 'https://rust-mirror.obs.cn-north-4.myhuaweicloud.com'

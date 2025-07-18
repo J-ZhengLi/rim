@@ -79,6 +79,9 @@ date = "2025-05-15"
 name = "Rust 中国社区发行版"
 version = "stable v1.87.0"
 edition = "community"
+rustup-dist-server = "https://xuanwu.base.atomgit.com"
+rustup-update-root = "https://xuanwu.base.atomgit.com/rustup"
+cargo-registry = { name = "xuanwu-sparse", index = "sparse+https://xuanwu.base.atomgit.com/index/" }
 
 [toolkit.community.value.rust]
 display-name = "Rust 官方工具"
@@ -178,6 +181,9 @@ components = [
 name = "Rust 中国社区发行版 (毕昇)"
 version = "bisheng v1.72.0"
 edition = "bisheng"
+rustup-dist-server = "https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng"
+rustup-update-root = "https://xuanwu.base.atomgit.com/rustup"
+cargo-registry = { name = "xuanwu-sparse", index = "sparse+https://xuanwu.base.atomgit.com/index/" }
 
 [toolkit.bisheng.value.rust]
 display-name = "Rust 官方工具"

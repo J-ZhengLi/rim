@@ -60,12 +60,12 @@ static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
 /// Get the default rustup dist server url.
 pub fn default_rustup_dist_server() -> &'static Url {
-    build_config().rustup_dist_server(env!("EDITION"))
+    build_config().rustup_dist_server()
 }
 
 /// Get the default rustup update root url.
 pub fn default_rustup_update_root() -> &'static Url {
-    build_config().rustup_update_root(env!("EDITION"))
+    build_config().rustup_update_root()
 }
 
 pub(crate) fn rim_dist_server() -> Url {
@@ -75,7 +75,7 @@ pub(crate) fn rim_dist_server() -> Url {
         }
     }
 
-    build_config().rim_dist_server(env!("EDITION")).clone()
+    build_config().rim_dist_server().clone()
 }
 
 /// Get the default name and value of replaced cargo registry.
@@ -83,7 +83,7 @@ pub(crate) fn rim_dist_server() -> Url {
 pub fn default_cargo_registry() -> (&'static str, &'static str) {
     let cfg = build_config();
 
-    (&cfg.cargo.registry_name, &cfg.cargo.registry_url)
+    (&cfg.registry.name, &cfg.registry.index)
 }
 
 /// Representing the options that user pass to the program, such as

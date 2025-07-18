@@ -1,11 +1,17 @@
 
 # This file was automatically generated.
 # 此文件是自动生成的.
+rustup-dist-server = "https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng"
+rustup-update-root = "https://xuanwu.base.atomgit.com/rustup"
 name = "Rust 中国社区发行版 (毕昇)"
 version = "bisheng v1.72.0"
 edition = "bisheng"
 
-[rust]
+[cargo-registry]
+name = "xuanwu-sparse"
+index = "sparse+https://xuanwu.base.atomgit.com/index/"
+
+[toolchain]
 channel = "1.72.0"
 profile = "minimal"
 display-name = "Rust 官方工具"
@@ -15,7 +21,7 @@ optional-components = ["llvm-tools", "rust-analyzer"]
 group = "Rust 基础工具集"
 offline-dist-server = "toolchain"
 
-[rust.rustup]
+[toolchain.rustup]
 x86_64-unknown-linux-gnu = "tools/rustup-init"
 
 [tools.descriptions]

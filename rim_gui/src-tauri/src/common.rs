@@ -1,4 +1,5 @@
 use std::{
+    ops::Deref,
     path::PathBuf,
     sync::{
         mpsc::{self, Receiver},
@@ -111,16 +112,12 @@ pub(crate) fn install_toolkit_in_new_thread(
 
         let install_dir = PathBuf::from(&config.path);
         // TODO: Use continuous progress
-        let mut i_config = InstallConfiguration::new(&install_dir, &manifest)?
+        let i_config = InstallConfiguration::new(&install_dir, &manifest)?
             .with_progress_indicator(Some(progress))
-            .with_rustup_dist_server(config.rustup_dist_server)
-            .with_rustup_update_root(config.rustup_update_root)
+            .with_rustup_dist_server(config.rustup_dist_server.as_deref().cloned())
+            .with_rustup_update_root(config.rustup_update_root.as_deref().cloned())
+            .with_cargo_registry(config.cargo_registry())
             .insecure(config.insecure);
-        if let (Some(registry_name), Some(registry_value)) =
-            (config.cargo_registry_name, config.cargo_registry_value)
-        {
-            i_config = i_config.with_cargo_registry(registry_name, registry_value);
-        }
 
         if is_update {
             i_config.update(components_list)?;
@@ -332,29 +329,87 @@ pub(crate) fn handle_manager_args(app: AppHandle, cli: rim::cli::Manager) {
     }
 }
 
+/// Contains an extra boolean flag to indicate
+/// whether an option was enforced by toolkit or not.
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct EnforceableOption<T>(T, bool);
+
+impl<T> Deref for EnforceableOption<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> From<T> for EnforceableOption<T> {
+    fn from(value: T) -> Self {
+        Self(value, false)
+    }
+}
+
+/// The configuration options to install a toolkit.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BaseConfiguration {
     pub(crate) path: PathBuf,
     pub(crate) add_to_path: bool,
     pub(crate) insecure: bool,
-    pub(crate) rustup_dist_server: Option<Url>,
-    pub(crate) rustup_update_root: Option<Url>,
-    pub(crate) cargo_registry_name: Option<String>,
-    pub(crate) cargo_registry_value: Option<String>,
+    pub(crate) rustup_dist_server: Option<EnforceableOption<Url>>,
+    pub(crate) rustup_update_root: Option<EnforceableOption<Url>>,
+    cargo_registry_name: Option<EnforceableOption<String>>,
+    cargo_registry_value: Option<EnforceableOption<String>>,
 }
 
 impl BaseConfiguration {
-    pub(crate) fn new<P: Into<PathBuf>>(path: P) -> Self {
-        let (registry_name, registry_value) = rim::default_cargo_registry();
+    /// Create a new configuration set base on toolkit manifest.
+    ///
+    /// Some options might be enforced by the toolkit manifest,
+    /// this why we need to access it when returning the base configuration.
+    pub(crate) fn new<P: Into<PathBuf>>(path: P, manifest: &ToolkitManifest) -> Self {
+        let rustup_dist_server = manifest
+            .config
+            .rustup_dist_server
+            .clone()
+            .map(|u| EnforceableOption(u, true))
+            .unwrap_or_else(|| rim::default_rustup_dist_server().clone().into());
+        let rustup_update_root = manifest
+            .config
+            .rustup_update_root
+            .clone()
+            .map(|u| EnforceableOption(u, true))
+            .unwrap_or_else(|| rim::default_rustup_update_root().clone().into());
+        let cargo_registry_name = manifest
+            .config
+            .cargo_registry
+            .as_ref()
+            .map(|r| EnforceableOption(r.name.clone(), true))
+            .unwrap_or_else(|| rim::default_cargo_registry().0.to_string().into());
+        let cargo_registry_value = manifest
+            .config
+            .cargo_registry
+            .as_ref()
+            .map(|r| EnforceableOption(r.index.clone(), true))
+            .unwrap_or_else(|| rim::default_cargo_registry().1.to_string().into());
+
         BaseConfiguration {
             path: path.into(),
             add_to_path: true,
             insecure: false,
-            rustup_dist_server: Some(rim::default_rustup_dist_server().clone()),
-            rustup_update_root: Some(rim::default_rustup_update_root().clone()),
-            cargo_registry_name: Some(registry_name.to_string()),
-            cargo_registry_value: Some(registry_value.to_string()),
+            rustup_dist_server: Some(rustup_dist_server),
+            rustup_update_root: Some(rustup_update_root),
+            cargo_registry_name: Some(cargo_registry_name),
+            cargo_registry_value: Some(cargo_registry_value),
         }
+    }
+
+    /// Combine `cargo_registry_name` and `cargo_registry_value` from user input.
+    ///
+    /// If either `self.cargo_registry_value` or `self.cargo_registry_name` is `None`,
+    /// this will return `None`.
+    pub(crate) fn cargo_registry(&self) -> Option<(&str, &str)> {
+        Some((
+            self.cargo_registry_name.as_deref()?,
+            self.cargo_registry_value.as_deref()?,
+        ))
     }
 }

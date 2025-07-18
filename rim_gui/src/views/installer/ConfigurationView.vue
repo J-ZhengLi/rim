@@ -2,8 +2,43 @@
 import { useCustomRouter } from '@/router/index';
 import { installConf, invokeCommand } from '@/utils/index';
 import { message, open } from '@tauri-apps/api/dialog';
+import { computed } from 'vue';
 
 const { routerPush, routerBack } = useCustomRouter();
+
+// Enforceable Options
+const rustupDistServer = computed({
+  get: () => installConf.config.value.rustupDistServer?.[0] || '',
+  set: (newValue: string) => {
+    if (installConf.config.value.rustupDistServer) {
+      installConf.config.value.rustupDistServer[0] = newValue;
+    }
+  }
+});
+const rustupUpdateRoot = computed({
+  get: () => installConf.config.value.rustupUpdateRoot?.[0] || '',
+  set: (newValue: string) => {
+    if (installConf.config.value.rustupUpdateRoot) {
+      installConf.config.value.rustupUpdateRoot[0] = newValue;
+    }
+  }
+});
+const cargoRegistryName = computed({
+  get: () => installConf.config.value.cargoRegistryName?.[0] || '',
+  set: (newValue: string) => {
+    if (installConf.config.value.cargoRegistryName) {
+      installConf.config.value.cargoRegistryName[0] = newValue;
+    }
+  }
+});
+const cargoRegistryValue = computed({
+  get: () => installConf.config.value.cargoRegistryValue?.[0] || '',
+  set: (newValue: string) => {
+    if (installConf.config.value.cargoRegistryValue) {
+      installConf.config.value.cargoRegistryValue[0] = newValue;
+    }
+  }
+});
 
 function handleNextClick() {
   // validate folder path input
@@ -45,16 +80,17 @@ async function openFolder() {
             :hint="$t('disable_ssl_cert_varification_hint')" />
           <br></br>
           <b mb="0.5rem" text-regular>{{ $t('source_configuration') }}</b>
-          <labeled-input :disabled="!installConf.allowSourceConfig()"
-            v-model="installConf.config.value.rustupDistServer" :label="$t('rustup_dist_server')"
+          <labeled-input :disabled="installConf.config.value.rustupDistServer?.[1]"
+            v-model="rustupDistServer" :label="$t('rustup_dist_server')"
             :hint="$t('rustup_dist_server_hint')" />
-          <labeled-input :disabled="!installConf.allowSourceConfig()"
-            v-model="installConf.config.value.rustupUpdateRoot" :label="$t('rustup_update_root')"
+          <labeled-input :disabled="installConf.config.value.rustupUpdateRoot?.[1]"
+            v-model="rustupUpdateRoot" :label="$t('rustup_update_root')"
             :hint="$t('rustup_update_root_hint')" />
-          <labeled-input v-model="installConf.config.value.cargoRegistryName" :label="$t('cargo_registry_name')"
+          <labeled-input :disabled="installConf.config.value.cargoRegistryName?.[1]"
+            v-model="cargoRegistryName" :label="$t('cargo_registry_name')"
             :hint="$t('cargo_registry_name_hint')" />
-          <labeled-input :disabled="!installConf.allowSourceConfig()"
-            v-model="installConf.config.value.cargoRegistryValue" :label="$t('cargo_registry_index')"
+          <labeled-input :disabled="installConf.config.value.cargoRegistryValue?.[1]"
+            v-model="cargoRegistryValue" :label="$t('cargo_registry_index')"
             :hint="$t('cargo_registry_index_hint')" />
         </base-card>
       </base-details>

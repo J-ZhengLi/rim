@@ -105,7 +105,7 @@ fn install_toolkit(window: tauri::Window, components_list: Vec<Component>) -> Re
         common::install_toolkit_in_new_thread(
             window,
             components_list,
-            BaseConfiguration::new(p),
+            BaseConfiguration::new(p, manifest),
             manifest.to_owned(),
             true,
         );

@@ -17,7 +17,7 @@ use rim::{get_toolkit_manifest, GlobalOpts, ToolkitManifestExt};
 use rim_common::types::{ToolInfo, ToolSource, ToolkitManifest};
 use rim_common::utils;
 
-static TOOLSET_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
+static TOOLKIT_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
 
 pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
     tauri::Builder::default()
@@ -32,7 +32,7 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
             install_toolchain,
             post_installation_opts,
             toolkit_name,
-            load_manifest_and_ret_version,
+            toolkit_version,
             common::supported_languages,
             common::set_locale,
             common::get_locale,
@@ -50,14 +50,21 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
 }
 
 #[tauri::command]
-fn default_configuration() -> BaseConfiguration {
+async fn default_configuration() -> BaseConfiguration {
+    let manifest = TOOLKIT_MANIFEST.get().unwrap_or_else(|| {
+        unreachable!(
+            "toolkit manifest was loaded before reaching config page, \
+            which is where this function should only be called."
+        )
+    });
+
     // FIXME: fix support of GUI commandline args, then we can override
-    // this config using commandline args.
+    // some of this config using commandline args.
     let path = INSTALL_DIR
         .get()
         .cloned()
         .unwrap_or_else(rim::default_install_dir);
-    BaseConfiguration::new(path)
+    BaseConfiguration::new(path, &*manifest.lock().await)
 }
 
 /// Check if the given path could be used for installation, and return the reason if not.
@@ -90,29 +97,55 @@ fn toolkit_name() -> String {
     utils::build_cfg_locale("product").into()
 }
 
+async fn load_toolkit(path: Option<&Path>) -> Result<&'static Mutex<ToolkitManifest>> {
+    async fn load_toolkit_(path: Option<&Path>) -> Result<ToolkitManifest> {
+        let path_url = path
+            .as_ref()
+            .map(Url::from_file_path)
+            .transpose()
+            .map_err(|_| anyhow!("unable to convert path '{path:?}' to URL"))?;
+        let mut manifest = get_toolkit_manifest(path_url, false).await?;
+        manifest.adjust_paths()?;
+        Ok(manifest)
+    }
+
+    // There are there scenario of loading a toolkit manifest.
+    // 1. The manifest was cached and the path matched, meaning a same one is being loaded:
+    //    Return the cached one.
+    // 2. The manifest was cached and the path does not match:
+    //    Update the cached one.
+    // 3. No manifest was cached:
+    //    Load one and cache it.
+    if let Some(existing) = TOOLKIT_MANIFEST.get() {
+        let mut guard = existing.lock().await;
+        if guard.path.as_deref() != path {
+            println!(
+                "cached manifest path: {:?}, loading from: {:?}",
+                guard.path.as_deref(),
+                path
+            );
+            *guard = load_toolkit_(path).await?;
+            debug!("manifest updated");
+        }
+        Ok(existing)
+    } else {
+        let manifest = load_toolkit_(path).await?;
+        let mutex = TOOLKIT_MANIFEST.get_or_init(|| Mutex::new(manifest));
+        debug!("manifest initialized");
+        Ok(mutex)
+    }
+}
+
 // Make sure this function is called first after launch.
 #[tauri::command]
-async fn load_manifest_and_ret_version(path: Option<PathBuf>) -> Result<String> {
-    // TODO: Give an option for user to specify another manifest.
-    // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
-    let path_url = path
-        .as_ref()
-        .map(Url::from_file_path)
-        .transpose()
-        .map_err(|_| anyhow!("unable to convert path '{path:?}' to URL"))?;
-    let mut manifest = get_toolkit_manifest(path_url, false).await?;
-    manifest.adjust_paths()?;
-    let version = manifest.version.clone().unwrap_or_default();
-
-    if let Some(existing) = TOOLSET_MANIFEST.get() {
-        // update the existing manifest
-        *existing.lock().await = manifest;
-        debug!("manifest updated");
-    } else {
-        // This should be fine as the cell is garanteed to have no previous value.
-        _ = TOOLSET_MANIFEST.set(Mutex::new(manifest));
-        debug!("manifest loaded");
-    }
+async fn toolkit_version(path: Option<PathBuf>) -> Result<String> {
+    let version = load_toolkit(path.as_deref())
+        .await?
+        .lock()
+        .await
+        .version
+        .clone()
+        .unwrap_or_default();
     Ok(version)
 }
 
@@ -193,7 +226,7 @@ async fn install_toolchain(
 /// # Panic
 /// Will panic if the manifest is not cached.
 fn cached_manifest() -> &'static Mutex<ToolkitManifest> {
-    TOOLSET_MANIFEST
+    TOOLKIT_MANIFEST
         .get()
         .expect("toolset manifest should be loaded by now")
 }
