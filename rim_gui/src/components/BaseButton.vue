@@ -41,7 +41,7 @@ const themeClasses = computed(() => {
 <style scoped>
 button {
   font-size: clamp(100%, 3vh, 20px);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, .4);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .6), 0 8px 16px rgba(0, 0, 0, .12);
   font-weight: bold;
   white-space: nowrap;
   overflow: hidden;

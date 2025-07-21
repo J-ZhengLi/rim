@@ -182,7 +182,7 @@ impl TestProcess {
             "installer"
         };
 
-        let mut base = Command::new(&self.executable)
+        let base = Command::new(&self.executable)
             .env("HOME", home_dir)
             .env("MODE", mode);
 
@@ -191,9 +191,7 @@ impl TestProcess {
         // So it might be better to disable env modification until we figure out
         // a clever way to do it.
         #[cfg(windows)]
-        {
-            base = base.env("USERPROFILE", home_dir).arg("--no-modify-env");
-        }
+        let base = base.env("USERPROFILE", home_dir).arg("--no-modify-env");
 
         if !matches!(self.kind, TestProcessKind::Manager) {
             base.args(["--rustup-update-root", local_rustup_update_root().as_str()])

@@ -18,6 +18,8 @@
 	"cargo_registry_index_hint": "用于获取软件中心包的 URL",
 	"cargo_registry_name": "Cargo 软件中心仓名称",
 	"cargo_registry_name_hint": "用于替代 crates.io 的软件中心仓名称",
+	"check": "检查",
+	"check_manager_updates": "检查管理工具更新",
 	"checking_manager_updates": "正在检查管理工具更新...",
 	"checking_toolkit_updates": "正在检查工具套件更新...",
 	"choose_an_option": "请选择以下任一选项",

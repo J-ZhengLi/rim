@@ -17,7 +17,7 @@
                 <div class="setting-options">
                     <label>
                         <div flex="~ item-center" w="20vw">
-                            <svg width="1.5rem" height="1.5rem" mr="1rem" py="2px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="20px" height="20px" mr="1rem" py="2px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12Z" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                                 <path d="M13 2.04932C13 2.04932 16 5.99994 16 11.9999C16 17.9999 13 21.9506 13 21.9506" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
                                 <path d="M11 21.9506C11 21.9506 8 17.9999 8 11.9999C8 5.99994 11 2.04932 11 2.04932" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -26,7 +26,7 @@
                             </svg>
                             <span class="label-text">{{ $t('language') }}</span>
                         </div>
-                        <base-select :items="langOptions" v-model="settings.language" />
+                        <base-select width="12vw" :items="langOptions" v-model="settings.language" />
                     </label>
                 </div>
             </section>
@@ -36,7 +36,11 @@
                 <div class="setting-options">
                     <label>
                         <span class="label-text">{{ $t('manager_update_channel') }}</span>
-                        <base-select :items="updateChannels" v-model="settings.rimUpdateChannel" />
+                        <base-select width="12vw" :items="updateChannels" v-model="settings.rimUpdateChannel" />
+                    </label>
+                    <label>
+                        <span class="label-text">{{ $t('check_manager_updates') }}</span>
+                        <base-button w="12vw" theme="primary">{{ $t('check') }}</base-button>
                     </label>
                     <base-check-box v-model="settings.autoCheckRimUpdate" :title="$t('auto_check_manager_updates')" labelAlignment="left" />
                     <base-check-box v-model="settings.autoCheckToolkitUpdate" :title="$t('auto_check_toolkit_updates')" labelAlignment="left" />
@@ -49,7 +53,7 @@
 <script setup lang="ts">
 import { DropdownItem } from '@/components/BaseSelect.vue';
 import { invokeCommand } from '@/utils';
-import { ref, reactive, watch, computed, onMounted, toRaw } from 'vue';
+import { ref, reactive, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const { locale, availableLocales, t } = useI18n();
@@ -80,12 +84,11 @@ const scrollToSection = (section: 'general' | 'update') => {
 
 // Reactive settings model
 const settings = reactive({
-    language: 'en-US',
+    language: locale.value,
     autoCheckRimUpdate: true,
     autoCheckToolkitUpdate: true,
     rimUpdateChannel: 'stable',
 });
-const previousSettings = ref(structuredClone(toRaw(settings)));
 
 function langName(lang: string): string {
     switch (lang) {
@@ -98,25 +101,10 @@ function langName(lang: string): string {
     }
 }
 
-onMounted(() => {
-    settings.language = locale.value;
-});
-
 // Automatically apply settings on change
-watch(settings, () => {
-    const current = toRaw(settings);
-    const previous = previousSettings.value;
-
-    if (current == previous) {
-        console.log("skip identical settings");
-        return;
-    }
-
+watch(settings, (current) => {
     locale.value = current.language;
     invokeCommand('set_locale', { language: current.language });
-
-    // backup current settings
-    previousSettings.value = structuredClone(current);
 }, { deep: true });
 </script>
 

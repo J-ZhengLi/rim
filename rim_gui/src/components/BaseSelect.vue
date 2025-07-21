@@ -85,9 +85,6 @@ document.addEventListener('click', closeOnClickOutside);
 <style scoped>
 .dropdown {
     position: relative;
-    margin: 1rem;
-    height: 100%;
-    width: 100%;
 }
 
 .dropdown-toggle {
@@ -97,8 +94,7 @@ document.addEventListener('click', closeOnClickOutside);
     cursor: pointer;
     transition: border-color 0.3s;
     background: rgba(255, 255, 255, .7);
-    border: 1px solid rgba(0, 0, 0, .1);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .6), 0 8px 16px rgba(0, 0, 0, .12);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     font-size: clamp(100%, 2vh, 20px);
@@ -145,6 +141,7 @@ document.addEventListener('click', closeOnClickOutside);
     padding: 8px 12px;
     cursor: pointer;
     transition: background-color 0.2s;
+    font-size: clamp(100%, 2vh, 20px);
 }
 
 .dropdown-item:hover {
