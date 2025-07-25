@@ -184,7 +184,7 @@ class ManagerConf {
     await this.reloadKits();
     // since this function is called immediately after app start, we call these functions
     // to check updates in background then ask user if they what to install it.
-    await invokeCommand('check_updates_in_background');
+    await invokeCommand('check_updates_on_startup');
   }
 
   async loadInstalledKit() {

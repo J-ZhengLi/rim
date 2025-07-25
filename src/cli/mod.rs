@@ -308,7 +308,7 @@ impl ExecutableCommand for Installer {
             self.no_modify_path,
             self.lang.as_deref(),
         )?;
-        install::execute_installer(self)
+        blocking!(install::execute_installer(self))
     }
 
     #[cfg(feature = "gui")]

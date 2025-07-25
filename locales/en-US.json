@@ -86,7 +86,6 @@
 	"installer": "installer",
 	"installer_help": "installation of this tool will start a separated installer process that might needs your input.",
 	"installing": "Installing",
-	"installing_hint": "Installing selected components - this may take a few moments.",
 	"installing_msvc_info": "running VS BuildTools installer...",
 	"installing_tool_info": "installing '%{name}'",
 	"integers": "integers",

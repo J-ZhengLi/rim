@@ -1,40 +1,27 @@
-use std::{
-    sync::{mpsc::Receiver, Arc, Mutex, MutexGuard},
-    time::Duration,
-};
+use std::{sync::mpsc::Receiver, time::Duration};
 
-use crate::{common, error::Result};
-use crate::{
-    common::BaseConfiguration,
-    consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT},
-};
+use crate::command::with_shared_commands;
+use crate::common::TOOLKIT_MANIFEST;
+use crate::consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT};
+use crate::progress::GuiProgress;
+use crate::{common, consts::MANAGER_UPDATE_EVENT, error::Result};
 use anyhow::Context;
-use rim::{
-    components::Component,
-    toolkit::{self, Toolkit},
-    update::{self, UpdateCheckBlocker, UpdateOpt},
-};
 use rim::{get_toolkit_manifest, AppInfo};
-use rim_common::types::{
-    Configuration, ToolkitManifest, UpdateTarget, DEFAULT_UPDATE_CHECK_DURATION,
+use rim::{
+    toolkit::{self, Toolkit},
+    update::{self, UpdateOpt},
 };
+use rim_common::types::Configuration;
 use rim_common::utils;
-use tauri::{async_runtime, AppHandle, Manager};
+use tauri::{AppHandle, Builder, Manager};
+use tokio::sync::RwLock;
 use url::Url;
-
-static SELECTED_TOOLSET: Mutex<Option<ToolkitManifest>> = Mutex::new(None);
-
-fn selected_toolset<'a>() -> MutexGuard<'a, Option<ToolkitManifest>> {
-    SELECTED_TOOLSET
-        .lock()
-        .expect("unable to lock global mutex")
-}
 
 pub(super) fn main(
     msg_recv: Receiver<String>,
     maybe_args: anyhow::Result<Box<rim::cli::Manager>>,
 ) -> Result<()> {
-    tauri::Builder::default()
+    Builder::new()
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cmd| {
             let cli = match rim::cli::Manager::try_from(argv) {
                 Ok(a) => a,
@@ -45,22 +32,15 @@ pub(super) fn main(
             };
             common::handle_manager_args(app.clone(), cli);
         }))
-        .invoke_handler(tauri::generate_handler![
-            common::close_window,
+        .invoke_handler(with_shared_commands![
             get_installed_kit,
             get_available_kits,
             get_install_dir,
             uninstall_toolkit,
-            install_toolkit,
-            check_updates_in_background,
+            check_updates_on_startup,
             get_toolkit_from_url,
-            common::supported_languages,
-            common::get_locale,
-            common::set_locale,
-            common::app_info,
             self_update_now,
             toolkit_update_now,
-            common::get_build_cfg_locale_str,
         ])
         .setup(|app| {
             common::setup_manager_window(app, msg_recv, maybe_args)?;
@@ -91,119 +71,78 @@ fn get_install_dir() -> String {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn uninstall_toolkit(window: tauri::Window, remove_self: bool) {
-    common::uninstall_toolkit_in_new_thread(window, remove_self);
-}
-
-#[tauri::command(rename_all = "snake_case")]
-fn install_toolkit(window: tauri::Window, components_list: Vec<Component>) -> Result<()> {
-    UpdateOpt::new().update_toolkit(|p| {
-        let guard = selected_toolset();
-        let manifest = guard
-            .as_ref()
-            .expect("internal error: a toolkit must be selected to install");
-        common::install_toolkit_in_new_thread(
-            window,
-            components_list,
-            BaseConfiguration::new(p, manifest),
-            manifest.to_owned(),
-            true,
-        );
-        Ok(())
-    })?;
-    Ok(())
-}
-
-/// Check self update and return the timeout duration until the next check.
-async fn check_manager_update(_app: &AppHandle) -> Result<Duration> {
-    let timeout = match update::check_self_update(false).await {
-        Ok(update_kind) => {
-            if let update::UpdateKind::Newer {
-                current: _,
-                latest: _,
-            } = update_kind
-            {
-                // TODO: show update hint
-            }
-            Configuration::load_from_config_dir()
-                .update
-                .duration_until_next_run(UpdateTarget::Manager)
-        }
-        Err(e) => {
-            log::error!("manager update check failed: {e}");
-            DEFAULT_UPDATE_CHECK_DURATION
-        }
-    };
-    Ok(timeout)
-}
-
-/// Check toolkit update and return the timeout duration until the next check.
-async fn check_toolkit_update(_app: &AppHandle) -> Result<Duration> {
-    let timeout = match update::check_toolkit_update(false).await {
-        Ok(update_kind) => {
-            if let update::UpdateKind::Newer {
-                current: _,
-                latest: _,
-            } = update_kind
-            {
-                // TODO: show update hint
-            }
-            Configuration::load_from_config_dir()
-                .update
-                .duration_until_next_run(UpdateTarget::Toolkit)
-        }
-        Err(e) => {
-            log::error!("toolkit update check failed: {e}");
-            DEFAULT_UPDATE_CHECK_DURATION
-        }
-    };
-    Ok(timeout)
+async fn uninstall_toolkit(window: tauri::Window, remove_self: bool) -> Result<()> {
+    common::uninstall_toolkit_(window, remove_self).await
 }
 
 #[tauri::command]
-async fn check_updates_in_background(app: AppHandle) -> Result<()> {
-    let app_arc = Arc::new(app);
-    let app_clone = app_arc.clone();
+/// Check self update and show update confirmation dialog if needed.
+async fn check_manager_update(app: &AppHandle) -> Result<()> {
+    let update_opt = UpdateOpt::new(GuiProgress::new(app.clone()));
 
-    async_runtime::spawn(async move {
-        loop {
-            UpdateCheckBlocker::pause_if_blocked().await;
+    if let update::UpdateKind::Newer { current, latest } = update_opt.check_self_update().await {
+        app.emit_to(
+            MANAGER_WINDOW_LABEL,
+            MANAGER_UPDATE_EVENT,
+            (current, latest),
+        )?;
+    }
+    Ok(())
+}
 
-            let timeout_for_manager = check_manager_update(&app_clone).await?;
-            let timeout_for_toolkit = check_toolkit_update(&app_clone).await?;
+#[tauri::command]
+/// Check toolkit update and show update confirmation dialog if needed.
+async fn check_toolkit_update(app: &AppHandle) -> Result<()> {
+    if let update::UpdateKind::Newer { current, latest } = update::check_toolkit_update(false).await
+    {
+        app.emit_to(
+            MANAGER_WINDOW_LABEL,
+            TOOLKIT_UPDATE_EVENT,
+            (current, latest),
+        )?;
+    }
+    Ok(())
+}
 
-            let timeout = timeout_for_manager.min(timeout_for_toolkit);
-            utils::async_sleep(timeout).await;
-        }
-    })
-    .await?
+#[tauri::command]
+async fn check_updates_on_startup(app: AppHandle) -> Result<()> {
+    let conf = Configuration::load_from_config_dir();
+
+    if conf.update.auto_check_manager_updates {
+        check_manager_update(&app).await?;
+    }
+    if conf.update.auto_check_toolkit_updates {
+        check_toolkit_update(&app).await?;
+    }
+
+    Ok(())
 }
 
 /// When the `install` button in a toolkit's card was clicked,
 /// the URL of that toolkit was pass to this function, which we can download and
 /// deserialized the downloaded toolset-manifest and convert it to an installable toolkit format.
 #[tauri::command]
-fn get_toolkit_from_url(url: String) -> Result<Toolkit> {
+async fn get_toolkit_from_url(url: String) -> Result<Toolkit> {
     // the `url` input was converted from `Url`, so it will definitely be convert back without issue,
     // thus the below line should never panic
     let url_ = Url::parse(&url)?;
 
     // load the manifest for components information
-    let manifest = async_runtime::block_on(get_toolkit_manifest(Some(url_), false))?;
+    let manifest = get_toolkit_manifest(Some(url_), false).await?;
     // convert it to toolkit
     let toolkit = Toolkit::try_from(&manifest)?;
 
     // cache the selected toolset manifest
-    let mut guard = selected_toolset();
-    *guard = Some(manifest);
+    if let Some(existing) = TOOLKIT_MANIFEST.get() {
+        *existing.write().await = manifest;
+    } else {
+        TOOLKIT_MANIFEST.get_or_init(|| RwLock::new(manifest));
+    }
 
     Ok(toolkit)
 }
 
 async fn do_self_update(app: &AppHandle) -> Result<()> {
-    // block update checker without unblocking (app will restart)
-    UpdateCheckBlocker::block();
-
     let window = app.get_window(MANAGER_WINDOW_LABEL);
     // block UI interaction, and show loading toast
     if let Some(win) = &window {
@@ -212,7 +151,10 @@ async fn do_self_update(app: &AppHandle) -> Result<()> {
 
     // do self update, skip version check because it should already
     // been checked using `update::check_self_update`
-    if let Err(e) = UpdateOpt::new().self_update(true).await {
+    if let Err(e) = UpdateOpt::new(GuiProgress::new(app.clone()))
+        .self_update(true)
+        .await
+    {
         return Err(anyhow::anyhow!("failed when performing self update: {e}").into());
     }
 
@@ -238,10 +180,10 @@ async fn self_update_now(app: AppHandle) -> Result<()> {
 }
 
 #[tauri::command]
-fn toolkit_update_now(app: AppHandle, url: String) -> Result<()> {
+async fn toolkit_update_now(app: AppHandle, url: String) -> Result<()> {
     // fetch the latest toolkit from the given url, and send it to the frontend.
     // the frontend should know what to do with it.
-    let toolkit = get_toolkit_from_url(url)?;
+    let toolkit = get_toolkit_from_url(url).await?;
     app.emit_to(MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT, toolkit)?;
 
     Ok(())

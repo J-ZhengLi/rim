@@ -13,7 +13,7 @@ const components = computed(() => {
 
 async function handleNextClick() {
   routerPush('/installer/install');
-  await invokeCommand('install_toolchain', {
+  await invokeCommand('install_toolkit', {
     componentsList: components.value as Component[],
     config: installConf.config.value,
   });

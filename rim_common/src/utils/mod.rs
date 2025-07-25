@@ -84,16 +84,16 @@ macro_rules! exe {
 // FIXME(?): Find a proper way to provide function visibility instead of all `pub`.
 #[macro_export]
 macro_rules! setter {
-    ($name:ident ($self:ident.$self_param:ident, $t:ty)) => {
+    ($name:ident ($self:ident.$($self_param:ident).*, $t:ty)) => {
         #[allow(clippy::wrong_self_convention)]
         pub fn $name(mut $self, val: $t) -> Self {
-            $self.$self_param = val;
+            $self.$($self_param).* = val;
             $self
         }
     };
-    ($name:ident ($self:ident.$self_param:ident, $($val:ident : $t:ty),*) { $init_val:expr }) => {
+    ($name:ident ($self:ident.$($self_param:ident).*, $($val:ident : $t:ty),*) { $init_val:expr }) => {
         pub fn $name(mut $self, $($val: $t),*) -> Self {
-            $self.$self_param = $init_val;
+            $self.$($self_param).* = $init_val;
             $self
         }
     };
@@ -216,7 +216,7 @@ pub fn set_locale(lang: Language) {
     // because locale setting is not that critical.
     let set_locale_inner_ = || -> Result<()> {
         Configuration::load_from_config_dir()
-            .set_language(Some(lang))
+            .set_language(lang)
             .write()
     };
     if let Err(e) = set_locale_inner_() {

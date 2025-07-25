@@ -3,35 +3,26 @@ extern crate rust_i18n;
 #[macro_use]
 extern crate log;
 
+mod command;
 mod common;
 mod consts;
 mod error;
 mod installer_mode;
 mod manager_mode;
-
-use std::path::PathBuf;
-use std::sync::OnceLock;
+mod progress;
 
 use anyhow::Result;
 use rim::{cli::ExecutableCommand, Mode};
 use rim_common::utils;
+use std::sync::mpsc::{self, Receiver};
 
 i18n!("../../locales", fallback = "en-US");
-
-static INSTALL_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn main() -> Result<()> {
     utils::use_current_locale();
 
-    let mode = Mode::detect(
-        Some(Box::new(|installer| {
-            if let Some(dir) = installer.install_dir() {
-                _ = INSTALL_DIR.set(dir.to_path_buf());
-            }
-        })),
-        None,
-    );
-    let msg_recv = common::setup_logger();
+    let mode = Mode::detect(None, None);
+    let msg_recv = setup_logger();
     match mode {
         Mode::Manager(maybe_args) => {
             run_cli_else_hide_console(&maybe_args)?;
@@ -43,6 +34,23 @@ fn main() -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Configure the logger to use a communication channel ([`mpsc`]),
+/// allowing us to send logs across threads.
+///
+/// This will return a log message's receiver which can be used to emitting
+/// messages onto [`tauri::Window`]
+fn setup_logger() -> Receiver<String> {
+    let (msg_sender, msg_recvr) = mpsc::channel::<String>();
+    if let Err(e) = utils::Logger::new().sender(msg_sender).setup() {
+        // TODO: make this error more obvious
+        eprintln!(
+            "Unable to setup logger, cause: {e}\n\
+            The program will continues to run, but it might not functioning correctly."
+        );
+    }
+    msg_recvr
 }
 
 /// This GUI program supports commandline interface as well, so if:

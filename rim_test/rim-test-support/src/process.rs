@@ -1,3 +1,4 @@
+use rim_common::utils::HiddenProgress;
 use rim_common::{build_config, utils};
 use snapbox::cmd::Command;
 use std::env;
@@ -34,7 +35,7 @@ pub fn local_rustup_update_root() -> &'static Url {
         .unwrap();
         // Download rustup-init
         println!("download and caching rustup-init...");
-        utils::DownloadOpt::new("rustup-init", true)
+        utils::DownloadOpt::new("rustup-init", Box::new(HiddenProgress))
             .insecure(true)
             .blocking_download(&url, &dest)
             .unwrap();

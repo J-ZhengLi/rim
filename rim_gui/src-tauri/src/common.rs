@@ -1,79 +1,38 @@
 use std::{
     ops::Deref,
     path::PathBuf,
-    sync::{
-        mpsc::{self, Receiver},
-        LazyLock, Mutex,
-    },
-    thread::{self, JoinHandle},
+    sync::{mpsc::Receiver, OnceLock},
+    thread,
     time::Duration,
 };
 
 use super::consts::*;
-use crate::error::Result;
+use crate::{error::Result, progress::GuiProgress};
 use rim::{
     cli::{ExecutableCommand, ManagerSubcommands},
     components::Component,
-    update::UpdateCheckBlocker,
     AppInfo, InstallConfiguration, UninstallConfiguration,
 };
-use rim_common::types::Language as DisplayLanguage;
-use rim_common::{types::ToolkitManifest, utils};
+use rim_common::types::ToolkitManifest;
 use serde::{Deserialize, Serialize};
 use tauri::{App, AppHandle, Manager, Window, WindowUrl};
+use tokio::sync::RwLock as AsyncRwLock;
 use url::Url;
 
-#[allow(clippy::type_complexity)]
-static THREAD_POOL: LazyLock<Mutex<Vec<JoinHandle<anyhow::Result<()>>>>> =
-    LazyLock::new(|| Mutex::new(vec![]));
+pub(crate) static TOOLKIT_MANIFEST: OnceLock<AsyncRwLock<ToolkitManifest>> = OnceLock::new();
 
-/// Configure the logger to use a communication channel ([`mpsc`]),
-/// allowing us to send logs across threads.
+/// Retrieve cached toolset manifest when it was certainly cached.
 ///
-/// This will return a log message's receiver which can be used to emitting
-/// messages onto [`tauri::Window`]
-pub(crate) fn setup_logger() -> Receiver<String> {
-    let (msg_sender, msg_recvr) = mpsc::channel::<String>();
-    if let Err(e) = utils::Logger::new().sender(msg_sender).setup() {
-        // TODO: make this error more obvious
-        eprintln!(
-            "Unable to setup logger, cause: {e}\n\
-            The program will continues to run, but it might not functioning correctly."
-        );
-    }
-    msg_recvr
+/// # Panic
+/// Will panic if the manifest is not cached.
+pub(crate) fn cached_manifest() -> &'static AsyncRwLock<ToolkitManifest> {
+    TOOLKIT_MANIFEST
+        .get()
+        .expect("toolset manifest should be loaded by now")
 }
 
-pub(crate) fn spawn_gui_update_thread(window: Window, msg_recv: Receiver<String>) {
+fn spawn_gui_update_thread(window: Window, msg_recv: Receiver<String>) {
     thread::spawn(move || loop {
-        // wait for all other thread to finish and report errors
-        let mut pool = THREAD_POOL
-            .lock()
-            .expect("failed when accessing thread pool");
-        let mut idx = 0;
-        while let Some(thread) = pool.get(idx) {
-            if thread.is_finished() {
-                let handle = pool.swap_remove(idx);
-                if let Err(e) = handle.join().unwrap() {
-                    log::error!("GUI runtime error: {e}");
-                    emit(&window, ON_FAILED_EVENT, e.to_string());
-                }
-                if pool.is_empty() {
-                    // resume update check when all tasks are finished
-                    UpdateCheckBlocker::unblock();
-                    // make sure to show the exit button
-                    emit(&window, BLOCK_EXIT_EVENT, false);
-                }
-            } else {
-                // if a thread is finished, it will be removed,
-                // so here we only increase the index otherwise.
-                idx += 1;
-            }
-        }
-        // drop before `recv()` blocking the thread, otherwise there'll be deadlock.
-        drop(pool);
-
-        // Note: `recv()` will block, therefore it's important to check thread execution at first
         if let Ok(msg) = msg_recv.recv() {
             emit(&window, MESSAGE_UPDATE_EVENT, msg);
         }
@@ -89,133 +48,47 @@ fn emit<S: Serialize + Clone>(window: &Window, event: &str, msg: S) {
     });
 }
 
-pub(crate) fn install_toolkit_in_new_thread(
+pub(crate) async fn install_toolkit_(
     window: tauri::Window,
     components_list: Vec<Component>,
     config: BaseConfiguration,
     manifest: ToolkitManifest,
     is_update: bool,
-) {
-    UpdateCheckBlocker::block();
+) -> anyhow::Result<()> {
+    window.emit(BLOCK_EXIT_EVENT, true)?;
 
-    let handle = thread::spawn(move || -> anyhow::Result<()> {
-        // FIXME: this is needed to make sure the other thread could receive the first couple messages
-        // we sent in this thread. But it feels very wrong, there has to be better way.
-        thread::sleep(Duration::from_millis(500));
+    let install_dir = PathBuf::from(&config.path);
+    // TODO: Use continuous progress
+    let i_config = InstallConfiguration::new(
+        &install_dir,
+        &manifest,
+        GuiProgress::new(window.app_handle()),
+    )?
+    .with_rustup_dist_server(config.rustup_dist_server.as_deref().cloned())
+    .with_rustup_update_root(config.rustup_update_root.as_deref().cloned())
+    .with_cargo_registry(config.cargo_registry())
+    .insecure(config.insecure);
 
-        window.emit(BLOCK_EXIT_EVENT, true)?;
+    if is_update {
+        i_config.update(components_list).await?;
+    } else {
+        i_config.install(components_list).await?;
+    }
 
-        // Initialize a progress sender.
-        let pos_cb =
-            |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
-        let progress = utils::Progress::new(&pos_cb);
+    // 安装完成后，发送安装完成事件
+    window.emit(ON_COMPLETE_EVENT, ())?;
 
-        let install_dir = PathBuf::from(&config.path);
-        // TODO: Use continuous progress
-        let i_config = InstallConfiguration::new(&install_dir, &manifest)?
-            .with_progress_indicator(Some(progress))
-            .with_rustup_dist_server(config.rustup_dist_server.as_deref().cloned())
-            .with_rustup_update_root(config.rustup_update_root.as_deref().cloned())
-            .with_cargo_registry(config.cargo_registry())
-            .insecure(config.insecure);
-
-        if is_update {
-            i_config.update(components_list)?;
-        } else {
-            i_config.install(components_list)?;
-        }
-
-        // 安装完成后，发送安装完成事件
-        window.emit(ON_COMPLETE_EVENT, ())?;
-
-        Ok(())
-    });
-
-    THREAD_POOL
-        .lock()
-        .expect("failed pushing installation thread handle into thread pool")
-        .push(handle);
-}
-
-pub(crate) fn uninstall_toolkit_in_new_thread(window: tauri::Window, remove_self: bool) {
-    // block update checker, we don't want to show update notification here.
-    UpdateCheckBlocker::block();
-
-    let handle = thread::spawn(move || -> anyhow::Result<()> {
-        // FIXME: this is needed to make sure the other thread could receive the first couple messages
-        // we sent in this thread. But it feels very wrong, there has to be better way.
-        thread::sleep(Duration::from_millis(500));
-
-        window.emit(BLOCK_EXIT_EVENT, true)?;
-
-        let pos_cb =
-            |pos: f32| -> anyhow::Result<()> { Ok(window.emit(PROGRESS_UPDATE_EVENT, pos)?) };
-        let progress = utils::Progress::new(&pos_cb);
-
-        let config = UninstallConfiguration::init(Some(progress))?;
-        config.uninstall(remove_self)?;
-
-        window.emit(ON_COMPLETE_EVENT, ())?;
-        Ok(())
-    });
-
-    THREAD_POOL
-        .lock()
-        .expect("failed pushing uninstallation thread handle into thread pool")
-        .push(handle);
-}
-
-#[derive(serde::Serialize)]
-pub struct Language {
-    id: String,
-    name: String,
-}
-
-#[tauri::command]
-pub(crate) fn supported_languages() -> Vec<Language> {
-    DisplayLanguage::possible_values()
-        .iter()
-        .map(|lang| {
-            let id = lang.locale_str().to_string();
-            let name = match lang {
-                DisplayLanguage::EN => "English".to_string(),
-                DisplayLanguage::CN => "简体中文".to_string(),
-                _ => id.clone(),
-            };
-            Language { id, name }
-        })
-        .collect()
-}
-
-#[tauri::command]
-pub(crate) fn set_locale(language: String) -> Result<()> {
-    utils::set_locale(language.parse()?);
     Ok(())
 }
 
-#[tauri::command]
-pub(crate) fn get_locale() -> String {
-    utils::get_locale().locale_str().into()
-}
+pub(crate) async fn uninstall_toolkit_(window: tauri::Window, remove_self: bool) -> Result<()> {
+    window.emit(BLOCK_EXIT_EVENT, true)?;
 
-#[tauri::command]
-pub(crate) fn app_info() -> AppInfo {
-    AppInfo::get().to_owned()
-}
+    let config = UninstallConfiguration::init(GuiProgress::new(window.app_handle()))?;
+    config.uninstall(remove_self)?;
 
-/// Close the given window in a separated thread.
-#[tauri::command]
-pub(crate) fn close_window(win: Window) {
-    let label = win.label().to_owned();
-    thread::spawn(move || win.close())
-        .join()
-        .unwrap_or_else(|_| panic!("thread join failed when attempt to close window '{label}'"))
-        .unwrap_or_else(|e| log::error!("failed when closing window '{label}': {e}"))
-}
-
-#[tauri::command]
-pub(crate) fn get_build_cfg_locale_str(key: &str) -> &str {
-    utils::build_cfg_locale(key)
+    window.emit(ON_COMPLETE_EVENT, ())?;
+    Ok(())
 }
 
 /// Build the installer window with shared configuration.

@@ -47,14 +47,6 @@ onMounted(() => {
   event.listen('on-complete', () => {
     setTimeout(() => { complete() }, 1000);
   });
-
-  event.listen('on-failed', (event) => {
-    if (typeof event.payload === 'string') {
-      message(event.payload, { title: '错误', type: 'error' }).then(() =>
-        routerPush('/manager')
-      );
-    }
-  });
 });
 
 function toBottom() {

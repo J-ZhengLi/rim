@@ -19,12 +19,12 @@ use super::{ExecStatus, Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
 use rim_common::types::ToolkitManifest;
-use rim_common::utils;
+use rim_common::utils::{self, CliProgress};
 
 /// Perform installer actions.
 ///
 /// This will setup the environment and install user selected components.
-pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
+pub(super) async fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     let Installer {
         prefix,
         registry_url,
@@ -43,7 +43,7 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     }
 
     let manifest_url = manifest_src.as_ref().map(|s| s.to_url()).transpose()?;
-    let mut manifest = blocking!(get_toolkit_manifest(manifest_url, *insecure))?;
+    let mut manifest = get_toolkit_manifest(manifest_url, *insecure).await?;
 
     if *list_components {
         // print a list of available components then return, don't do anything else
@@ -68,12 +68,13 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     let maybe_registry = registry_url.as_ref().map(|u| (registry_name, u));
     let install_dir = user_opt.prefix;
 
-    InstallConfiguration::new(&install_dir, &manifest)?
+    InstallConfiguration::new(&install_dir, &manifest, CliProgress::default())?
         .with_cargo_registry(maybe_registry)
         .with_rustup_dist_server(rustup_dist_server.clone())
         .with_rustup_update_root(rustup_update_root.clone())
         .insecure(*insecure)
-        .install(user_opt.components)?;
+        .install(user_opt.components)
+        .await?;
 
     let g_opts = GlobalOpts::get();
     if !g_opts.quiet {

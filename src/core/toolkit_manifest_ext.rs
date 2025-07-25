@@ -7,13 +7,13 @@ use std::sync::OnceLock;
 
 use anyhow::{anyhow, Result};
 use rim_common::types::{TomlParser, ToolInfo, ToolkitManifest};
-use rim_common::utils;
+use rim_common::utils::{self, HiddenProgress};
 use serde::de::DeserializeOwned;
 use tokio::sync::Mutex;
 use url::Url;
 
 use crate::components::{Component, ComponentType};
-use crate::core::{custom_instructions, GlobalOpts};
+use crate::core::custom_instructions;
 
 use super::AppInfo;
 
@@ -318,7 +318,9 @@ pub async fn get_toolkit_manifest(url: Option<Url>, insecure: bool) -> Result<To
         } else {
             debug!("downloading toolset manifest from {url}");
             let temp = utils::make_temp_file("toolset-manifest-", None)?;
-            utils::DownloadOpt::new("toolset manifest", GlobalOpts::get().quiet)
+
+            // this file is very small, no need for progress bar.
+            utils::DownloadOpt::new("toolset manifest", Box::new(HiddenProgress))
                 .insecure(insecure)
                 .download(url, temp.path())
                 .await?;

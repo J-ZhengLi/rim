@@ -8,7 +8,7 @@ use rim_common::utils;
 use std::path::PathBuf;
 use std::{env, path::Path};
 
-impl EnvConfig for InstallConfiguration<'_> {
+impl<T> EnvConfig for InstallConfiguration<'_, T> {
     // On linux, persistent env vars needs to be written in `.profile`, `.bash_profile`, etc.
     // Rustup already did all the dirty work by writing an entry in those files
     // to invoke `$CARGO_HOME/env.{sh|fish}`. Sadly we'll have to re-implement a similar procedure here,
@@ -50,7 +50,7 @@ impl EnvConfig for InstallConfiguration<'_> {
             env::set_var(key, val);
         }
 
-        self.inc_progress(2.0)
+        Ok(())
     }
 }
 
@@ -80,7 +80,7 @@ fn create_rc_backup(rc_files: &[PathBuf], backup_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-impl Uninstallation for UninstallConfiguration<'_> {
+impl<T> Uninstallation for UninstallConfiguration<T> {
     // This is basically removing the env script source command in shell profiles.
     fn remove_rustup_env_vars(&self) -> Result<()> {
         if GlobalOpts::get().no_modify_env() {

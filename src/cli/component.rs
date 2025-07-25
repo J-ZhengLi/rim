@@ -2,7 +2,10 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{bail, Result};
 use clap::{Subcommand, ValueHint};
-use rim_common::types::{ToolInfo, ToolInfoDetails, ToolkitManifest};
+use rim_common::{
+    types::{ToolInfo, ToolInfoDetails, ToolkitManifest},
+    utils::CliProgress,
+};
 use url::Url;
 
 use crate::{
@@ -47,7 +50,11 @@ impl ComponentCommand {
                 components,
                 insecure,
                 rustup_dist_server,
-            } => install_components(components, *insecure, rustup_dist_server),
+            } => blocking!(install_components(
+                components,
+                *insecure,
+                rustup_dist_server
+            )),
             Self::Uninstall { components } => uninstall_components(components),
         }
     }
@@ -63,7 +70,7 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
     Ok(ExecStatus::new_executed())
 }
 
-fn install_components(
+async fn install_components(
     components: &[String],
     insecure: bool,
     rustup_dist_server: &Option<Url>,
@@ -96,11 +103,15 @@ fn install_components(
 
     let (tc_components, tools) = split_components(comps_to_install);
 
-    let mut config = InstallConfiguration::new(AppInfo::get_installed_dir(), &manifest)?
-        .insecure(insecure)
-        .with_rustup_dist_server(rustup_dist_server.clone());
-    config.install_toolchain_components(&tc_components)?;
-    config.install_tools(&tools)?;
+    let mut config = InstallConfiguration::new(
+        AppInfo::get_installed_dir(),
+        &manifest,
+        CliProgress::default(),
+    )?
+    .insecure(insecure)
+    .with_rustup_dist_server(rustup_dist_server.clone());
+    config.install_toolchain_components(&tc_components).await?;
+    config.install_tools(&tools).await?;
 
     info!("{}", t!("task_success"));
 
@@ -157,9 +168,9 @@ fn uninstall_components(components: &[String]) -> Result<()> {
         return Ok(());
     }
 
-    let mut config = UninstallConfiguration::init(None)?;
-    config.remove_toolchain_components(&tc_comps_to_remove, 50.0)?;
-    config.remove_tools(tools_to_remove, 50.0)?;
+    let mut config = UninstallConfiguration::init(CliProgress::default())?;
+    config.remove_toolchain_components(&tc_comps_to_remove, 50)?;
+    config.remove_tools(tools_to_remove, 50)?;
     info!("{}", t!("task_success"));
     Ok(())
 }

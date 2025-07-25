@@ -86,7 +86,6 @@
 	"installer": "安装程序",
 	"installer_help": "此工具的安装将启动一个单独的安装程序进程，可能需要您的输入。",
 	"installing": "正在安装",
-	"installing_hint": "正在安装所选组件，请稍候...",
 	"installing_msvc_info": "正在安装 VS 生成工具...",
 	"installing_tool_info": "正在安装工具 '%{name}'",
 	"integers": "整数",

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
 import { event } from '@tauri-apps/api';
-import { message } from '@tauri-apps/api/dialog';
 import { nextTick, onMounted, ref, watch } from 'vue';
 import { useCustomRouter } from '@/router/index';
-import { invokeCommand } from '@/utils/index';
+import { ProgressPayload } from '@/utils/types/payloads';
 
 const { routerPush } = useCustomRouter();
 const progress = ref(0);
+const progressMsg = ref('');
 const output: Ref<string[]> = ref([]);
 const scrollBox: Ref<HTMLElement | null> = ref(null);
 const dotCount = ref(0);
@@ -16,9 +16,22 @@ const dots = ref('');
 let intervalId: number | null = null;
 
 onMounted(() => {
-  event.listen('update-progress', (event) => {
+  event.listen('progress:main-start', (event) => {
+    const payload = event.payload as ProgressPayload;
+    progressMsg.value = payload.message;
+    // TODO: set length limit
+  });
+
+  event.listen('progress:main-update', (event) => {
     if (typeof event.payload === 'number') {
+      console.log(progress.value);
       progress.value = event.payload;
+    }
+  });
+
+  event.listen('progress:main-end', (event) => {
+    if (typeof event.payload === 'string') {
+      progressMsg.value = event.payload;
     }
   });
 
@@ -34,15 +47,6 @@ onMounted(() => {
     setTimeout(() => {
       routerPush('/installer/finish');
     }, 3000);
-  });
-
-  event.listen('on-failed', (event) => {
-    if (typeof event.payload === 'string') {
-      output.value.push(event.payload);
-      message(event.payload, { title: '错误', type: 'error' }).then(() =>
-        invokeCommand('close_window')
-      );
-    }
   });
 
   intervalId = window.setInterval(() => {
@@ -74,7 +78,7 @@ watch(output.value, () => {
 <template>
   <div flex="~ col">
     <span class="info-label">{{ $t(progress >= 100 ? 'install_finished' : 'installing') }}{{ dots }}</span>
-    <p class="sub-info-label">{{ $t('installing_hint') }}</p>
+    <p class="sub-info-label">{{ progressMsg }}</p>
     <div mx="1vw">
       <base-progress w="full" h="4vh" :percentage="progress" />
     </div>
