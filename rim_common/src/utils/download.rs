@@ -141,7 +141,7 @@ impl DownloadOpt {
         }
 
         self.progress_handler
-            .stop(format!("'{}' successfully downloaded.", &self.name))?;
+            .finish(format!("'{}' successfully downloaded.", &self.name))?;
         Ok(())
     }
 

@@ -2,7 +2,6 @@ use anyhow::Result;
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::LevelFilter;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
@@ -86,7 +85,7 @@ impl Logger {
                         .to_lowercase(),
                 ));
             })
-            .chain(io::stdout());
+            .chain(std::io::stdout());
         dispatch = dispatch.chain(stdout);
         // log to file (detailed trace with timestamp)
         let file_config = fern::Dispatch::new()

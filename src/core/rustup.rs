@@ -280,7 +280,7 @@ impl ToolchainInstaller {
 
         config
             .progress_handler
-            .stop(t!("rust_toolchain_uninstalled").to_string())?;
+            .finish(t!("rust_toolchain_uninstalled").to_string())?;
         Ok(())
     }
 

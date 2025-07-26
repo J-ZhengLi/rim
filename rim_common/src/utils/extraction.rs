@@ -206,7 +206,7 @@ impl<T: ProgressHandler> ExtractHelper<'_, T> {
     }
 
     fn end_progress_bar(&self) -> Result<()> {
-        self.handler.stop("extraction complete.".into())
+        self.handler.finish("extraction complete.".into())
     }
 
     fn extract_zip(&mut self, archive: &mut ZipArchive<File>) -> Result<()> {

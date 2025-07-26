@@ -56,7 +56,7 @@ impl<T: ProgressHandler> UninstallConfiguration<T> {
     }
 
     pub(crate) fn inc_progress(&self, val: u64) -> Result<()> {
-        self.progress_handler.update(Some(val))
+        self.progress_handler.update_master(Some(val))
     }
 
     pub fn uninstall(mut self, remove_self: bool) -> Result<()> {

@@ -24,8 +24,7 @@ onMounted(() => {
 
   event.listen('progress:main-update', (event) => {
     if (typeof event.payload === 'number') {
-      console.log(progress.value);
-      progress.value = event.payload;
+      progress.value += event.payload;
     }
   });
 

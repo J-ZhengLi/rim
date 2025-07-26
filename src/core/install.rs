@@ -288,6 +288,9 @@ impl<'a, T: ProgressHandler + Clone + 'static> InstallConfiguration<'a, T> {
             let (tc_components, tools) = split_components(components);
             reject_conflicting_tools(&tools)?;
 
+            self.progress_handler
+                .start_master(t!("installing").into(), None)?;
+
             self.setup()?;
             self.config_env_vars()?;
             self.config_cargo()?;
@@ -295,6 +298,9 @@ impl<'a, T: ProgressHandler + Clone + 'static> InstallConfiguration<'a, T> {
             self.install_tools(&tools).await?;
             self.install_rust(&tc_components).await?;
             self.install_tools_late(&tools).await?;
+
+            self.progress_handler
+                .finish_master(t!("install_finished").into())?;
             Ok(())
         }
         .await;
@@ -307,7 +313,7 @@ impl<'a, T: ProgressHandler + Clone + 'static> InstallConfiguration<'a, T> {
     }
 
     pub(crate) fn inc_progress(&self, val: u64) -> Result<()> {
-        self.progress_handler.update(Some(val))
+        self.progress_handler.update_master(Some(val))
     }
 
     async fn install_tools_(&mut self, use_rust: bool, tools: &ToolMap, weight: u64) -> Result<()> {
