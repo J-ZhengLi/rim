@@ -5,7 +5,7 @@ use crate::core::uninstall::UninstallConfiguration;
 use super::{common, ExecStatus, ManagerSubcommands};
 
 use anyhow::Result;
-use rim_common::build_config;
+use rim_common::{build_config, utils::CliProgress};
 
 /// Execute `uninstall` command.
 pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<ExecStatus> {
@@ -13,7 +13,7 @@ pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<ExecStatus> {
         return Ok(ExecStatus::default());
     };
 
-    let config = UninstallConfiguration::init(None)?;
+    let config = UninstallConfiguration::init(CliProgress::default())?;
     let installed = config.install_record.print_installation();
 
     // Ask confirmation

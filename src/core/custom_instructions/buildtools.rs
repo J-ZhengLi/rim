@@ -5,7 +5,7 @@ use rim_common::utils;
 use crate::core::directories::RimDir;
 use crate::core::install::InstallConfiguration;
 
-pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
+pub(super) fn install<T>(path: &Path, config: &InstallConfiguration<T>) -> Result<Vec<PathBuf>> {
     let mut args = vec![
         "--wait",
         "--nocache",

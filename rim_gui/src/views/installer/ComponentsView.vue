@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, Ref, ref, watch } from 'vue';
-import ScrollBox from '@/components/ScrollBox.vue';
-import { componentUtils, installConf, invokeCommand } from '@/utils/index';
+import { componentUtils, installConf } from '@/utils/index';
 import type {
   CheckGroup,
   CheckGroupItem,
   CheckItem,
   Component,
-  RestrictedComponent,
 } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
 import CheckBoxGroup from '@/components/CheckBoxGroup.vue';
+import { handleRestrictedComponents } from '@/utils/common';
 
-const { routerPush, routerBack } = useCustomRouter();
+const { routerBack, routerPush } = useCustomRouter();
 const selectComponentId = ref(0);
 
 const groupComponents: Ref<CheckGroup<Component>[]> = ref([]);
@@ -51,7 +50,6 @@ function updateInstallConf() {
           label: item.label,
           checked: item.checked,
           disabled: item.disabled,
-          required: item.required,
           value: { ...item.value },
         };
       })
@@ -92,9 +90,11 @@ function handleComponentsChange(items: CheckGroupItem<Component>[]) {
   // add dependencies
   groupComponents.value.forEach((group) => {
     group.items.forEach((item) => {
-      const findItem = dependencies.find(([name, _]) => name === item.value.name);
-      if (findItem) {
-        item.checked = findItem[1];
+      if (!item.value.installed) {
+        const findItem = dependencies.find(([name, _]) => name === item.value.name);
+        if (findItem) {
+          item.checked = findItem[1];
+        }
       }
     });
   });
@@ -112,16 +112,10 @@ function handleSelectAll() {
 
 function handleNextClick() {
   updateInstallConf();
-
-  invokeCommand('get_restricted_components', { components: installConf.getCheckedComponents() }).then((res) => {
-    const restricted = res as RestrictedComponent[];
-    if (restricted.length > 0) {
-      installConf.setRestrictedComponents(restricted);
-      routerPush('/installer/confirm-package-sources');
-    } else {
-      routerPush('/installer/confirm');
-    }
-  })
+  handleRestrictedComponents(
+    () => routerPush('/installer/confirmation'),
+    () => routerPush('/installer/customize_package_sources'),
+  );
 }
 
 onMounted(() => {
@@ -131,12 +125,13 @@ onMounted(() => {
 
 <template>
   <div flex="~ col" w="full" h="full">
-    <h4 ml="12px">安装选项</h4>
-    <div flex="1 ~" p="12px" overflow="auto">
-      <scroll-box overflow-auto p="4px" grow="1">
-        <div p="t-8px l-8px">组件</div>
-        <div ml="1.5rem">
-          <base-check-box flex="~ items-center" v-model="checkedAllBundle" title="全选">
+    <span class="info-label">{{ $t('select_components_to_install') }}</span>
+    <p class="sub-info-label">{{ $t('select_components_gui_hint') }}</p>
+    <split-box flex="1 ~" mb="10vh" mx="1vw">
+      <template #left>
+        <b>{{ $t('components') }}</b>
+        <div mt="0.5rem">
+          <base-check-box flex="~ items-center" v-model="checkedAllBundle" :title="$t('select_all')">
             <template #icon>
               <span flex="~ items-center justify-center" w="full" h="full" @click="handleSelectAll">
                 <i class="i-mdi:check" v-show="checkedAll" c="active" />
@@ -148,17 +143,22 @@ onMounted(() => {
 
         <check-box-group v-for="group of groupComponents" :key="group.label" :group="group" expand
           @itemClick="handleComponentsClick" @change="handleComponentsChange" />
-      </scroll-box>
-      <scroll-box basis="200px" grow="4" ml="12px">
-        <div>组件详细信息</div>
-        <p font="b">{{ curCheckComponent?.value.displayName }}</p>
-        <p>{{ curCheckComponent?.value.desc }}</p>
-      </scroll-box>
-    </div>
+      </template>
 
-    <div basis="60px" flex="~ justify-end items-center">
-      <base-button theme="primary" mr="12px" @click="routerBack">上一步</base-button>
-      <base-button theme="primary" mr="12px" @click="handleNextClick">下一步</base-button>
-    </div>
+      <template #right>
+        <b>{{ $t('description') }}</b>
+        <p mr="1.5rem">{{ curCheckComponent?.value.desc }}</p>
+        <div>
+          <b>{{ $t('type') }}</b>
+          <p>{{ curCheckComponent?.value.kindDesc.name }}</p>
+        </div>
+        <div v-if="curCheckComponent?.value.kindDesc.help">
+          <b>{{ $t('type_desc') }}</b>
+          <p mr="1.5rem">{{ curCheckComponent?.value.kindDesc.help }}</p>
+        </div>
+      </template>
+    </split-box>
+
+    <page-nav-buttons :backLabel="$t('back')" :nextLabel="$t('next')" @back-clicked="routerBack" @next-clicked="handleNextClick" />
   </div>
 </template>

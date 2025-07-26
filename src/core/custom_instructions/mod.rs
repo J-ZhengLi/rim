@@ -6,7 +6,7 @@ macro_rules! declare_instructions {
         $(pub(crate) mod $name;)*
         pub(crate) static SUPPORTED_TOOLS: &[&str] = &[$(stringify!($name)),+];
 
-        pub(crate) fn install(tool: &str, path: &std::path::Path, config: &super::install::InstallConfiguration) -> anyhow::Result<Vec<std::path::PathBuf>> {
+        pub(crate) fn install<T>(tool: &str, path: &std::path::Path, config: &super::install::InstallConfiguration<T>) -> anyhow::Result<Vec<std::path::PathBuf>> {
             match tool.replace('-', "_").as_str() {
                 $(
                     stringify!($name) => $name::install(path, config),

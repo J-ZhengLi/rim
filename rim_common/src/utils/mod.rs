@@ -26,7 +26,9 @@ use std::{
 use anyhow::Result;
 use url::Url;
 
-static CURRENT_LOCALE: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+use crate::types::{Configuration, Language};
+
+static CURRENT_LOCALE: LazyLock<Mutex<Language>> = LazyLock::new(|| Mutex::new(Language::EN));
 
 /// Insert a `.exe` postfix to given input.
 ///
@@ -82,16 +84,16 @@ macro_rules! exe {
 // FIXME(?): Find a proper way to provide function visibility instead of all `pub`.
 #[macro_export]
 macro_rules! setter {
-    ($name:ident ($self:ident.$self_param:ident, $t:ty)) => {
+    ($name:ident ($self:ident.$($self_param:ident).*, $t:ty)) => {
         #[allow(clippy::wrong_self_convention)]
         pub fn $name(mut $self, val: $t) -> Self {
-            $self.$self_param = val;
+            $self.$($self_param).* = val;
             $self
         }
     };
-    ($name:ident ($self:ident.$self_param:ident, $($val:ident : $t:ty),*) { $init_val:expr }) => {
+    ($name:ident ($self:ident.$($self_param:ident).*, $($val:ident : $t:ty),*) { $init_val:expr }) => {
         pub fn $name(mut $self, $($val: $t),*) -> Self {
-            $self.$self_param = $init_val;
+            $self.$($self_param).* = $init_val;
             $self
         }
     };
@@ -188,23 +190,45 @@ pub fn to_string_lossy<S: AsRef<OsStr>>(s: S) -> String {
     s.as_ref().to_string_lossy().to_string()
 }
 
-/// Allowing the i18n framework to use the current system locale.
+/// Use configured locale or detect system's current locale.
 pub fn use_current_locale() {
-    let locale = sys_locale::get_locale().unwrap_or_else(|| "en".to_string());
-    set_locale(&locale);
+    set_locale(get_locale());
 }
 
-pub fn set_locale(loc: &str) {
+/// Getting the current locale by:
+/// 1. Checking RIM configuration file, return the configured language if has.
+/// 2. Check system's current locale using [`sys_locale`] crate.
+/// 3. Fallback to english locale.
+pub fn get_locale() -> Language {
+    Configuration::try_load_from_config_dir()
+        .and_then(|c| c.language)
+        .or_else(|| sys_locale::get_locale().and_then(|s| s.parse().ok()))
+        .unwrap_or_default()
+}
+
+pub fn set_locale(lang: Language) {
+    let loc = lang.locale_str();
     rust_i18n::set_locale(loc);
 
     // update the current locale
-    *CURRENT_LOCALE.lock().unwrap() = loc.to_string();
+    *CURRENT_LOCALE.lock().unwrap() = lang;
+    // update persistent locale config, but don't fail the program,
+    // because locale setting is not that critical.
+    let set_locale_inner_ = || -> Result<()> {
+        Configuration::load_from_config_dir()
+            .set_language(lang)
+            .write()
+    };
+    if let Err(e) = set_locale_inner_() {
+        error!("unable to save locale settings after changing to '{loc}': {e}");
+    }
+    debug!("locale successfully set to: {loc}");
 }
 
 /// Get the configured locale string from `configuration.toml`
 pub fn build_cfg_locale(key: &str) -> &str {
     let cur_locale = &*CURRENT_LOCALE.lock().unwrap();
-    crate::cfg_locale!(cur_locale, key)
+    crate::cfg_locale!(cur_locale.locale_str(), key)
 }
 
 /// Waits until `duration` has elapsed.

@@ -9,7 +9,7 @@ use rim_common::utils;
 
 pub(crate) use rustup::*;
 
-impl EnvConfig for InstallConfiguration<'_> {
+impl<T> EnvConfig for InstallConfiguration<'_, T> {
     fn config_env_vars(&self) -> Result<()> {
         info!("{}", t!("install_env_config"));
 
@@ -17,12 +17,11 @@ impl EnvConfig for InstallConfiguration<'_> {
             set_env_var(key, val.encode_utf16().collect())?;
         }
         update_env();
-
-        self.inc_progress(2.0)
+        Ok(())
     }
 }
 
-impl Uninstallation for UninstallConfiguration<'_> {
+impl<T> Uninstallation for UninstallConfiguration<T> {
     fn remove_rustup_env_vars(&self) -> Result<()> {
         // Remove the `<InstallDir>/.cargo/bin` which is added by rustup
         let cargo_bin_dir = self.cargo_home().join("bin");

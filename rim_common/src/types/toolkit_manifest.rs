@@ -1,5 +1,5 @@
 use super::{TomlParser, ToolMap};
-use crate::{setter, utils};
+use crate::{setter, types::CargoRegistry, utils};
 use indexmap::{IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -8,6 +8,12 @@ use url::Url;
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct ToolkitManifest {
+    /// Configuration of this toolkit, including download source config,
+    /// user proxy config, etc.
+    // NB: Removing this `flatten` will cause compatibility issues.
+    #[serde(flatten)]
+    pub config: ToolkitConfig,
+
     /// Product name to be cached after installation, so that we can show it as `installed`
     pub name: Option<String>,
     /// Product version to be cached after installation, so that we can show it as `installed`
@@ -15,11 +21,11 @@ pub struct ToolkitManifest {
     /// Toolkit edition, such as `basic`, `community`
     pub edition: Option<String>,
 
-    pub rust: RustToolchain,
+    #[serde(alias = "rust")]
+    pub toolchain: RustToolchain,
     #[serde(default)]
     pub tools: Tools,
-    /// Proxy settings that used for download.
-    pub proxy: Option<Proxy>,
+
     /// Path to the manifest file.
     #[serde(skip)]
     pub path: Option<PathBuf>,
@@ -40,9 +46,20 @@ impl TomlParser for ToolkitManifest {
 }
 
 impl ToolkitManifest {
-    /// Get a list of all optional components in rust toolchain.
-    pub fn optional_toolchain_components(&self) -> &[String] {
-        self.rust.optional_components.as_slice()
+    /// Get a iterator of all optional component names in rust toolchain, along
+    /// with a flag indicating whether it is an optional component or not.
+    pub fn toolchain_components(&self) -> Vec<(&str, bool)> {
+        self.toolchain
+            .components
+            .iter()
+            .map(|s| (s.as_str(), false))
+            .chain(
+                self.toolchain
+                    .optional_components
+                    .iter()
+                    .map(|s| (s.as_str(), true)),
+            )
+            .collect()
     }
 
     /// Get the description of a specific tool.
@@ -58,7 +75,30 @@ impl ToolkitManifest {
             .find_map(|(group, tools)| tools.contains(tool).then_some(group.as_str()))
     }
 
+    /// A convenient wrapper to get proxy configs in [`ToolkitConfig`]
+    pub fn proxy_config(&self) -> Option<&Proxy> {
+        self.config.proxy.as_ref()
+    }
+
     setter!(offline(self.is_offline, bool));
+}
+
+/// Configuration of this toolkit, including download source config, user proxy config, etc.
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub struct ToolkitConfig {
+    /// Proxy settings that used for download.
+    pub proxy: Option<Proxy>,
+    /// Enforced rustup dist server url.
+    /// This is the top priority when it comes to install toolchain.
+    pub rustup_dist_server: Option<Url>,
+    /// Enforced rustup update root url.
+    /// This is the top priority when it comes to install rustup update.
+    pub rustup_update_root: Option<Url>,
+    /// Enforced cargo registry config.
+    /// This is the top priority when it comes to writing cargo config
+    /// after installing toolchain.
+    pub cargo_registry: Option<CargoRegistry>,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
@@ -280,7 +320,7 @@ version = "1.0.0"
         assert_eq!(
             ToolkitManifest::from_str(input).unwrap(),
             ToolkitManifest {
-                rust: RustToolchain::new("1.0.0"),
+                toolchain: RustToolchain::new("1.0.0"),
                 ..Default::default()
             }
         )
@@ -339,7 +379,7 @@ t4 = { git = "https://git.example.com/org/tool", branch = "stable" }
         );
 
         let expected = ToolkitManifest {
-            rust: RustToolchain {
+            toolchain: RustToolchain {
                 channel: "1.0.0".into(),
                 profile: Some("minimal".into()),
                 components: vec!["clippy-preview".into(), "llvm-tools-preview".into()],
@@ -480,9 +520,12 @@ optional-components = ["opt_c1", "opt_c2"]
 "#;
 
         let expected = ToolkitManifest::from_str(input).unwrap();
-        assert_eq!(&expected.rust.channel, "1.0.0");
-        assert_eq!(expected.rust.components, vec!["c1", "c2"]);
-        assert_eq!(expected.rust.optional_components, vec!["opt_c1", "opt_c2"]);
+        assert_eq!(&expected.toolchain.channel, "1.0.0");
+        assert_eq!(expected.toolchain.components, vec!["c1", "c2"]);
+        assert_eq!(
+            expected.toolchain.optional_components,
+            vec!["opt_c1", "opt_c2"]
+        );
     }
 
     #[test]
@@ -495,8 +538,16 @@ optional-components = ["opt_c1", "opt_c2"]
 "#;
 
         let expected = ToolkitManifest::from_str(input).unwrap();
-        let opt_components = expected.optional_toolchain_components();
-        assert_eq!(opt_components, &["opt_c1", "opt_c2"]);
+        let components = expected.toolchain_components();
+        assert_eq!(
+            components,
+            &[
+                ("c1", false),
+                ("c2", false),
+                ("opt_c1", true),
+                ("opt_c2", true)
+            ]
+        );
     }
 
     #[test]
@@ -544,11 +595,11 @@ version = "1.0.0"
 display-name = "Rust-lang"
 "#;
         let expected = ToolkitManifest::from_str(specified).unwrap();
-        assert_eq!(expected.rust.name(), "Rust-lang");
+        assert_eq!(expected.toolchain.name(), "Rust-lang");
 
         let unspecified = "[rust]\nversion = \"1.0.0\"";
         let expected = ToolkitManifest::from_str(unspecified).unwrap();
-        assert_eq!(expected.rust.name(), "Rust");
+        assert_eq!(expected.toolchain.name(), "Rust");
     }
 
     #[test]
@@ -561,10 +612,10 @@ verbose-name = "Everything"
 description = "Everything provided by official Rust-lang"
 "#;
         let expected = ToolkitManifest::from_str(basic).unwrap();
-        assert_eq!(expected.rust.profile.unwrap(), "complete".into());
-        assert_eq!(expected.rust.display_name.unwrap(), "Everything");
+        assert_eq!(expected.toolchain.profile.unwrap(), "complete".into());
+        assert_eq!(expected.toolchain.display_name.unwrap(), "Everything");
         assert_eq!(
-            expected.rust.description.unwrap(),
+            expected.toolchain.description.unwrap(),
             "Everything provided by official Rust-lang"
         );
     }
@@ -581,7 +632,7 @@ no-proxy = "localhost,some.domain.com"
 "#;
         let expected = ToolkitManifest::from_str(input).unwrap();
         assert_eq!(
-            expected.proxy.unwrap(),
+            expected.config.proxy.unwrap(),
             Proxy {
                 http: Some(Url::parse("http://username:password@proxy.example.com:8080").unwrap()),
                 https: Some(
@@ -747,11 +798,41 @@ description = "Everything provided by official Rust-lang"
 
         let expected = ToolkitManifest::from_str(input).unwrap();
 
-        assert_eq!(expected.rust.profile(), Some("complete"));
-        assert_eq!(expected.rust.display_name(), Some("Everything"));
+        assert_eq!(expected.toolchain.profile(), Some("complete"));
+        assert_eq!(expected.toolchain.display_name(), Some("Everything"));
         assert_eq!(
-            expected.rust.description(),
+            expected.toolchain.description(),
             Some("Everything provided by official Rust-lang")
         );
+    }
+
+    #[test]
+    fn toolkit_enforced_configuration() {
+        let raw = r#"
+rustup-dist-server = "https://www.example.com"
+rustup-update-root = "https://www.example.com/rustup"
+
+[cargo-registry]
+name = "my-registry"
+index = "https://www.example.com/index"
+
+[toolchain]
+channel = "1.0.0"
+"#;
+        let expected = ToolkitManifest::from_str(raw).unwrap();
+
+        assert_eq!(
+            expected.config.rustup_dist_server,
+            Some("https://www.example.com".parse().unwrap())
+        );
+        assert_eq!(
+            expected.config.rustup_update_root,
+            Some("https://www.example.com/rustup".parse().unwrap())
+        );
+
+        let registry = expected.config.cargo_registry.unwrap();
+        assert_eq!(registry.name, "my-registry");
+        assert_eq!(registry.index, "https://www.example.com/index");
+        assert!(expected.config.proxy.is_none());
     }
 }

@@ -1,34 +1,36 @@
 <script setup lang="ts">
 import type { Ref } from 'vue';
 import { event } from '@tauri-apps/api';
-import { message } from '@tauri-apps/api/dialog';
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
 import { useCustomRouter } from '@/router/index';
-import { invokeCommand, progressFormat } from '@/utils/index';
+import { ProgressPayload } from '@/utils/types/payloads';
 
 const { routerPush } = useCustomRouter();
 const progress = ref(0);
+const progressMsg = ref('');
 const output: Ref<string[]> = ref([]);
-const scrollBox = ref(null);
+const scrollBox: Ref<HTMLElement | null> = ref(null);
+const dotCount = ref(0);
+const dots = ref('');
 
-const title = computed(
-  () => `安装${progress.value >= 100 ? '已完成' : '进行中...'}`
-);
-
-function toBottom() {
-  nextTick(() => {
-    if (scrollBox?.value) {
-      (scrollBox.value as HTMLElement).scrollTop = (
-        scrollBox.value as HTMLElement
-      ).scrollHeight;
-    }
-  });
-}
+let intervalId: number | null = null;
 
 onMounted(() => {
-  event.listen('update-progress', (event) => {
+  event.listen('progress:main-start', (event) => {
+    const payload = event.payload as ProgressPayload;
+    progressMsg.value = payload.message;
+    // TODO: set length limit
+  });
+
+  event.listen('progress:main-update', (event) => {
     if (typeof event.payload === 'number') {
-      progress.value = event.payload;
+      progress.value += event.payload;
+    }
+  });
+
+  event.listen('progress:main-end', (event) => {
+    if (typeof event.payload === 'string') {
+      progressMsg.value = event.payload;
     }
   });
 
@@ -37,61 +39,56 @@ onMounted(() => {
       event.payload.split('\n').forEach((line) => {
         output.value.push(line);
       });
-      toBottom();
     }
   });
 
   event.listen('on-complete', () => {
-    output.value.push('安装完成');
-    toBottom();
     setTimeout(() => {
       routerPush('/installer/finish');
-    }, 1000);
+    }, 3000);
   });
 
-  event.listen('on-failed', (event) => {
-    if (typeof event.payload === 'string') {
-      output.value.push(event.payload);
-      toBottom();
-      message(event.payload, { title: '错误', type: 'error' }).then(() =>
-        invokeCommand('close_window')
-      );
+  intervalId = window.setInterval(() => {
+    dots.value = '.'.repeat(dotCount.value);
+    dotCount.value = (dotCount.value + 1) % 4;
+  }, 500);
+});
+
+watch(progress, (newValue) => {
+  if (newValue >= 100) {
+    if (intervalId) clearInterval(intervalId);
+    dots.value = '!';
+  }
+});
+
+watch(output.value, () => {
+  nextTick(() => {
+    // scroll to bottom
+    if (scrollBox.value) {
+      scrollBox.value.scrollTo({
+        top: scrollBox.value.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   });
-});
+})
 </script>
 
 <template>
   <div flex="~ col">
-    <h4 ml="12px">{{ title }}</h4>
-    <div px="12px">
-      <base-progress
-        w="full"
-        :percentage="progress"
-        striped
-        stripedFlow
-        :format="progressFormat"
-      />
+    <span class="info-label">{{ $t(progress >= 100 ? 'install_finished' : 'installing') }}{{ dots }}</span>
+    <p class="sub-info-label">{{ progressMsg }}</p>
+    <div mx="1vw">
+      <base-progress w="full" h="4vh" :percentage="progress" />
     </div>
-    <div
-      ref="scrollBox"
-      flex="1"
-      m="12px"
-      p="12px"
-      overflow-y="auto"
-      b="1px solid light hover:active"
-      rounded="4px"
-    >
-      <p my="8px" v-for="item in output" :key="item">{{ item }}</p>
-    </div>
-    <div basis="60px" flex="~ justify-end items-center">
-      <base-button
-        v-show="progress === 100"
-        theme="primary"
-        @click="() => routerPush('/installer/finish')"
-        mr="12px"
-        >下一步</base-button
-      >
-    </div>
+    <base-details my="2vh" mx="0.5vw" :title="$t('show_details')">
+      <base-card h="40vh" mx="0.5vw" my="0.5vh">
+        <div ref="scrollBox" flex="1" overflow="auto" h="full">
+          <p my="0.5rem" v-for="item in output" :key="item">{{ item }}</p>
+        </div>
+      </base-card>
+    </base-details>
+    <page-nav-buttons :nextLabel="progress < 100 ? undefined : $t('next')" :hideNext="progress < 100"
+      @next-clicked="() => routerPush('/installer/finish')" />
   </div>
 </template>

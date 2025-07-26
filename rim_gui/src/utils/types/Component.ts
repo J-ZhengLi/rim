@@ -40,6 +40,7 @@ export interface Component {
   optional: boolean;
   toolInstaller?: string | ToolInfoDetails;
   kind: ComponentType;
+  kindDesc: ComponentTypeDesc;
   installed: boolean;
 }
 
@@ -101,16 +102,28 @@ export enum ComponentType {
   ToolchainProfile = "ToolchainProfile",
 }
 
+export interface ComponentTypeDesc {
+  name: string,
+  help?: string,
+}
+
 export function toChecked(components: Component[]): CheckItem<Component>[] {
   return components.map(
     (item) => {
       return {
         label: `${item.displayName}${item.installed ? ' (installed)' : item.required ? ' (required)' : ''}`,
-        checked: !item.installed && (item.required || !item.optional),
+        checked: isRecommended(item),
         required: item.required,
         disabled: item.installed ? false : item.required,
         value: item,
       } as CheckItem<Component>;
     }
   );
+}
+
+/**
+ * Return `true` if the given component is recommanded to install, a.k.a. pre-selected.
+ */
+export function isRecommended(component: Component): boolean {
+  return !component.installed && (component.required || !component.optional);
 }

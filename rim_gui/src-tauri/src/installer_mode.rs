@@ -1,47 +1,33 @@
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Receiver;
-use std::sync::OnceLock;
 
 use anyhow::{anyhow, Context};
-use rim_common::build_config;
+use rim_common::{build_config, exe};
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use tauri::{AppHandle, Builder};
+use url::Url;
 
-use super::{common, INSTALL_DIR};
+use crate::command::with_shared_commands;
+use crate::common::{self, cached_manifest, BaseConfiguration, TOOLKIT_MANIFEST};
 use crate::error::Result;
 use rim::components::Component;
-use rim::{get_toolkit_manifest, try_it, ToolkitManifestExt};
+use rim::{get_toolkit_manifest, ToolkitManifestExt};
 use rim_common::types::{ToolInfo, ToolSource, ToolkitManifest};
 use rim_common::utils;
+use tokio::sync::RwLock as AsyncRwLock;
 
-static TOOLSET_MANIFEST: OnceLock<Mutex<ToolkitManifest>> = OnceLock::new();
-
-pub(super) fn main(
-    msg_recv: Receiver<String>,
-    maybe_args: anyhow::Result<Box<rim::cli::Installer>>,
-) -> Result<()> {
-    if let Ok(args) = &maybe_args {
-        common::update_shared_configs(args.as_ref());
-    }
-    tauri::Builder::default()
+pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
+    Builder::new()
         .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cmd| {}))
-        .invoke_handler(tauri::generate_handler![
-            close_window,
-            default_install_dir,
+        .invoke_handler(with_shared_commands![
+            default_configuration,
             check_install_path,
             get_component_list,
             get_restricted_components,
             updated_package_sources,
-            install_toolchain,
-            run_app,
-            welcome_label,
-            load_manifest_and_ret_version,
-            common::supported_languages,
-            common::set_locale,
-            common::app_info,
-            common::get_label,
-            get_home_page_url,
-            common::get_build_cfg_locale_str,
+            post_installation_opts,
+            toolkit_name,
+            toolkit_version,
         ])
         .setup(|app| {
             common::setup_installer_window(app, msg_recv)?;
@@ -53,18 +39,8 @@ pub(super) fn main(
 }
 
 #[tauri::command]
-fn close_window(window: tauri::Window) {
-    common::close_window(window);
-}
-
-#[tauri::command]
-fn default_install_dir() -> String {
-    INSTALL_DIR
-        .get()
-        .cloned()
-        .unwrap_or_else(rim::default_install_dir)
-        .to_string_lossy()
-        .to_string()
+async fn default_configuration() -> BaseConfiguration {
+    BaseConfiguration::new(rim::default_install_dir(), &*cached_manifest().read().await)
 }
 
 /// Check if the given path could be used for installation, and return the reason if not.
@@ -86,42 +62,58 @@ fn check_install_path(path: String) -> Option<String> {
 #[tauri::command]
 async fn get_component_list() -> Result<Vec<Component>> {
     let components = cached_manifest()
-        .lock()
+        .read()
         .await
         .current_target_components(true)?;
     Ok(components)
 }
 
 #[tauri::command]
-fn welcome_label() -> String {
-    let product = utils::build_cfg_locale("product");
-    t!("welcome", product = product).into()
+fn toolkit_name() -> String {
+    utils::build_cfg_locale("product").into()
+}
+
+/// Load the toolkit and return the version of it.
+async fn load_toolkit(path: Option<&Path>) -> Result<Option<String>> {
+    async fn load_toolkit_(path: Option<&Path>) -> Result<ToolkitManifest> {
+        let path_url = path
+            .as_ref()
+            .map(Url::from_file_path)
+            .transpose()
+            .map_err(|_| anyhow!("unable to convert path '{path:?}' to URL"))?;
+        let mut manifest = get_toolkit_manifest(path_url, false).await?;
+        manifest.adjust_paths()?;
+        Ok(manifest)
+    }
+
+    // There are there scenario of loading a toolkit manifest.
+    // 1. The manifest was cached and the path matched, meaning a same one is being loaded:
+    //    Return the cached one.
+    // 2. The manifest was cached and the path does not match:
+    //    Update the cached one.
+    // 3. No manifest was cached:
+    //    Load one and cache it.
+    if let Some(existing) = TOOLKIT_MANIFEST.get() {
+        let read_guard = existing.read().await;
+        if read_guard.path.as_deref() != path {
+            drop(read_guard); // dropping read guard to avoid dead lock.
+            *existing.write().await = load_toolkit_(path).await?;
+            debug!("manifest updated");
+        }
+    } else {
+        let manifest = load_toolkit_(path).await?;
+        TOOLKIT_MANIFEST.get_or_init(|| AsyncRwLock::new(manifest));
+        debug!("manifest initialized");
+    }
+
+    Ok(cached_manifest().read().await.version.clone())
 }
 
 // Make sure this function is called first after launch.
 #[tauri::command]
-async fn load_manifest_and_ret_version() -> Result<String> {
-    // TODO: Give an option for user to specify another manifest.
-    // note that passing command args currently does not work due to `windows_subsystem = "windows"` attr
-    let mut manifest = get_toolkit_manifest(None, false).await?;
-    manifest.adjust_paths()?;
-    let version = manifest.version.clone().unwrap_or_default();
-
-    if TOOLSET_MANIFEST.set(Mutex::new(manifest)).is_err() {
-        error!(
-            "unable to set initialize manifest to desired one \
-            as it was already initialized somewhere else, \
-            returning the cached version instead"
-        );
-        Ok(cached_manifest()
-            .lock()
-            .await
-            .version
-            .clone()
-            .unwrap_or_default())
-    } else {
-        Ok(version)
-    }
+async fn toolkit_version(path: Option<PathBuf>) -> Result<String> {
+    let version = load_toolkit(path.as_deref()).await?.unwrap_or_default();
+    Ok(version)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -170,8 +162,8 @@ async fn updated_package_sources(
     raw: Vec<RestrictedComponent>,
     mut selected: Vec<Component>,
 ) -> Result<Vec<Component>> {
-    let mut manifest = cached_manifest().lock().await;
-    manifest.fill_missing_package_source(&mut selected, |name| {
+    let mut manifest = cached_manifest().write().await;
+    manifest.fill_missing_package_source(&mut selected, |name, _| {
         raw.iter()
             .find(|rc| rc.name == name)
             .and_then(|rc| rc.source.clone())
@@ -180,40 +172,34 @@ async fn updated_package_sources(
     Ok(selected)
 }
 
-#[tauri::command(rename_all = "snake_case")]
-async fn install_toolchain(
-    window: tauri::Window,
-    components_list: Vec<Component>,
-    install_dir: String,
-) {
-    let install_dir = PathBuf::from(install_dir);
-    common::install_toolkit_in_new_thread(
-        window,
-        components_list,
-        install_dir,
-        cached_manifest().lock().await.to_owned(),
-        false,
-    );
-}
-
-/// Retrieve cached toolset manifest.
-///
-/// # Panic
-/// Will panic if the manifest is not cached.
-fn cached_manifest() -> &'static Mutex<ToolkitManifest> {
-    TOOLSET_MANIFEST
-        .get()
-        .expect("toolset manifest should be loaded by now")
-}
-
-#[tauri::command(rename_all = "snake_case")]
-fn run_app(install_dir: String) -> Result<()> {
-    let dir: PathBuf = install_dir.into();
-    try_it(Some(&dir))?;
-    Ok(())
-}
-
 #[tauri::command]
-fn get_home_page_url() -> String {
-    build_config().home_page_url.as_str().into()
+fn post_installation_opts(
+    app: AppHandle,
+    install_dir: String,
+    open: bool,
+    shortcut: bool,
+) -> Result<()> {
+    let install_dir = PathBuf::from(install_dir);
+    if shortcut {
+        utils::ApplicationShortcut {
+            name: utils::build_cfg_locale("app_name"),
+            path: install_dir.join(exe!(build_config().app_name())),
+            icon: Some(install_dir.join(format!("{}.ico", build_config().app_name()))),
+            comment: Some(env!("CARGO_PKG_DESCRIPTION")),
+            startup_notify: true,
+            startup_wm_class: Some(env!("CARGO_PKG_NAME")),
+            categories: &["Development"],
+            keywords: &["rust", "rim", "xuanwu"],
+            ..Default::default()
+        }
+        .create()?;
+    }
+
+    if open {
+        std::env::set_var("MODE", "manager");
+        app.restart();
+    } else {
+        app.exit(0);
+    }
+    Ok(())
 }

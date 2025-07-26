@@ -1,3 +1,4 @@
+use rim_common::utils::HiddenProgress;
 use rim_common::{build_config, utils};
 use snapbox::cmd::Command;
 use std::env;
@@ -26,7 +27,7 @@ pub fn local_rustup_update_root() -> &'static Url {
             return Url::from_file_path(rustup_update_root).unwrap();
         }
 
-        let orig_root = build_config().rustup_update_root("basic");
+        let orig_root = build_config().rustup_update_root();
         let url = utils::url_join(
             orig_root,
             format!("dist/{}/{rustup_init_name}", env!("TARGET")),
@@ -34,7 +35,7 @@ pub fn local_rustup_update_root() -> &'static Url {
         .unwrap();
         // Download rustup-init
         println!("download and caching rustup-init...");
-        utils::DownloadOpt::new("rustup-init", true)
+        utils::DownloadOpt::new("rustup-init", Box::new(HiddenProgress))
             .insecure(true)
             .blocking_download(&url, &dest)
             .unwrap();
@@ -182,20 +183,16 @@ impl TestProcess {
             "installer"
         };
 
-        #[cfg(unix)]
         let base = Command::new(&self.executable)
             .env("HOME", home_dir)
             .env("MODE", mode);
+
         // On Windows, env vars are directly added, which make it a bit
         // harder to rollback after running the tests (rustup also struggle with this).
         // So it might be better to disable env modification until we figure out
         // a clever way to do it.
         #[cfg(windows)]
-        let base = Command::new(&self.executable)
-            .env("HOME", home_dir)
-            .env("USERPROFILE", home_dir)
-            .env("MODE", mode)
-            .arg("--no-modify-env");
+        let base = base.env("USERPROFILE", home_dir).arg("--no-modify-env");
 
         if !matches!(self.kind, TestProcessKind::Manager) {
             base.args(["--rustup-update-root", local_rustup_update_root().as_str()])

@@ -10,7 +10,11 @@ export default defineConfig(async () => ({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        notification: path.resolve(__dirname, 'notification.html'),
+      },
+      output: {
+        manualChunks: {
+          vue: ['vue', 'vue-i18n', 'vue-router'],
+        }
       }
     }
   },

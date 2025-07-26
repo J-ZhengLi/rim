@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { invokeCommand, managerConf, Component, ComponentType, invokeLabelList, componentUtils } from '@/utils';
-import { computed, onMounted, ref } from 'vue';
+import { invokeCommand, managerConf, Component, ComponentType, componentUtils } from '@/utils';
+import { computed } from 'vue';
 import ComponentLabel from './components/Label.vue';
 
 const { routerPush, routerBack } = useCustomRouter();
-const localeLabels = ref<Record<string, string>>({});
 const components = computed(() => managerConf.getTargetComponents());
 
 const labels = computed(() => {
@@ -39,15 +38,6 @@ function handleNextClick() {
     components_list: components.value as Component[],
   }).then(() => routerPush('/manager/progress'));
 }
-
-onMounted(() => {
-  const labelKeys = [
-    'components_to_remove',
-  ];
-  invokeLabelList(labelKeys).then((results) => {
-    localeLabels.value = results;
-  });
-});
 </script>
 
 <template>
@@ -57,19 +47,19 @@ onMounted(() => {
       <p>即将安装以下产品</p>
     </div>
 
-    <scroll-box mx="12px" flex="1">
+    <base-card mx="12px" flex="1">
       <div v-for="item in labels" :key="item.label" mb="24px">
         <component-label :label="item.label" :oldVer="item.originVer" :newVer="item.targetVer" />
       </div>
-    </scroll-box>
+    </base-card>
 
     <div mx="12px" v-if="obsoletedComponents.length > 0">
-      <p>{{ localeLabels.components_to_remove }}</p>
-      <scroll-box flex="1">
+      <p>{{ $t('components_to_remove') }}</p>
+      <base-card flex="1">
         <div v-for="item in obsoletedComponents" mb="24px">
           <component-label :label="item" />
         </div>
-      </scroll-box>
+      </base-card>
     </div>
 
     <div basis="60px" flex="~ justify-end items-center">
