@@ -7,21 +7,17 @@ use std::time::Duration;
 #[allow(unused_variables)]
 /// Abstract progress sender/handler used for both CLI and GUI mode.
 pub trait ProgressHandler: Send + Sync {
-    /// Start the progress with a certain message.
-    fn start(&self, msg: String) -> Result<()>;
+    /// Start the progress with a certain message and style.
+    fn start(&mut self, msg: String, style: ProgressStyle) -> Result<()>;
     /// Update the progress to a value, or tick once if the value is `None`.
     fn update(&self, value: Option<u64>) -> Result<()>;
     /// Finish progress with a certain message.
     fn finish(&self, msg: String) -> Result<()>;
-    /// Replace the progress bar with a certain style.
-    fn set_style(&mut self, style: ProgressStyle) -> Result<()> {
-        Ok(())
-    }
 
     // Optional overall (master) progress control
 
     /// Start the master progress bar with a certain progress.
-    fn start_master(&mut self, msg: String, length: Option<u64>) -> Result<()> {
+    fn start_master(&mut self, msg: String, style: ProgressStyle) -> Result<()> {
         Ok(())
     }
     /// Update the master progress bar, or tick once if the value is `None`.
@@ -59,6 +55,13 @@ impl ProgressStyle {
             Self::Hidden => "",
         }
     }
+
+    pub fn length(&self) -> Option<u64> {
+        match self {
+            Self::Bytes(len) | Self::Len(len) => Some(*len),
+            _ => None,
+        }
+    }
 }
 
 /// Hidden progress indicator, nothing will be shown,
@@ -67,7 +70,7 @@ impl ProgressStyle {
 pub struct HiddenProgress;
 
 impl ProgressHandler for HiddenProgress {
-    fn start(&self, _msg: String) -> Result<()> {
+    fn start(&mut self, _msg: String, _style: ProgressStyle) -> Result<()> {
         Ok(())
     }
     fn finish(&self, _msg: String) -> Result<()> {
@@ -95,11 +98,38 @@ impl Default for CliProgress {
 }
 
 impl ProgressHandler for CliProgress {
-    fn start(&self, msg: String) -> Result<()> {
+    fn start(&mut self, msg: String, style: ProgressStyle) -> Result<()> {
         // log the starting of the progress
         info!("{msg}");
-        self.bar.set_message(msg);
-        self.bar.set_position(0);
+
+        let bar = match style {
+            ProgressStyle::Bytes(len) | ProgressStyle::Len(len) => CliProgressBar::new(len),
+            ProgressStyle::Spinner { auto_tick_duration } => {
+                let bar = CliProgressBar::new_spinner();
+                if let Some(interval) = auto_tick_duration {
+                    bar.enable_steady_tick(interval);
+                }
+                bar
+            }
+            ProgressStyle::Hidden => CliProgressBar::hidden(),
+        };
+
+        self.bar = bar.with_style(
+            CliProgressStyle::with_template(style.cli_pattern())
+                .with_context(|| {
+                    format!("Internal error: Invalid style pattern defined for {style:?}")
+                })?
+                .with_key(
+                    "eta",
+                    |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                        write!(w, "{:.1}s", state.eta().as_secs_f64())
+                            .expect("unable to display progress bar")
+                    },
+                )
+                .progress_chars("#>-"),
+        ).with_message(msg)
+        .with_position(0);
+        self.style = style;
 
         Ok(())
     }
@@ -120,40 +150,6 @@ impl ProgressHandler for CliProgress {
         // NB: This need to be done after `finish_with_message` to prevent
         // showing double progress bar on terminal
         info!("{msg}");
-        Ok(())
-    }
-
-    /// Replace the progress bar with a certain style.
-    fn set_style(&mut self, style: ProgressStyle) -> Result<()> {
-        let bar = match style {
-            ProgressStyle::Bytes(len) | ProgressStyle::Len(len) => CliProgressBar::new(len),
-            ProgressStyle::Spinner { auto_tick_duration } => {
-                let bar = CliProgressBar::new_spinner();
-                if let Some(interval) = auto_tick_duration {
-                    bar.enable_steady_tick(interval);
-                }
-                bar
-            }
-            ProgressStyle::Hidden => CliProgressBar::hidden(),
-        };
-
-        bar.set_style(
-            CliProgressStyle::with_template(style.cli_pattern())
-                .with_context(|| {
-                    format!("Internal error: Invalid style pattern defined for {style:?}")
-                })?
-                .with_key(
-                    "eta",
-                    |state: &ProgressState, w: &mut dyn std::fmt::Write| {
-                        write!(w, "{:.1}s", state.eta().as_secs_f64())
-                            .expect("unable to display progress bar")
-                    },
-                )
-                .progress_chars("#>-"),
-        );
-        self.bar = bar;
-        self.style = style;
-
         Ok(())
     }
 }

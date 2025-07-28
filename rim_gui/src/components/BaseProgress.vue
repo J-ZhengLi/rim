@@ -1,23 +1,80 @@
 <template>
   <div flex="~ items-center justify-between">
     <div class="progress-bar">
-      <div class="progress-fill" :style="{ width: props.percentage + '%' }"></div>
+      <div class="progress-fill"
+        :class="{ 'progress-transition': transition }"
+        :style="{ width: valuePercentage(style, value, length) + '%' }"></div>
+      <div class="progress-label" text-end>{{ progressFormat(style, value, length) }}</div>
     </div>
-    <div class="progress-label" text-end>{{ progressFormat(percentage) }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-const props = defineProps({
-  percentage: {
+import { PropType } from 'vue';
+
+type ProgressStyle = 'percentage' | 'len' | 'bytes' | 'spinner' | 'hidden';
+
+defineProps({
+  value: {
     type: Number,
-    required: true,
-    validator: (value: number) => value >= 0 && value <= 100,
+    default: 0,
   },
+  length: {
+    type: Number,
+    default: 0,
+  },
+  style: {
+    type: String as PropType<ProgressStyle>,
+    default: 'percentage',
+    validator: (value: string) => ['percentage', 'len', 'bytes', 'spinner', 'hidden'].includes(value)
+  },
+  transition: {
+    type: Boolean,
+    default: true,
+  }
 });
 
-function progressFormat(value: number) {
-  return value.toFixed(2).padStart(5, '0') + '%';
+// calculate the progress bar fill percentage
+function valuePercentage(style: ProgressStyle, value: number, length?: number): number {
+  switch (style) {
+    case 'percentage':
+      return value;
+    case 'len':
+    case 'bytes':
+      if (length) {
+        return value / length * 100;
+      } else {
+        return 0;
+      }
+    default:
+      return 0;
+  }
+}
+
+function progressFormat(style: ProgressStyle, value: number, length?: number): string {
+  switch (style) {
+    case 'bytes':
+      return `${formatBytes(value)}${length ? ' | ' + formatBytes(length) : ''}`;
+    case 'len':
+      return `${value}${length ? ' | ' + length : ''}`;
+    case 'percentage':
+      return value.toFixed(2) + '%';
+    default:
+      // spinner and hidden progess bar doesn't need value labels
+      return '';
+  }
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0B';
+
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const value = bytes / Math.pow(1024, i);
+
+  const rounded = value % 1 === 0 ? value.toString() : value.toFixed(2);
+
+  return `${rounded}${sizes[i]}`;
 }
 </script>
 
@@ -32,6 +89,7 @@ function progressFormat(value: number) {
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   outline: 0;
+  margin-inline: 1vw;
 }
 
 .progress-fill {
@@ -42,11 +100,18 @@ function progressFormat(value: number) {
       #5b98d8);
   background-size: 200% 100%;
   animation: gradientMove 3s linear infinite;
+}
+
+.progress-transition {
   transition: width 0.5s ease-in-out;
 }
 
 .progress-label {
-  margin-left: 1rem;
+  position: absolute;
+  display: flex;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
   font-size: clamp(80%, 2.3vh, 20px);
 }
 

@@ -97,6 +97,5 @@ onBeforeMount(() => installConf.loadManifest());
   --uno: "c-secondary";
   font-size: clamp(6px, 2.2vh, 20px);
   margin-inline: 1vw;
-  margin-top: 0.5vh;
 }
 </style>

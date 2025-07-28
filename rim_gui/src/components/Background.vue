@@ -78,6 +78,7 @@ function handleResize() {
 }
 
 onMounted(() => {
+  console.log("animated background mounted, make sure this message only appear once.");
   window.addEventListener('resize', handleResize);
   handleResize();
   animate();

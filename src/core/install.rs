@@ -289,7 +289,7 @@ impl<'a, T: ProgressHandler + Clone + 'static> InstallConfiguration<'a, T> {
             reject_conflicting_tools(&tools)?;
 
             self.progress_handler
-                .start_master(t!("installing").into(), None)?;
+                .start_master(t!("installing").into(), utils::ProgressStyle::Len(100))?;
 
             self.setup()?;
             self.config_env_vars()?;

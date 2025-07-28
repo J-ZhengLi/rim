@@ -84,7 +84,7 @@ const toggleCheck = () => {
   margin-block: 0.5vh;
   background: white;
   border: 2px solid rgb(204, 204, 204);
-  border-radius: 3px;
+  border-radius: 25%;
   cursor: pointer;
 }
 .cb-label {

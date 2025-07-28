@@ -14,56 +14,59 @@ const SUB_PROGRESS_END_EVENT: &str = "progress:sub-end";
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
 enum GuiProgressStyle {
-    Fill,
+    Bytes,
+    Len,
     Spinner,
     Hidden,
+}
+
+impl From<ProgressStyle> for GuiProgressStyle {
+    fn from(value: ProgressStyle) -> Self {
+        match value {
+            ProgressStyle::Bytes(_) => GuiProgressStyle::Bytes,
+            ProgressStyle::Len(_) => GuiProgressStyle::Len,
+            ProgressStyle::Spinner { .. } => GuiProgressStyle::Spinner,
+            ProgressStyle::Hidden => GuiProgressStyle::Hidden,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
 struct ProgressPayload {
     message: String,
+    style: GuiProgressStyle,
     length: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct GuiProgress {
     handle: AppHandle,
-    style: GuiProgressStyle,
-    length: Option<u64>,
 }
 
 impl GuiProgress {
     pub(crate) fn new(handle: AppHandle) -> Self {
         Self {
             handle,
-            style: GuiProgressStyle::Hidden,
-            length: None,
         }
     }
 }
 
 impl ProgressHandler for GuiProgress {
-    fn set_style(&mut self, style: ProgressStyle) -> anyhow::Result<()> {
-        match style {
-            ProgressStyle::Bytes(len) | ProgressStyle::Len(len) => {
-                self.length = Some(len);
-                self.style = GuiProgressStyle::Fill;
-            }
-            ProgressStyle::Spinner { .. } => {
-                self.length = None;
-                self.style = GuiProgressStyle::Spinner;
-            }
-            ProgressStyle::Hidden => {
-                self.length = None;
-                self.style = GuiProgressStyle::Hidden;
-            }
-        }
+    fn start(&mut self, msg: String, style: ProgressStyle) -> anyhow::Result<()> {
+        let (length, gui_style) = match style {
+            ProgressStyle::Bytes(len) => (Some(len), GuiProgressStyle::Bytes),
+            ProgressStyle::Len(len) => (Some(len), GuiProgressStyle::Len),
+            ProgressStyle::Spinner { .. } => (None, GuiProgressStyle::Spinner),
+            ProgressStyle::Hidden => (None, GuiProgressStyle::Hidden),
+        };
 
-        Ok(())
-    }
+        let payload = ProgressPayload {
+            message: msg,
+            length,
+            style: gui_style,
+        };
 
-    fn start(&self, msg: String) -> anyhow::Result<()> {
-        self.handle.emit_all(SUB_PROGRESS_START_EVENT, msg)?;
+        self.handle.emit_all(SUB_PROGRESS_START_EVENT, payload)?;
         Ok(())
     }
 
@@ -77,12 +80,11 @@ impl ProgressHandler for GuiProgress {
         Ok(())
     }
 
-    fn start_master(&mut self, msg: String, length: Option<u64>) -> anyhow::Result<()> {
-        self.length = length;
-
+    fn start_master(&mut self, msg: String, style: ProgressStyle) -> anyhow::Result<()> {
         let payload = ProgressPayload {
             message: msg,
-            length,
+            length: style.length(),
+            style: style.into(),
         };
 
         self.handle.emit_all(MAIN_PROGRESS_START_EVENT, payload)?;

@@ -195,9 +195,8 @@ struct ExtractHelper<'a, T: ProgressHandler> {
 
 impl<T: ProgressHandler> ExtractHelper<'_, T> {
     fn start_progress_bar(&mut self, style: ProgressStyle) -> Result<()> {
-        self.handler.set_style(style)?;
         self.handler
-            .start(format!("extracting file '{}'", self.file_path.display()))?;
+            .start(format!("extracting file '{}'", self.file_path.display()), style)?;
         Ok(())
     }
 

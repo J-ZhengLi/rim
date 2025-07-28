@@ -129,9 +129,7 @@ impl DownloadOpt {
             .ok_or_else(|| anyhow!("unable to get file length of '{url}'"))?;
 
         self.progress_handler
-            .set_style(ProgressStyle::Bytes(total_size))?;
-        self.progress_handler
-            .start(format!("downloading '{}'", &self.name))?;
+            .start(format!("downloading '{}'", &self.name), ProgressStyle::Bytes(total_size))?;
 
         while let Some(chunk) = resp.chunk().await? {
             file.write_all(&chunk).await?;
