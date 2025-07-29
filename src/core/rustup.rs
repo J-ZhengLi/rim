@@ -223,11 +223,12 @@ impl ToolchainInstaller {
         &self,
         config: &mut UninstallConfiguration<T>,
     ) -> Result<()> {
-        config
-            .progress_handler
-            .start(t!("uninstalling_rust_toolchain").to_string(), utils::ProgressStyle::Spinner {
+        config.progress_handler.start(
+            t!("uninstalling_rust_toolchain").to_string(),
+            utils::ProgressKind::Spinner {
                 auto_tick_duration: Some(std::time::Duration::from_millis(100)),
-            })?;
+            },
+        )?;
 
         // remove rustup home:
         // We want to keep the linked check runner toolchain folder presented,

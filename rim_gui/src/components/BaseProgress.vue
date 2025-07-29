@@ -3,8 +3,8 @@
     <div class="progress-bar">
       <div class="progress-fill"
         :class="{ 'progress-transition': transition }"
-        :style="{ width: valuePercentage(style, value, length) + '%' }"></div>
-      <div class="progress-label" text-end>{{ progressFormat(style, value, length) }}</div>
+        :style="{ width: valuePercentage(kind, value, length) + '%' }"></div>
+      <div class="progress-label" text-end>{{ progressFormat(kind, value, length) }}</div>
     </div>
   </div>
 </template>
@@ -12,7 +12,7 @@
 <script setup lang="ts">
 import { PropType } from 'vue';
 
-type ProgressStyle = 'percentage' | 'len' | 'bytes' | 'spinner' | 'hidden';
+type ProgressKind = 'percentage' | 'len' | 'bytes' | 'spinner' | 'hidden';
 
 defineProps({
   value: {
@@ -23,8 +23,8 @@ defineProps({
     type: Number,
     default: 0,
   },
-  style: {
-    type: String as PropType<ProgressStyle>,
+  kind: {
+    type: String as PropType<ProgressKind>,
     default: 'percentage',
     validator: (value: string) => ['percentage', 'len', 'bytes', 'spinner', 'hidden'].includes(value)
   },
@@ -35,8 +35,8 @@ defineProps({
 });
 
 // calculate the progress bar fill percentage
-function valuePercentage(style: ProgressStyle, value: number, length?: number): number {
-  switch (style) {
+function valuePercentage(kind: ProgressKind, value: number, length?: number): number {
+  switch (kind) {
     case 'percentage':
       return value;
     case 'len':
@@ -51,8 +51,8 @@ function valuePercentage(style: ProgressStyle, value: number, length?: number): 
   }
 }
 
-function progressFormat(style: ProgressStyle, value: number, length?: number): string {
-  switch (style) {
+function progressFormat(kind: ProgressKind, value: number, length?: number): string {
+  switch (kind) {
     case 'bytes':
       return `${formatBytes(value)}${length ? ' | ' + formatBytes(length) : ''}`;
     case 'len':

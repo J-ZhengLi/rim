@@ -9,7 +9,7 @@ use tokio::io::AsyncWriteExt;
 use url::Url;
 
 use crate::types::Proxy as CrateProxy;
-use crate::utils::{ProgressHandler, ProgressStyle};
+use crate::utils::{ProgressHandler, ProgressKind};
 use crate::{build_config, setter};
 
 fn default_proxy() -> reqwest::Proxy {
@@ -128,8 +128,10 @@ impl DownloadOpt {
             .content_length()
             .ok_or_else(|| anyhow!("unable to get file length of '{url}'"))?;
 
-        self.progress_handler
-            .start(format!("downloading '{}'", &self.name), ProgressStyle::Bytes(total_size))?;
+        self.progress_handler.start(
+            format!("downloading '{}'", &self.name),
+            ProgressKind::Bytes(total_size),
+        )?;
 
         while let Some(chunk) = resp.chunk().await? {
             file.write_all(&chunk).await?;

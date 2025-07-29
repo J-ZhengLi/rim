@@ -3,7 +3,7 @@ export interface CliPayload {
     command: string,
 }
 
-export enum ProgressStyle {
+export enum ProgressKind {
     Bytes = 'bytes',
     Len = 'len',
     Spinner = 'spinner',
@@ -12,6 +12,6 @@ export enum ProgressStyle {
 
 export interface ProgressPayload {
     message: string,
-    style: ProgressStyle,
+    style: ProgressKind,
     length?: number,
 }

@@ -1,6 +1,6 @@
 //! GUI progress bar module
 
-use rim_common::utils::{ProgressHandler, ProgressStyle};
+use rim_common::utils::{ProgressHandler, ProgressKind};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
@@ -20,13 +20,13 @@ enum GuiProgressStyle {
     Hidden,
 }
 
-impl From<ProgressStyle> for GuiProgressStyle {
-    fn from(value: ProgressStyle) -> Self {
+impl From<ProgressKind> for GuiProgressStyle {
+    fn from(value: ProgressKind) -> Self {
         match value {
-            ProgressStyle::Bytes(_) => GuiProgressStyle::Bytes,
-            ProgressStyle::Len(_) => GuiProgressStyle::Len,
-            ProgressStyle::Spinner { .. } => GuiProgressStyle::Spinner,
-            ProgressStyle::Hidden => GuiProgressStyle::Hidden,
+            ProgressKind::Bytes(_) => GuiProgressStyle::Bytes,
+            ProgressKind::Len(_) => GuiProgressStyle::Len,
+            ProgressKind::Spinner { .. } => GuiProgressStyle::Spinner,
+            ProgressKind::Hidden => GuiProgressStyle::Hidden,
         }
     }
 }
@@ -45,19 +45,17 @@ pub(crate) struct GuiProgress {
 
 impl GuiProgress {
     pub(crate) fn new(handle: AppHandle) -> Self {
-        Self {
-            handle,
-        }
+        Self { handle }
     }
 }
 
 impl ProgressHandler for GuiProgress {
-    fn start(&mut self, msg: String, style: ProgressStyle) -> anyhow::Result<()> {
+    fn start(&mut self, msg: String, style: ProgressKind) -> anyhow::Result<()> {
         let (length, gui_style) = match style {
-            ProgressStyle::Bytes(len) => (Some(len), GuiProgressStyle::Bytes),
-            ProgressStyle::Len(len) => (Some(len), GuiProgressStyle::Len),
-            ProgressStyle::Spinner { .. } => (None, GuiProgressStyle::Spinner),
-            ProgressStyle::Hidden => (None, GuiProgressStyle::Hidden),
+            ProgressKind::Bytes(len) => (Some(len), GuiProgressStyle::Bytes),
+            ProgressKind::Len(len) => (Some(len), GuiProgressStyle::Len),
+            ProgressKind::Spinner { .. } => (None, GuiProgressStyle::Spinner),
+            ProgressKind::Hidden => (None, GuiProgressStyle::Hidden),
         };
 
         let payload = ProgressPayload {
@@ -80,7 +78,7 @@ impl ProgressHandler for GuiProgress {
         Ok(())
     }
 
-    fn start_master(&mut self, msg: String, style: ProgressStyle) -> anyhow::Result<()> {
+    fn start_master(&mut self, msg: String, style: ProgressKind) -> anyhow::Result<()> {
         let payload = ProgressPayload {
             message: msg,
             length: style.length(),

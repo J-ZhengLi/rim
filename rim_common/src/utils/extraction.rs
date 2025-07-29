@@ -9,7 +9,7 @@ use xz2::read::XzDecoder;
 use zip::ZipArchive;
 
 use crate::setter;
-use crate::utils::{ProgressHandler, ProgressStyle};
+use crate::utils::{ProgressHandler, ProgressKind};
 
 use super::file_system::{ensure_dir, ensure_parent_dir, walk_dir};
 use super::progress_bar::CliProgress;
@@ -194,9 +194,11 @@ struct ExtractHelper<'a, T: ProgressHandler> {
 }
 
 impl<T: ProgressHandler> ExtractHelper<'_, T> {
-    fn start_progress_bar(&mut self, style: ProgressStyle) -> Result<()> {
-        self.handler
-            .start(format!("extracting file '{}'", self.file_path.display()), style)?;
+    fn start_progress_bar(&mut self, style: ProgressKind) -> Result<()> {
+        self.handler.start(
+            format!("extracting file '{}'", self.file_path.display()),
+            style,
+        )?;
         Ok(())
     }
 
@@ -212,7 +214,7 @@ impl<T: ProgressHandler> ExtractHelper<'_, T> {
         let zip_len = archive.len();
 
         // Init progress
-        self.start_progress_bar(ProgressStyle::Len(zip_len.try_into()?))?;
+        self.start_progress_bar(ProgressKind::Len(zip_len.try_into()?))?;
 
         for i in 0..zip_len {
             let mut zip_file = archive.by_index(i)?;
@@ -255,7 +257,7 @@ impl<T: ProgressHandler> ExtractHelper<'_, T> {
         let mut extracted_len: u64 = 0;
 
         // Init progress bar
-        self.start_progress_bar(ProgressStyle::Bytes(sz_len))?;
+        self.start_progress_bar(ProgressKind::Bytes(sz_len))?;
 
         archive.for_each_entries(|entry, reader| {
             let mut buf = [0_u8; 1024];
@@ -293,8 +295,6 @@ impl<T: ProgressHandler> ExtractHelper<'_, T> {
                         })?;
                 }
             }
-            // NB: sevenz-rust does not support `unix-mode` like `zip` does, so we might ended up
-            // mess up the extracted file's permission... let's hope that never happens.
         })?;
 
         self.end_progress_bar()?;
@@ -306,7 +306,7 @@ impl<T: ProgressHandler> ExtractHelper<'_, T> {
         archive.set_preserve_permissions(true);
 
         // Init progress bar, use spinner because the length of entries cannot be retrieved.
-        self.start_progress_bar(ProgressStyle::Spinner {
+        self.start_progress_bar(ProgressKind::Spinner {
             auto_tick_duration: Some(std::time::Duration::from_millis(100)),
         })?;
 

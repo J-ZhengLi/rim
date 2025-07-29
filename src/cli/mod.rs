@@ -331,7 +331,7 @@ impl ExecutableCommand for Manager {
         let Some(subcmd) = &self.command else {
             return ManagerSubcommands::from_interaction()?.execute();
         };
-        subcmd.execute()
+        subcmd.execute().map(|status| status.no_pause(true))
     }
 
     #[cfg(feature = "gui")]

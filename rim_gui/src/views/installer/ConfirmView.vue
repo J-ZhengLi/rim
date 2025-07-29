@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { installConf, invokeCommand, Component } from '@/utils/index';
+import { installConf } from '@/utils/index';
 import { useCustomRouter } from '@/router/index';
 import { computed } from 'vue';
 
@@ -11,12 +11,8 @@ const components = computed(() => {
   return list;
 });
 
-async function handleNextClick() {
+function handleNextClick() {
   routerPush('/installer/install');
-  await invokeCommand('install_toolkit', {
-    componentsList: components.value as Component[],
-    config: installConf.config.value,
-  });
 }
 </script>
 

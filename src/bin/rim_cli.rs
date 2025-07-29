@@ -9,7 +9,7 @@ fn main() -> Result<()> {
         }
     }?;
 
-    if status.no_pause {
+    if !status.no_pause {
         #[cfg(windows)]
         rim::cli::pause().expect("unable to pause terminal window");
     }
