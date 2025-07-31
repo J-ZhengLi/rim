@@ -1,10 +1,8 @@
-use std::{sync::mpsc::Receiver, time::Duration};
-
 use crate::command::with_shared_commands;
 use crate::common::TOOLKIT_MANIFEST;
-use crate::consts::{LOADING_FINISHED, LOADING_TEXT, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT};
+use crate::consts::{MANAGER_UPDATE_NOTICE, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_NOTICE};
 use crate::progress::GuiProgress;
-use crate::{common, consts::MANAGER_UPDATE_EVENT, error::Result};
+use crate::{common, error::Result};
 use anyhow::Context;
 use rim::{get_toolkit_manifest, AppInfo};
 use rim::{
@@ -12,7 +10,7 @@ use rim::{
     update::{self, UpdateOpt},
 };
 use rim_common::types::Configuration;
-use rim_common::utils;
+use std::sync::mpsc::Receiver;
 use tauri::{AppHandle, Builder, Manager};
 use tokio::sync::RwLock;
 use url::Url;
@@ -39,8 +37,6 @@ pub(super) fn main(
             uninstall_toolkit,
             check_updates_on_startup,
             get_toolkit_from_url,
-            self_update_now,
-            toolkit_update_now,
         ])
         .setup(|app| {
             common::setup_manager_window(app, msg_recv, maybe_args)?;
@@ -83,7 +79,7 @@ async fn check_manager_update(app: &AppHandle) -> Result<()> {
     if let update::UpdateKind::Newer { current, latest } = update_opt.check_self_update().await {
         app.emit_to(
             MANAGER_WINDOW_LABEL,
-            MANAGER_UPDATE_EVENT,
+            MANAGER_UPDATE_NOTICE,
             (current, latest),
         )?;
     }
@@ -97,7 +93,7 @@ async fn check_toolkit_update(app: &AppHandle) -> Result<()> {
     {
         app.emit_to(
             MANAGER_WINDOW_LABEL,
-            TOOLKIT_UPDATE_EVENT,
+            TOOLKIT_UPDATE_NOTICE,
             (current, latest),
         )?;
     }
@@ -142,49 +138,34 @@ async fn get_toolkit_from_url(url: String) -> Result<Toolkit> {
     Ok(toolkit)
 }
 
-async fn do_self_update(app: &AppHandle) -> Result<()> {
-    let window = app.get_window(MANAGER_WINDOW_LABEL);
-    // block UI interaction, and show loading toast
-    if let Some(win) = &window {
-        win.emit(LOADING_TEXT, t!("self_update_in_progress"))?;
-    }
+// async fn do_self_update(app: &AppHandle) -> Result<()> {
+//     let window = app.get_window(MANAGER_WINDOW_LABEL);
+//     // block UI interaction, and show loading toast
+//     if let Some(win) = &window {
+//         win.emit(LOADING_TEXT, t!("self_update_in_progress"))?;
+//     }
 
-    // do self update, skip version check because it should already
-    // been checked using `update::check_self_update`
-    if let Err(e) = UpdateOpt::new(GuiProgress::new(app.clone()))
-        .self_update(true)
-        .await
-    {
-        return Err(anyhow::anyhow!("failed when performing self update: {e}").into());
-    }
+//     // do self update, skip version check because it should already
+//     // been checked using `update::check_self_update`
+//     if let Err(e) = UpdateOpt::new(GuiProgress::new(app.clone()))
+//         .self_update(true)
+//         .await
+//     {
+//         return Err(anyhow::anyhow!("failed when performing self update: {e}").into());
+//     }
 
-    if let Some(win) = &window {
-        // schedule restart with 3 seconds timeout
-        win.emit(LOADING_FINISHED, true)?;
-        for eta in (1..=3).rev() {
-            win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta))?;
-            utils::async_sleep(Duration::from_secs(1)).await;
-        }
-        win.emit(LOADING_TEXT, "")?;
-    }
+//     if let Some(win) = &window {
+//         // schedule restart with 3 seconds timeout
+//         win.emit(LOADING_FINISHED, true)?;
+//         for eta in (1..=3).rev() {
+//             win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta))?;
+//             utils::async_sleep(Duration::from_secs(1)).await;
+//         }
+//         win.emit(LOADING_TEXT, "")?;
+//     }
 
-    // restart app
-    app.restart();
+//     // restart app
+//     app.restart();
 
-    Ok(())
-}
-
-#[tauri::command]
-async fn self_update_now(app: AppHandle) -> Result<()> {
-    do_self_update(&app).await
-}
-
-#[tauri::command]
-async fn toolkit_update_now(app: AppHandle, url: String) -> Result<()> {
-    // fetch the latest toolkit from the given url, and send it to the frontend.
-    // the frontend should know what to do with it.
-    let toolkit = get_toolkit_from_url(url).await?;
-    app.emit_to(MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_EVENT, toolkit)?;
-
-    Ok(())
-}
+//     Ok(())
+// }

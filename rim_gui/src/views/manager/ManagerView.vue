@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { invokeCommand, KitItem, managerConf, ManagerOperation } from '@/utils';
+import { managerConf, ManagerOperation } from '@/utils';
 import KitCard from './components/KitCard.vue';
 import { computed, onMounted, ref } from 'vue';
 import Pagination from '@/components/Pagination.vue';
@@ -18,40 +18,14 @@ const loadingText = ref('');
 const loaded = ref(false);
 
 const { routerPush } = useCustomRouter();
-const labels = ref<Record<string, string>>({});
 
 onMounted(() => {
-  event.listen('loading-text', (event) => {
-    if (typeof event.payload === 'string') {
-      loadingText.value = event.payload;
-    }
-  });
-
-  event.listen('loading-finished', (event) => {
-    if (typeof event.payload === 'boolean') {
-      loaded.value = event.payload;
-    }
-  });
-
-  event.listen('toolkit-update', (event) => {
-    let kit = event.payload as KitItem;
-    managerConf.setCurrent(kit);
-    managerConf.setOperation(ManagerOperation.Update);
-    routerPush('/manager/change');
-  });
-
   event.listen('change-view', (event) => {
     let payload = event.payload as CliPayload;
     if (payload.command === 'Uninstall') {
       managerConf.setOperation(ManagerOperation.UninstallToolkit);
     }
     routerPush(payload.path);
-  });
-
-  invokeCommand('get_build_cfg_locale_str', { key: 'content_source' }).then((res) => {
-    if (typeof res === 'string') {
-      labels.value.content_source = res
-    }
   });
 });
 </script>

@@ -14,10 +14,14 @@ interface MenuItem {
     action: () => void
 }
 
-const { isSetupMode } = defineProps({
-    isSetupMode: {
+defineProps({
+    showTitle: {
         type: Boolean,
         default: true,
+    },
+    bottomBorder: {
+        type: Boolean,
+        default: false,
     },
 });
 const { t, locale } = useI18n();
@@ -97,15 +101,17 @@ watch(locale, (_) => refreshLabels());
 </script>
 
 <template>
-    <div data-tauri-drag-region class="titlebar">
+    <div data-tauri-drag-region class="titlebar" :class="{ 'titlebar-border': bottomBorder }">
         <div class="titlebar-logo" id="titlebar-logo">
             <img data-tauri-drag-region src="/logo.png" h="7vh" />
             <div data-tauri-drag-region class="titlebar-logo-text">{{ labels.logoText }}</div>
         </div>
-        <div data-tauri-drag-region class="titlebar-title" v-if="isSetupMode">{{ appTitle }}</div>
+        <div data-tauri-drag-region class="titlebar-title" v-if="showTitle">{{ appTitle }}</div>
+
+        <slot name="nav"></slot>
 
         <div data-tauri-drag-region class="titlebar-buttons" id="titlebar-buttons">
-            <!-- FIXME: we need an English translation for GUI before enabling this -->
+            <!-- expandable menu button -->
             <div class="titlebar-button" @click="isMenuShown = !isMenuShown">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 18 24">
                     <path
@@ -129,20 +135,20 @@ watch(locale, (_) => refreshLabels());
                     </transition>
                 </div>
             </div>
-
+            <!-- minimize button -->
             <div class="titlebar-button" id="titlebar-minimize" @click="minimize">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 16 16">
                     <path d="M3 8a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 8" />
                 </svg>
             </div>
-
+            <!-- maximize button -->
             <div class="titlebar-button" id="titlebar-maximize" @click="maximize">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" viewBox="0 0 16 16">
                     <path
                         d="M4.5 3A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13h7a1.5 1.5 0 0 0 1.5-1.5v-7A1.5 1.5 0 0 0 11.5 3zM5 4.5h6a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-.5.5H5a.5.5 0 0 1-.5-.5V5a.5.5 0 0 1 .5-.5" />
                 </svg>
             </div>
-
+            <!-- close button -->
             <div class="titlebar-button" id="titlebar-close" @click="close" v-if="!exitDisabled">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" viewBox="0 0 16 16">
                     <path fill-rule="evenodd"
@@ -168,13 +174,18 @@ watch(locale, (_) => refreshLabels());
     left: 0;
     right: 0;
     z-index: 1000;
-    margin-inline: 2.5vw;
+}
+
+.titlebar-border {
+    padding-bottom: 1.5vh;
+    border-bottom: 1px solid #ddd;
 }
 
 .titlebar-logo {
     display: flex;
     align-items: center;
-    margin-top: 2.5vh;
+    margin-top: 2vh;
+    margin-left: 2.5vw;
 }
 
 .titlebar-logo-text {
@@ -188,7 +199,8 @@ watch(locale, (_) => refreshLabels());
     justify-content: flex-end;
     align-items: center;
     margin-left: auto;
-    margin-right: 0;
+    margin-top: 2vh;
+    margin-right: 2.5vw;
 }
 
 .titlebar-button {

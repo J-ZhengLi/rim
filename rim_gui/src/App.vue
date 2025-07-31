@@ -1,10 +1,93 @@
 <script setup lang="ts">
+import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
 import Titlebar from './components/Titlebar.vue';
+import { invokeCommand } from './utils';
+import { event } from '@tauri-apps/api';
+import { AppInfo } from './utils/types/AppInfo';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
+const managerMode = ref(false);
+const navItems = ref([
+  {
+    name: t('manage_toolkit'),
+    showDot: ref(false),
+  },
+  {
+    name: t('manage_components'),
+    showDot: ref(false),
+  },
+  {
+    name: t!('misc'),
+    showDot: ref(false),
+  },
+]);
+const selectedIndex = ref(0)
+const navRefs = ref<HTMLElement[]>([])
+
+// Store underline position and width
+const underlineStyle = ref({
+  left: '0px',
+  width: '0px',
+})
+
+async function updateUnderline() {
+  await nextTick();
+  const el = navRefs.value[selectedIndex.value];
+  if (el) {
+    underlineStyle.value = {
+      left: `${el.offsetLeft}px`,
+      width: `${el.offsetWidth}px`,
+    }
+  }
+}
+
+async function selectNav(index: number) {
+  selectedIndex.value = index;
+  await updateUnderline();
+}
+
+async function updateDots() {
+  if (!managerMode) return;
+
+  event.listen('toolkit:update-available', (event) => {
+    console.log("toolkit update available: ", event.payload);
+    navItems.value[0].showDot = true;
+  });
+}
+
+onMounted(async () => {
+  const appInfo = await invokeCommand('app_info') as AppInfo;
+  managerMode.value = appInfo.is_manager;
+
+  updateUnderline();
+  updateDots();
+
+  window.addEventListener('resize', () => { updateUnderline() });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', () => { updateUnderline() });
+})
 </script>
 
 <template>
   <background />
-  <Titlebar />
+  <Titlebar :showTitle="!managerMode" :bottomBorder="managerMode">
+    <template #nav v-if="managerMode">
+      <nav class="nav-container">
+        <ul class="nav-list">
+          <li v-for="(item, index) in navItems" :key="index" class="nav-item"
+            :class="{ active: selectedIndex === index }" @click="selectNav(index)" ref="navRefs">
+            {{ item.name }}
+            <span class="red-dot" v-if="item.showDot"></span>
+          </li>
+        </ul>
+        <div class="underline" :style="underlineStyle"></div>
+      </nav>
+    </template>
+  </Titlebar>
   <main>
     <router-view />
   </main>
@@ -37,5 +120,57 @@ div {
 main {
   margin-top: 10vh;
   overflow: hidden;
+}
+</style>
+
+<style scoped>
+.nav-container {
+  position: relative;
+  top: 4.5vh;
+  width: 58%;
+  height: 70%;
+}
+
+.nav-list {
+  height: 100%;
+  display: flex;
+  justify-content: space-evenly;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  position: relative;
+  text-align: center;
+  white-space: pre-line;
+  --uno: "c-disabled";
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 2.6vh;
+  transition: color 0.3s ease;
+  padding-inline: 1rem;
+}
+
+.nav-item.active {
+  --uno: "c-header";
+}
+
+.underline {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  --uno: "bg-primary";
+  transition: left 0.3s ease, width 0.3s ease;
+}
+
+.red-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background-color: red;
+  border-radius: 50%;
 }
 </style>

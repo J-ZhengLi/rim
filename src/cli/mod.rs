@@ -501,7 +501,7 @@ impl ManagerSubcommands {
         let maybe_cmd = handle_user_choice!(
             t!("choose_an_option"), 5,
             {
-                1 t!("modify_option") => { Some(Self::Component { command: ComponentCommand::Uninstall { components: vec![] } }) },
+                1 t!("manage_components") => { Some(Self::Component { command: ComponentCommand::Uninstall { components: vec![] } }) },
                 2 t!("update") => {
                     let insecure = handle_user_choice!(
                         t!("choose_an_option"), 1,
