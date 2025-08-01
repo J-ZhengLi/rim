@@ -1,5 +1,6 @@
 import { installConf } from "./installConf";
 import { invokeCommand } from "./invokeCommand";
+import { AppInfo } from "./types/AppInfo";
 import { RestrictedComponent } from "./types/Component";
 
 /**
@@ -19,4 +20,14 @@ export function handleRestrictedComponents(onDefault: () => void, onRestricted: 
       onDefault();
     }
   });
+}
+
+/** The name and version of this application. */
+export async function getAppNameWithVersion(): Promise<[string, string]> {
+  const shortenVersion = (ver: string) => {
+    return ver.split(' ')[0];
+  };
+  const info = await invokeCommand('app_info') as AppInfo;
+  console.log(info);
+  return [info.name, shortenVersion(info.version)];
 }

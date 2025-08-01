@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { installConf, invokeCommand } from "@/utils";
+import { invokeCommand } from "@/utils";
 import { appWindow } from "@tauri-apps/api/window";
 import { computed, onMounted, ref, shallowRef, watch } from "vue";
 import { event } from "@tauri-apps/api";
@@ -7,6 +7,7 @@ import { useI18n } from "vue-i18n";
 import SettingsLayout from "@/layouts/SettingsLayout.vue";
 import AboutLayout from "@/layouts/AboutLayout.vue";
 import HelpLayout from "@/layouts/HelpLayout.vue";
+import { getAppNameWithVersion } from "@/utils/common";
 
 interface MenuItem {
     icon?: string,
@@ -94,7 +95,7 @@ onMounted(async () => {
         }
     });
 
-    appTitle.value = await installConf.appNameWithShortVersion();
+    appTitle.value = (await getAppNameWithVersion()).join(' ');
 });
 
 watch(locale, (_) => refreshLabels());

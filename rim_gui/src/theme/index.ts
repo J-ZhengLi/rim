@@ -15,7 +15,6 @@ import BaseDetails from '@/components/BaseDetails.vue';
 import SplitBox from '@/components/SplitBox.vue';
 import LabeledInput from '@/components/LabeledInput.vue';
 import BasePanel from '@/components/BasePanel.vue';
-import BaseRadioGroup from '@/components/BaseRadioGroup.vue';
 import BaseSelect from '@/components/BaseSelect.vue';
 
 export default {
@@ -37,6 +36,5 @@ export default {
     app.component('labeled-input', LabeledInput);
     app.component('base-panel', BasePanel);
     app.component('base-select', BaseSelect);
-    app.component('base-radio-group', BaseRadioGroup);
   },
 };

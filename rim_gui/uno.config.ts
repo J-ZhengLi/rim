@@ -18,7 +18,7 @@ export default defineConfig({
   theme: {
     colors: {
       // 背景色
-      'secondary-btn': '#f2f2f2',
+      'secondary-btn': '#f8f8f8',
       'disabled-bg': '#eeeeee',
 
       // 主色
@@ -32,11 +32,11 @@ export default defineConfig({
 
       // 文字色相关
       header: '#252b3a',
-      regular: '#575d6c',
+      regular: '#666',
       'darker-secondary': '#6a6a6a',
       secondary: '#878787',
       placeholder: '#adb0b8',
-      disabled: '#888888',
+      disabled: '#888',
       reverse: '#ffffff',
       active: '#5e7ce0',
 

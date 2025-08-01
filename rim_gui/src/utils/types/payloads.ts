@@ -15,3 +15,8 @@ export interface ProgressPayload {
     style: ProgressKind,
     length?: number,
 }
+
+export interface ToolkitUpdatePayload {
+    version: string,
+    data?: string,
+}

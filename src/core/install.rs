@@ -305,7 +305,8 @@ impl<'a, T: ProgressHandler + Clone + 'static> InstallConfiguration<'a, T> {
         }
         .await;
 
-        if result.is_err() {
+        if let Err(e) = &result {
+            error!("{e:?}");
             // TODO: revert changes
         }
 

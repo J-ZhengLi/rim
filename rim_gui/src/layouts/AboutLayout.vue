@@ -31,7 +31,8 @@
 </template>
 
 <script setup lang="ts">
-import { installConf, invokeCommand } from '@/utils';
+import { invokeCommand } from '@/utils';
+import { getAppNameWithVersion } from '@/utils/common';
 import { shell } from '@tauri-apps/api';
 import { onMounted, ref } from 'vue';
 
@@ -55,7 +56,10 @@ async function openOfficialSite() {
 
 async function refreshLabels() {
     labels.value.logoText = await invokeCommand('get_build_cfg_locale_str', { key: 'logo_text' }) as string;
-    labels.value.appName = await invokeCommand('get_build_cfg_locale_str', { key: 'app_name' }) as string;
+
+    const nameAndVer = await getAppNameWithVersion();
+    labels.value.appName = nameAndVer[0];
+    rimVersion.value = nameAndVer[1];
 }
 
 async function fetchContributors() {
@@ -96,10 +100,6 @@ async function fetchContributors() {
 onMounted(async () => {
     await refreshLabels();
     await fetchContributors();
-
-    if (installConf.info.value) {
-        rimVersion.value = installConf.info.value.version;
-    }
 });
 </script>
 

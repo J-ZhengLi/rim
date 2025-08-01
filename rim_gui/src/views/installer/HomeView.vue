@@ -76,7 +76,7 @@ watch(locale, async (_newVal) => await refreshLabels());
       </div>
     </base-panel>
 
-    <div class="content-disclaimer">{{ labels.content_source }}</div>
+    <div class="footer-label">{{ labels.content_source }}</div>
   </div>
 </template>
 
@@ -93,13 +93,6 @@ watch(locale, async (_newVal) => await refreshLabels());
   top: 45%;
   position: absolute;
   transform: translateY(-50%);
-}
-
-.content-disclaimer {
-  --uno: c-secondary;
-  position: fixed;
-  font-size: 14px;
-  bottom: 3vh;
 }
 
 .option-label {

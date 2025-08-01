@@ -1,7 +1,7 @@
 import { Component } from './Component';
 
 interface BaseKitItem {
-    /**
+  /**
    * The version number
    */
   version: string;

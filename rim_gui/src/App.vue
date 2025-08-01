@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
+import { ref, onMounted, nextTick, onBeforeUnmount, computed } from 'vue'
 import Titlebar from './components/Titlebar.vue';
 import { invokeCommand } from './utils';
 import { event } from '@tauri-apps/api';
@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 
 const managerMode = ref(false);
-const navItems = ref([
+const navItems = computed(() => [
   {
     name: t('manage_toolkit'),
     showDot: ref(false),
@@ -53,7 +53,7 @@ async function updateDots() {
 
   event.listen('toolkit:update-available', (event) => {
     console.log("toolkit update available: ", event.payload);
-    navItems.value[0].showDot = true;
+    navItems.value[0].showDot.value = true;
   });
 }
 
@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
           <li v-for="(item, index) in navItems" :key="index" class="nav-item"
             :class="{ active: selectedIndex === index }" @click="selectNav(index)" ref="navRefs">
             {{ item.name }}
-            <span class="red-dot" v-if="item.showDot"></span>
+            <span class="red-dot" v-if="item.showDot.value"></span>
           </li>
         </ul>
         <div class="underline" :style="underlineStyle"></div>
@@ -120,6 +120,28 @@ div {
 main {
   margin-top: 10vh;
   overflow: hidden;
+}
+
+.info-label {
+  --uno: "c-regular";
+  font-weight: bold;
+  font-size: clamp(8px, 2.6vh, 22px);
+  margin-inline: 1vw;
+}
+
+.sub-info-label {
+  --uno: "c-secondary";
+  font-size: clamp(6px, 2.2vh, 20px);
+  margin-inline: 1vw;
+}
+
+.footer-label {
+  --uno: c-secondary;
+  position: fixed;
+  font-size: 14px;
+  text-align: center;
+  width: 100%;
+  bottom: 3vh;
 }
 </style>
 

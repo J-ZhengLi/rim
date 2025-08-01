@@ -4,7 +4,6 @@ import { Component, ComponentType, componentUtils } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
-import { AppInfo } from './types/AppInfo';
 
 type Target = {
   operation: ManagerOperation;
@@ -13,31 +12,12 @@ type Target = {
 
 class ManagerConf {
   path: Ref<string> = ref('');
-  info: Ref<AppInfo | null> = ref(null);
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
   private _target: Ref<Target> = ref({ operation: ManagerOperation.Update, components: [] });
 
   constructor() { }
-
-  /** The name of this application. */
-  async appName() {
-    if (this.info.value) {
-      return this.info.value.name;
-    }
-    let info = await this.cacheAppInfo();
-    return info.name;
-  }
-
-  /** The name and version of this application joined as a string. */
-  async appNameWithVersion() {
-    if (this.info.value) {
-      return this.info.value.version ? this.info.value.name + ' ' + this.info.value.version : this.info.value.name;
-    }
-    let info = await this.cacheAppInfo();
-    return info.version ? info.name + ' ' + info.version : info.name;
-  }
 
   public getKits(): KitItem[] {
     return this._availableKits.value;
@@ -167,12 +147,6 @@ class ManagerConf {
       this._target.value.components.length,
       ...components
     );
-  }
-
-  async cacheAppInfo() {
-    let info = await invokeCommand('app_info') as AppInfo;
-    this.info.value = info;
-    return info;
   }
 
   async loadConf() {

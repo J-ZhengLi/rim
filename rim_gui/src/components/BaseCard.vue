@@ -1,5 +1,5 @@
 <template>
-    <div class="glass" :class="props.interactive ? 'interactive' : ''">
+    <div class="glass" :class="{'interactive': props.interactive}">
         <slot></slot>
     </div>
 </template>
@@ -19,7 +19,7 @@ const props = defineProps({
     border-radius: 20px;
     background: rgba(255, 255, 255, .1);
     border: 2px solid transparent;
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 16px 32px rgba(0, 0, 0, .12);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 12px 16px rgba(0, 0, 0, .12);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     outline: 0;
@@ -29,6 +29,6 @@ const props = defineProps({
     cursor: pointer;
 }
 .interactive:hover {
-    box-shadow: 0 0 0 2px rgba(91, 155, 213, .12), 0 16px 32px rgba(91, 155, 213, .8);
+    box-shadow: 0 0 0 2px rgba(91, 155, 213, .12), 0 12px 16px rgba(91, 155, 213, .8);
 }
 </style>

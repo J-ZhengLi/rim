@@ -2,7 +2,6 @@ import { ref, Ref } from 'vue';
 import { isRecommended, toChecked, type Component, type RestrictedComponent } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
-import { AppInfo } from './types/AppInfo';
 
 type EnforceableOption = [string, boolean];
 
@@ -24,7 +23,6 @@ const defaultBaseConfig: BaseConfig = {
 
 class InstallConf {
   config: Ref<BaseConfig>;
-  info: Ref<AppInfo | null> = ref(null);
   checkComponents: Ref<CheckItem<Component>[]>;
   version: Ref<string>;
   restrictedComponents: Ref<RestrictedComponent[]>;
@@ -34,25 +32,6 @@ class InstallConf {
     this.checkComponents = ref([]);
     this.version = ref('');
     this.restrictedComponents = ref([]);
-  }
-
-  /** The name and version of this application joined as a string. */
-  async appNameWithShortVersion() {
-    const shortenVersion = (ver: string) => {
-      return ver.split(' ')[0];
-    };
-
-    if (this.info.value) {
-      return this.info.value.version ? this.info.value.name + ' ' + shortenVersion(this.info.value.version) : this.info.value.name;
-    }
-    let info = await this.cacheAppInfo();
-    return info.version ? info.name + ' ' + shortenVersion(info.version) : info.name;
-  }
-
-  async cacheAppInfo() {
-    let info = await invokeCommand('app_info') as AppInfo;
-    this.info.value = info;
-    return info;
   }
 
   setPath(newPath: string) {
