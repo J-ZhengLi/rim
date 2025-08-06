@@ -1,7 +1,7 @@
 <template>
     <base-card overflow-auto>
         <div class="resizable-container" ref="container">
-            <div class="panel" :style="{ width: leftWidth + 'px' }" ref="leftPanel">
+            <div class="panel" :style="{ width: leftWidth ? leftWidth : leftPixel + 'px' }" ref="leftPanel">
                 <slot name="left"></slot>
             </div>
             <div class="divider" @mousedown="startDrag"></div>
@@ -15,9 +15,16 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue'
 
+defineProps({
+    leftWidth: {
+        type: String || undefined,
+        default: undefined
+    },
+});
+
 const container = ref<HTMLElement | null>(null)
 const leftPanel = ref<HTMLElement | null>(null)
-const leftWidth = ref(300)
+const leftPixel = ref(300)
 const minWidth = 100
 const isDragging = ref(false)
 
@@ -40,7 +47,7 @@ const onDrag = (e: MouseEvent) => {
         )
     )
 
-    leftWidth.value = newLeftWidth
+    leftPixel.value = newLeftWidth
 }
 
 const stopDrag = () => {

@@ -35,9 +35,10 @@ const themeClasses = computed(() => {
 
 <style scoped>
 button {
-  padding: 3% 2.5%;
+  padding: 0.3em 0.5em;
   font-size: clamp(100%, 3vh, 20px);
   border-radius: 100px;
+  min-width: 100px;
   border: none;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .6), 0 8px 16px rgba(0, 0, 0, .12);
   font-weight: bold;

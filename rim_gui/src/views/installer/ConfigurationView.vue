@@ -76,25 +76,26 @@ async function openFolder() {
           <b mb="0.5rem" text-regular>{{ $t('system_configuration') }}</b>
           <base-check-box v-model="installConf.config.value.addToPath" :title="$t('add_to_path')"
             :hint="$t('add_to_path_hint')" />
-          <base-check-box v-model="installConf.config.value.insecure" :title="$t('disable_ssl_cert_varification')"
-            :hint="$t('disable_ssl_cert_varification_hint')" />
+          <base-check-box v-model="installConf.config.value.insecure" :title="$t('disable_ssl_cert_verification')"
+            :hint="$t('disable_ssl_cert_verification_hint')" />
           <br></br>
           <b mb="0.5rem" text-regular>{{ $t('source_configuration') }}</b>
-          <labeled-input :disabled="installConf.config.value.rustupDistServer?.[1]"
-            v-model="rustupDistServer" :label="$t('rustup_dist_server')"
+          <labeled-input v-model="rustupDistServer" :label="$t('rustup_dist_server')"
+            :disabled="installConf.config.value.rustupDistServer?.[1]" :disabledReason="$t('config_disabled_reason')"
             :hint="$t('rustup_dist_server_hint')" />
-          <labeled-input :disabled="installConf.config.value.rustupUpdateRoot?.[1]"
-            v-model="rustupUpdateRoot" :label="$t('rustup_update_root')"
+          <labeled-input v-model="rustupUpdateRoot" :label="$t('rustup_update_root')"
+            :disabled="installConf.config.value.rustupUpdateRoot?.[1]" :disabledReason="$t('config_disabled_reason')"
             :hint="$t('rustup_update_root_hint')" />
-          <labeled-input :disabled="installConf.config.value.cargoRegistryName?.[1]"
-            v-model="cargoRegistryName" :label="$t('cargo_registry_name')"
+          <labeled-input v-model="cargoRegistryName" :label="$t('cargo_registry_name')"
+            :disabled="installConf.config.value.cargoRegistryName?.[1]" :disabledReason="$t('config_disabled_reason')"
             :hint="$t('cargo_registry_name_hint')" />
-          <labeled-input :disabled="installConf.config.value.cargoRegistryValue?.[1]"
-            v-model="cargoRegistryValue" :label="$t('cargo_registry_index')"
+          <labeled-input v-model="cargoRegistryValue" :label="$t('cargo_registry_index')"
+            :disabled="installConf.config.value.cargoRegistryValue?.[1]" :disabledReason="$t('config_disabled_reason')"
             :hint="$t('cargo_registry_index_hint')" />
         </base-card>
       </base-details>
     </div>
-    <page-nav-buttons :backLabel="$t('back')" :nextLabel="$t('next')" @back-clicked="routerBack" @next-clicked="handleNextClick" />
+    <page-nav-buttons :backLabel="$t('back')" :nextLabel="$t('next')" @back-clicked="routerBack"
+      @next-clicked="handleNextClick" />
   </div>
 </template>

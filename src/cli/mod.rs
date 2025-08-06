@@ -507,7 +507,7 @@ impl ManagerSubcommands {
                         t!("choose_an_option"), 1,
                         {
                             1 t!("default") => { false },
-                            2 t!("skip_ssl_check") => { true }
+                            2 t!("disable_ssl_cert_verification") => { true }
                         }
                     );
                     Some(Self::Update { insecure, toolkit_only: false, manager_only: false, component: None, rustup_dist_server: None })
@@ -579,7 +579,7 @@ impl ManagerSubcommands {
                         t!("choose_an_option"), 1,
                         {
                             1 t!("default") => { false },
-                            2 t!("skip_ssl_check") => { true }
+                            2 t!("disable_ssl_cert_verification") => { true }
                         }
                     );
                     let components = component::collect_components_to_add()?;

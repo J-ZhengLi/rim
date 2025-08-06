@@ -3,6 +3,24 @@ import { invokeCommand } from "./invokeCommand";
 import { AppInfo } from "./types/AppInfo";
 import { RestrictedComponent } from "./types/Component";
 
+export type EnforceableOption = [string, boolean];
+
+export interface BaseConfig {
+  path: string;
+  addToPath: boolean,
+  insecure: boolean,
+  rustupDistServer?: EnforceableOption,
+  rustupUpdateRoot?: EnforceableOption,
+  cargoRegistryName?: EnforceableOption,
+  cargoRegistryValue?: EnforceableOption,
+}
+
+export const defaultBaseConfig: BaseConfig = {
+  path: '',
+  addToPath: false,
+  insecure: false,
+};
+
 /**
  * Handle the restricted components before installation,
  * as some components might need another package source.

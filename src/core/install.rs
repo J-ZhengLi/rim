@@ -565,6 +565,9 @@ impl<'a, T: ProgressHandler + Clone + 'static> InstallConfiguration<'a, T> {
 // For updates
 impl<T: ProgressHandler + Clone + 'static> InstallConfiguration<'_, T> {
     pub async fn update(mut self, components: Vec<Component>) -> Result<()> {
+        self.progress_handler
+            .start_master(t!("installing").into(), utils::ProgressKind::Len(100))?;
+
         // Create a copy of the manifest which is later used for component management.
         self.manifest.write_to_dir(&self.install_dir)?;
 
@@ -580,6 +583,9 @@ impl<T: ProgressHandler + Clone + 'static> InstallConfiguration<'_, T> {
             self.update_toolchain(&toolchain).await?;
         }
         self.update_tools(&tools).await?;
+
+        self.progress_handler
+            .finish_master(t!("install_finished").into())?;
         Ok(())
     }
 

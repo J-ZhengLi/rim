@@ -10,7 +10,7 @@ const transitionName = computed(() => {
   return '';
 });
 
-onBeforeMount(() => managerConf.loadConf());
+onBeforeMount(() => managerConf.load());
 </script>
 
 <template>

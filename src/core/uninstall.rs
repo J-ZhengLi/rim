@@ -60,6 +60,9 @@ impl<T: ProgressHandler> UninstallConfiguration<T> {
     }
 
     pub fn uninstall(mut self, remove_self: bool) -> Result<()> {
+        self.progress_handler
+            .start_master(t!("uninstalling").into(), utils::ProgressKind::Len(100))?;
+
         // remove all tools.
         info!("{}", t!("uninstalling_third_party_tools"));
         self.remove_tools(InstallationRecord::load_from_config_dir()?.tools, 40)?;
@@ -99,6 +102,8 @@ impl<T: ProgressHandler> UninstallConfiguration<T> {
         }
         self.inc_progress(10)?;
 
+        self.progress_handler
+            .finish_master(t!("uninstall_finished").into())?;
         Ok(())
     }
 

@@ -143,27 +143,27 @@ onUpdated(() => {
 
 <template>
   <div flex="~ col" w="full" h="full">
-    <h4 ml="12px">组件更改</h4>
-    <div flex="1 ~" p="12px" overflow="auto">
-      <base-card overflow-auto p="4px" grow="1" relative>
-        <div p="l-8px t-8px" flex="~ items-center wrap" gap="3" bg="back">
-          <b>组件</b>
+    <span class="info-label">{{ $t('select_components_to_install') }}</span>
+    <p class="sub-info-label">{{ $t('select_components_gui_hint') }}</p>
+    <split-box flex="1 ~" mb="10vh" mx="1vw" leftWidth="45%">
+      <template #left>
+        <b>{{ $t('components') }}</b>
+        <div p="t-8px" flex="~ items-center wrap" gap="3">
           <span>
             <base-tag size="small" w="1em" h="1.5em" m="r-2px b-4px"></base-tag>
-            当前版本
+            {{ $t('current_version') }}
           </span>
           <span>
             <base-tag type="success" size="small" w="1em" h="1.5em" m="r-2px b-4px"></base-tag>
-            新版本
+            {{ $t('new_version') }}
           </span>
           <span>
             <base-tag type="warning" size="small" w="1em" h="1.5em" m="r-2px b-4px"></base-tag>
-            旧版本
+            {{ $t('old_version') }}
           </span>
         </div>
-
-        <div ml="1.5rem">
-          <base-check-box flex="~ items-center" v-model="checkedAllBundle" title="全选">
+        <div mt="0.5rem">
+          <base-check-box flex="~ items-center" v-model="checkedAllBundle" :title="$t('select_all')">
             <template #icon>
               <span flex="~ items-center justify-center" w="full" h="full" @click="handleSelectAll">
                 <i class="i-mdi:check" v-show="checkedAll" c="active" />
@@ -173,19 +173,23 @@ onUpdated(() => {
           </base-check-box>
         </div>
 
-        <check-box-group v-for="group of groupComponents" :key="group.label" :group="group" expand mb="1rem"
+        <check-box-group v-for="group of groupComponents" :key="group.label" :group="group" expand
           @itemClick="handleComponentsClick" @change="handleComponentsChange" />
-      </base-card>
-      <base-card basis="200px" grow="4" ml="12px">
-        <b>组件详细信息</b>
-        <p font="b">{{ curCheckComponent?.value.displayName }}</p>
-        <p>{{ curCheckComponent?.value.desc }}</p>
-      </base-card>
-    </div>
+      </template>
 
-    <div basis="60px" flex="~ justify-end items-center">
-      <base-button theme="primary" mr="12px" @click="handleClickBack">上一步</base-button>
-      <base-button theme="primary" mr="12px" @click="handleClickNext">下一步</base-button>
-    </div>
+      <template #right>
+        <b>{{ $t('description') }}</b>
+        <p mr="1.5rem">{{ curCheckComponent?.value.desc }}</p>
+        <div>
+          <b>{{ $t('type') }}</b>
+          <p>{{ curCheckComponent?.value.kindDesc.name }}</p>
+        </div>
+        <div v-if="curCheckComponent?.value.kindDesc.help">
+          <b>{{ $t('type_desc') }}</b>
+          <p mr="1.5rem">{{ curCheckComponent?.value.kindDesc.help }}</p>
+        </div>
+      </template>
+    </split-box>
+    <page-nav-buttons :backLabel="$t('back')" :nextLabel="$t('next')" @back-clicked="handleClickBack" @next-clicked="handleClickNext" />
   </div>
 </template>

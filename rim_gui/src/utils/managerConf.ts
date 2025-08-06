@@ -4,6 +4,7 @@ import { Component, ComponentType, componentUtils } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
+import { BaseConfig, defaultBaseConfig } from './common';
 
 type Target = {
   operation: ManagerOperation;
@@ -11,13 +12,20 @@ type Target = {
 };
 
 class ManagerConf {
-  path: Ref<string> = ref('');
+  config: Ref<BaseConfig>;
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
   private _target: Ref<Target> = ref({ operation: ManagerOperation.Update, components: [] });
 
-  constructor() { }
+  constructor() {
+    this.config = ref(defaultBaseConfig);
+  }
+
+  public async setConf() {
+    let conf = await invokeCommand('get_configuration') as BaseConfig;
+    this.config.value = conf;
+  }
 
   public getKits(): KitItem[] {
     return this._availableKits.value;
@@ -134,8 +142,9 @@ class ManagerConf {
     this._installedKit.value = installed;
   }
 
-  public setCurrent(current: KitItem): void {
+  public async setCurrent(current: KitItem) {
     this._current.value = current;
+    await this.setConf();
   }
 
   public setOperation(operation: Target['operation']): void {
@@ -149,12 +158,7 @@ class ManagerConf {
     );
   }
 
-  async loadConf() {
-    let dir = await invokeCommand('get_install_dir');
-    if (typeof dir === 'string' && dir.trim() !== '') {
-      this.path.value = dir;
-    }
-
+  async load() {
     await this.reloadKits();
     // since this function is called immediately after app start, we call these functions
     // to check updates in background then ask user if they what to install it.

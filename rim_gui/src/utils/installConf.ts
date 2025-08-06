@@ -2,24 +2,7 @@ import { ref, Ref } from 'vue';
 import { isRecommended, toChecked, type Component, type RestrictedComponent } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
-
-type EnforceableOption = [string, boolean];
-
-interface BaseConfig {
-  path: string;
-  addToPath: boolean,
-  insecure: boolean,
-  rustupDistServer?: EnforceableOption,
-  rustupUpdateRoot?: EnforceableOption,
-  cargoRegistryName?: EnforceableOption,
-  cargoRegistryValue?: EnforceableOption,
-}
-
-const defaultBaseConfig: BaseConfig = {
-  path: '',
-  addToPath: false,
-  insecure: false,
-};
+import { BaseConfig, defaultBaseConfig } from './common';
 
 class InstallConf {
   config: Ref<BaseConfig>;

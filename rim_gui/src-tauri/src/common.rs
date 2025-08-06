@@ -52,7 +52,7 @@ pub(crate) async fn install_toolkit_(
     window: tauri::Window,
     components_list: Vec<Component>,
     config: BaseConfiguration,
-    manifest: ToolkitManifest,
+    manifest: &ToolkitManifest,
     is_update: bool,
 ) -> anyhow::Result<()> {
     window.emit(BLOCK_EXIT_EVENT, true)?;
@@ -61,7 +61,7 @@ pub(crate) async fn install_toolkit_(
     // TODO: Use continuous progress
     let i_config = InstallConfiguration::new(
         &install_dir,
-        &manifest,
+        manifest,
         GuiProgress::new(window.app_handle()),
     )?
     .with_rustup_dist_server(config.rustup_dist_server.as_deref().cloned())

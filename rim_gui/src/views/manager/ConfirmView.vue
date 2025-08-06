@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router';
-import { invokeCommand, managerConf, Component, ComponentType, componentUtils } from '@/utils';
-import { computed } from 'vue';
+import { managerConf, ComponentType, componentUtils } from '@/utils';
+import { computed, ref } from 'vue';
 import ComponentLabel from './components/Label.vue';
 
 const { routerPush, routerBack } = useCustomRouter();
 const components = computed(() => managerConf.getTargetComponents());
+const showConfigModifyPanel = ref(false);
+
+// quick configure modification
+const rustupDistServer = computed({
+  get: () => managerConf.config.value.rustupDistServer?.[0] || '',
+  set: (newValue: string) => {
+    if (managerConf.config.value.rustupDistServer) {
+      managerConf.config.value.rustupDistServer[0] = newValue;
+    }
+  }
+});
 
 const labels = computed(() => {
   const installed = managerConf.getInstalled();
@@ -34,37 +45,62 @@ const obsoletedComponents = computed(() => {
 });
 
 function handleNextClick() {
-  invokeCommand('install_toolkit', {
-    components_list: components.value as Component[],
-  }).then(() => routerPush('/manager/progress'));
+  routerPush('/manager/progress');
 }
 </script>
 
 <template>
-  <section flex="~ col" w="full" h="full">
-    <div mx="12px">
-      <h1>确认信息</h1>
-      <p>即将安装以下产品</p>
+  <div flex="~ col">
+    <div>
+      <span class="info-label">{{ $t('review_configuration') }}</span>
+      <p class="sub-info-label">{{ $t('review_installation_hint') }}</p>
     </div>
+    <base-card flex="1" mx="1vw" mb="7%" overflow="auto">
+      <section>
+        <b m="0" text='regular'>
+          {{ $t('configuration') }}
+          <u ml="1rem" text="active" cursor="pointer" @click="showConfigModifyPanel = true">{{ $t('change') }}</u>
+        </b>
+        <div m="1rem">
+          <p flex gap="1rem">{{ $t('disable_ssl_cert_verification') }}: <b text='regular'>{{
+            managerConf.config.value.insecure }}</b></p>
+          <p flex gap="1rem">{{ $t('rustup_dist_server') }}: <b flex text='regular'>{{
+            managerConf.config.value.rustupDistServer?.[0] }}<lock-indicator
+                v-if="managerConf.config.value.rustupDistServer?.[1]" :hint="$t('config_disabled_reason')" /></b></p>
+        </div>
+      </section>
+      
+      <section>
+        <b text='regular'>{{ $t('components_to_install') }}</b>
+        <div m="1rem" v-for="item in labels" :key="item.label">
+          <component-label :label="item.label" :oldVer="item.originVer" :newVer="item.targetVer" />
+        </div>
+      </section>
 
-    <base-card mx="12px" flex="1">
-      <div v-for="item in labels" :key="item.label" mb="24px">
-        <component-label :label="item.label" :oldVer="item.originVer" :newVer="item.targetVer" />
-      </div>
-    </base-card>
-
-    <div mx="12px" v-if="obsoletedComponents.length > 0">
-      <p>{{ $t('components_to_remove') }}</p>
-      <base-card flex="1">
-        <div v-for="item in obsoletedComponents" mb="24px">
+      <section v-if="obsoletedComponents.length > 0">
+        <b text='regular'>{{ $t('components_to_remove') }}</b>
+        <div m="1rem" v-for="item in obsoletedComponents">
           <component-label :label="item" />
         </div>
-      </base-card>
-    </div>
+      </section>
+    </base-card>
 
-    <div basis="60px" flex="~ justify-end items-center">
-      <base-button theme="primary" mr="12px" @click="routerBack()">上一步</base-button>
-      <base-button theme="primary" mr="12px" @click="handleNextClick">开始安装</base-button>
-    </div>
-  </section>
+    <base-panel :show="showConfigModifyPanel" @close="showConfigModifyPanel = false" flex="~ col" overflow="auto" width="50%">
+      <section>
+        <h3 text-regular>{{ $t('system_configuration') }}</h3>
+        <base-check-box v-model="managerConf.config.value.insecure" :title="$t('disable_ssl_cert_verification')"
+          :hint="$t('disable_ssl_cert_verification_hint')" />
+      </section>
+      <br></br>
+      <section>
+        <h3 text-regular>{{ $t('source_configuration') }}</h3>
+        <labeled-input v-model="rustupDistServer" :label="$t('rustup_dist_server')"
+          :disabled="managerConf.config.value.rustupDistServer?.[1]" :disabledReason="$t('config_disabled_reason')"
+          :hint="$t('rustup_dist_server_hint')" />
+      </section>
+    </base-panel>
+
+    <page-nav-buttons :backLabel="$t('back')" :nextLabel="$t('install')" @back-clicked="routerBack"
+      @next-clicked="handleNextClick" />
+  </div>
 </template>

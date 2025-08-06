@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router/index';
-import { invokeCommand, managerConf, ManagerOperation } from '@/utils';
+import { managerConf, ManagerOperation } from '@/utils';
 import { computed, ref, watch } from 'vue';
 import Label from './components/Label.vue';
 const { routerBack, routerPush } = useCustomRouter();
 
 const isUninstallManger = ref(false);
-const installDir = computed(() => managerConf.path);
+const installDir = computed(() => managerConf.config.value.path);
 
 watch(isUninstallManger, (val: boolean) => {
   if (val) {
@@ -19,9 +19,7 @@ watch(isUninstallManger, (val: boolean) => {
 const installed = computed(() => managerConf.getInstalled());
 
 function handleUninstall() {
-  invokeCommand('uninstall_toolkit', {
-    remove_self: isUninstallManger.value,
-  }).then(() => routerPush('/manager/progress'));
+  routerPush('/manager/progress');
 }
 </script>
 <template>

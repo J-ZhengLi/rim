@@ -24,7 +24,7 @@ function uninstall() {
 
 async function install(url: string) {
   const toolkit = await invokeCommand('get_toolkit_from_url', { url: url }) as KitItem;
-  managerConf.setCurrent(toolkit);
+  await managerConf.setCurrent(toolkit);
   managerConf.setOperation(ManagerOperation.Update);
   routerPush('/manager/change');
 }
@@ -64,7 +64,7 @@ watch(locale, async (_newVal) => await refreshLabels());
   <div>
     <section>
       <div class="info-label" mb="1rem">{{ $t('current_toolkit') }}</div>
-      <base-card flex="~ justify-between items-center" ml="1rem" mr="1.2rem">
+      <base-card v-if="installedKit" flex="~ justify-between items-center" ml="1rem" mr="1.2rem">
         <div flex="~ col">
           <span class="toolkit-name">{{ installedKit?.name }}</span>
           <span class="toolkit-version">{{ installedKit?.version }}</span>
@@ -73,6 +73,9 @@ watch(locale, async (_newVal) => await refreshLabels());
         <div flex="~ justify-end" w="25%">
           <base-button w="45%" theme="secondary" @click="uninstall">{{ $t('uninstall') }}</base-button>
         </div>
+      </base-card>
+      <base-card v-else text="center" ml="1rem" mr="1.2rem">
+        <p text="regular">{{ $t('no_toolkit_installed') }}</p>
       </base-card>
     </section>
 
@@ -190,24 +193,6 @@ watch(locale, async (_newVal) => await refreshLabels());
   overflow-y: auto;
   box-sizing: border-box;
   scrollbar-gutter: stable;
-}
-
-.toolkit-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.toolkit-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.toolkit-list::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-  transition: background-color 0.3s ease;
-}
-
-.toolkit-list:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .toolkit-list.list .toolkit-item {

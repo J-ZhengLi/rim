@@ -32,7 +32,7 @@ export default defineConfig({
 
       // 文字色相关
       header: '#252b3a',
-      regular: '#666',
+      regular: '#444',
       'darker-secondary': '#6a6a6a',
       secondary: '#878787',
       placeholder: '#adb0b8',

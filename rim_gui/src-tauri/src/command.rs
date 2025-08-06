@@ -78,6 +78,6 @@ pub(crate) async fn install_toolkit(
     };
 
     GlobalOpts::set(false, false, false, false, !cfg.add_to_path);
-    common::install_toolkit_(window, components_list, cfg, manifest_guard.clone(), false).await?;
+    common::install_toolkit_(window, components_list, cfg, &manifest_guard, false).await?;
     Ok(())
 }

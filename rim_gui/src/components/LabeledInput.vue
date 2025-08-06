@@ -1,13 +1,16 @@
 <template>
     <div flex="~ col">
-        <label :for="id" class="input-label">{{ label }}</label>
+        <label :for="id" class="input-label">
+            {{ label }}
+            <lock-indicator v-if="disabled" :hint="disabledReason"/>
+        </label>
         <div class="input-wrapper">
             <input :disabled="disabled" :id="id" :value="modelValue" @input="handleInput" v-bind="$attrs" class="input-field" :class="{
                 'bg-disabled-bg': disabled,
                 'cursor-not-allowed': disabled,
             }" @mouseenter="showHint = true" @mouseleave="showHint = false" />
             <Transition name="fade">
-                <div v-if="showHint && hint" class="hint-tooltip">
+                <div v-if="showHint && hint" class="tooltip">
                     {{ hint }}
                 </div>
             </Transition>
@@ -23,6 +26,7 @@ defineProps<{
     modelValue: string | null;
     hint?: string;
     disabled?: boolean;
+    disabledReason?: string;
 }>();
 
 const emit = defineEmits<{
@@ -44,6 +48,8 @@ const handleInput = (event: Event) => {
     font-weight: 500;
     font-size: clamp(0.5rem, 2.6vh, 1.5rem);
     flex-shrink: 0;
+    display: flex;
+    gap: 0.5rem;
 }
 
 .input-wrapper {
@@ -69,31 +75,6 @@ const handleInput = (event: Event) => {
 .input-field:focus {
     --uno: 'b-active';
     outline: none;
-}
-
-.hint-tooltip {
-    position: absolute;
-    bottom: calc(100% + 10px);
-    left: 0;
-    background-color: #333;
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    font-size: 13px;
-    white-space: nowrap;
-    z-index: 999;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    pointer-events: none;
-}
-
-.hint-tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 12px;
-    border-width: 6px;
-    border-style: solid;
-    border-color: #333 transparent transparent transparent;
 }
 
 .fade-enter-active,

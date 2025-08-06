@@ -16,6 +16,7 @@ import SplitBox from '@/components/SplitBox.vue';
 import LabeledInput from '@/components/LabeledInput.vue';
 import BasePanel from '@/components/BasePanel.vue';
 import BaseSelect from '@/components/BaseSelect.vue';
+import LockIndicator from '@/components/LockIndicator.vue';
 
 export default {
   install(app: App) {
@@ -36,5 +37,6 @@ export default {
     app.component('labeled-input', LabeledInput);
     app.component('base-panel', BasePanel);
     app.component('base-select', BaseSelect);
+    app.component('lock-indicator', LockIndicator);
   },
 };

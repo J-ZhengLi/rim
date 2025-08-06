@@ -1,5 +1,5 @@
 use crate::command::with_shared_commands;
-use crate::common::TOOLKIT_MANIFEST;
+use crate::common::{cached_manifest, BaseConfiguration, TOOLKIT_MANIFEST};
 use crate::consts::{MANAGER_UPDATE_NOTICE, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_NOTICE};
 use crate::progress::GuiProgress;
 use crate::{common, error::Result};
@@ -33,7 +33,7 @@ pub(super) fn main(
         .invoke_handler(with_shared_commands![
             get_installed_kit,
             get_available_kits,
-            get_install_dir,
+            get_configuration,
             uninstall_toolkit,
             check_updates_on_startup,
             get_toolkit_from_url,
@@ -48,6 +48,12 @@ pub(super) fn main(
 }
 
 #[tauri::command]
+async fn get_configuration() -> BaseConfiguration {
+    let manifest_guard = cached_manifest().read().await;
+    BaseConfiguration::new(AppInfo::get_installed_dir(), &manifest_guard)
+}
+
+#[tauri::command]
 async fn get_installed_kit(reload: bool) -> Result<Option<Toolkit>> {
     let Some(mutex) = Toolkit::installed(reload).await? else {
         return Ok(None);
@@ -59,11 +65,6 @@ async fn get_installed_kit(reload: bool) -> Result<Option<Toolkit>> {
 #[tauri::command]
 async fn get_available_kits(reload: bool) -> Result<Vec<Toolkit>> {
     Ok(toolkit::installable_toolkits(reload, false).await?)
-}
-
-#[tauri::command]
-fn get_install_dir() -> String {
-    AppInfo::get_installed_dir().to_string_lossy().to_string()
 }
 
 #[tauri::command(rename_all = "snake_case")]
