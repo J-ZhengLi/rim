@@ -8,7 +8,6 @@ mod custom_instructions;
 mod dependency_handler;
 pub(crate) mod directories;
 pub mod install;
-mod locales;
 pub(crate) mod os;
 pub(crate) mod parser;
 mod path_ext;
@@ -21,13 +20,16 @@ pub(crate) mod uninstall;
 pub mod update;
 
 // re-exports
-pub use locales::Language;
 pub(crate) use path_ext::PathExt;
 pub use toolkit_manifest_ext::*;
 
-use crate::{cli, configuration::Configuration, fingerprint::InstallationRecord};
+use crate::{cli, fingerprint::InstallationRecord};
 use anyhow::{bail, Result};
-use rim_common::{build_config, types::TomlParser, utils};
+use rim_common::{
+    build_config,
+    types::{Configuration, TomlParser},
+    utils,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     env,
@@ -56,12 +58,14 @@ static GLOBAL_OPTS: Mutex<Option<GlobalOpts>> = Mutex::new(None);
 static APP_INFO: OnceLock<AppInfo> = OnceLock::new();
 static INSTALL_DIR_ONCE: OnceLock<PathBuf> = OnceLock::new();
 
-pub(crate) fn default_rustup_dist_server() -> &'static Url {
-    build_config().rustup_dist_server(env!("EDITION"))
+/// Get the default rustup dist server url.
+pub fn default_rustup_dist_server() -> &'static Url {
+    build_config().rustup_dist_server()
 }
 
-pub(crate) fn default_rustup_update_root() -> &'static Url {
-    build_config().rustup_update_root(env!("EDITION"))
+/// Get the default rustup update root url.
+pub fn default_rustup_update_root() -> &'static Url {
+    build_config().rustup_update_root()
 }
 
 pub(crate) fn rim_dist_server() -> Url {
@@ -71,13 +75,15 @@ pub(crate) fn rim_dist_server() -> Url {
         }
     }
 
-    build_config().rim_dist_server(env!("EDITION")).clone()
+    build_config().rim_dist_server().clone()
 }
 
-pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {
+/// Get the default name and value of replaced cargo registry.
+/// (i.e.: ("mirror", "sparse+http://replaced-crates.io"))
+pub fn default_cargo_registry() -> (&'static str, &'static str) {
     let cfg = build_config();
 
-    (&cfg.cargo.registry_name, &cfg.cargo.registry_url)
+    (&cfg.registry.name, &cfg.registry.index)
 }
 
 /// Representing the options that user pass to the program, such as
@@ -86,26 +92,18 @@ pub(crate) fn default_cargo_registry() -> (&'static str, &'static str) {
 /// This struct will be stored globally for easy access, also make
 /// sure the [`set`](GlobalOpts::set) function is called exactly once
 /// to initialize the global singleton.
-// TODO: add verbose and quiet options
 #[derive(Debug, Default, Clone, Copy)]
-pub(crate) struct GlobalOpts {
-    pub(crate) verbose: bool,
-    pub(crate) quiet: bool,
-    pub(crate) yes_to_all: bool,
+pub struct GlobalOpts {
+    pub verbose: bool,
+    pub quiet: bool,
+    pub yes_to_all: bool,
     no_modify_env: bool,
     no_modify_path: bool,
 }
 
 impl GlobalOpts {
-    /// Initialize a new object and store it globally, will also return a
-    /// static reference to the global stored value.
-    pub(crate) fn set(
-        verbose: bool,
-        quiet: bool,
-        yes: bool,
-        no_modify_env: bool,
-        no_modify_path: bool,
-    ) {
+    /// Initialize a new object and store it globally
+    pub fn set(verbose: bool, quiet: bool, yes: bool, no_modify_env: bool, no_modify_path: bool) {
         let opts = Self {
             verbose,
             quiet,
@@ -120,17 +118,17 @@ impl GlobalOpts {
     /// Get the stored global options.
     ///
     /// Fallback to default value if is not set.
-    pub(crate) fn get() -> Self {
+    pub fn get() -> Self {
         GLOBAL_OPTS.lock().unwrap().unwrap_or_default()
     }
 
     /// Return `true` if either one of `no-modify-path` or `no-modify-env` was set to `true`
-    pub(crate) fn no_modify_path(&self) -> bool {
+    pub fn no_modify_path(&self) -> bool {
         self.no_modify_path || self.no_modify_env
     }
 
     /// Return `true` if `no-modify-env` was set to `true`
-    pub(crate) fn no_modify_env(&self) -> bool {
+    pub fn no_modify_env(&self) -> bool {
         self.no_modify_env
     }
 }
@@ -154,7 +152,7 @@ impl Mode {
     fn manager(manager_callback: Option<Box<dyn FnOnce(&cli::Manager)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: utils::build_cfg_locale("manager_title").into(),
+            name: utils::build_cfg_locale("app_name").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: true,
         });
@@ -176,7 +174,7 @@ impl Mode {
     fn installer(installer_callback: Option<Box<dyn FnOnce(&cli::Installer)>>) -> Self {
         // cache app info
         APP_INFO.get_or_init(|| AppInfo {
-            name: utils::build_cfg_locale("installer_title").into(),
+            name: utils::build_cfg_locale("app_name").into(),
             version: format!("v{}", env!("CARGO_PKG_VERSION")),
             is_manager: false,
         });
@@ -265,7 +263,7 @@ impl Default for AppInfo {
     fn default() -> Self {
         Self {
             name: env!("CARGO_PKG_NAME").to_string(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
+            version: rim_common::get_version_info!(),
             is_manager: false,
         }
     }

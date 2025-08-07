@@ -1,79 +1,37 @@
 //! Progress bar indicator for commandline user interface.
 
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use anyhow::{Context, Result};
+use indicatif::{ProgressBar as CliProgressBar, ProgressState, ProgressStyle as CliProgressStyle};
+use std::time::Duration;
 
-use anyhow::Result;
-use indicatif::{ProgressBar as CliProgressBar, ProgressState, ProgressStyle};
+#[allow(unused_variables)]
+/// Abstract progress sender/handler used for both CLI and GUI mode.
+pub trait ProgressHandler: Send + Sync {
+    /// Start the progress with a certain message and style.
+    fn start(&mut self, msg: String, style: ProgressKind) -> Result<()>;
+    /// Update the progress to a value, or tick once if the value is `None`.
+    fn update(&self, value: Option<u64>) -> Result<()>;
+    /// Finish progress with a certain message.
+    fn finish(&self, msg: String) -> Result<()>;
 
-struct ProgressPos(Mutex<f32>);
+    // Optional overall (master) progress control
 
-impl ProgressPos {
-    fn new(value: f32) -> Self {
-        Self(Mutex::new(value))
+    /// Start the master progress bar with a certain progress.
+    fn start_master(&mut self, msg: String, style: ProgressKind) -> Result<()> {
+        Ok(())
     }
-    fn load(&self) -> f32 {
-        *self.0.lock().unwrap()
+    /// Update the master progress bar, or tick once if the value is `None`.
+    fn update_master(&self, value: Option<u64>) -> Result<()> {
+        Ok(())
     }
-    /// Increment position value, and ensure the end result not exceeding 100.
-    fn add(&self, value: f32) {
-        let mut guard = self.0.lock().unwrap();
-        *guard = (*guard + value).min(100.0);
-    }
-}
-
-#[derive(Clone)]
-pub struct Progress<'a> {
-    pos: Arc<ProgressPos>,
-    pub len: f32,
-    pos_callback: &'a dyn Fn(f32) -> Result<()>,
-}
-
-impl<'a> Progress<'a> {
-    pub fn new<P>(pos_cb: &'a P) -> Self
-    where
-        P: Fn(f32) -> Result<()>,
-    {
-        Self {
-            pos: Arc::new(ProgressPos::new(0.0)),
-            len: 0.0,
-            pos_callback: pos_cb,
-        }
-    }
-
-    pub fn with_len(mut self, len: f32) -> Self {
-        self.len = len;
-        self
-    }
-
-    /// Update the position of progress bar by increment a certain value.
-    ///
-    /// If a value given is `None`, this will increase the position by the whole `len`,
-    /// otherwise it will increase the desired value instead.
-    // FIXME: split `inc(None)` to a new function, such as `inc_len`, cuz this is kinda confusing.
-    pub fn inc(&self, value: Option<f32>) -> Result<()> {
-        let delta = value.unwrap_or(self.len);
-        self.pos.add(delta);
-        (self.pos_callback)(self.pos.load())?;
+    /// Finish the master progress with a certain massage.
+    fn finish_master(&self, msg: String) -> Result<()> {
         Ok(())
     }
 }
 
-/// Convenient struct with methods that are useful to indicate various progress.
 #[derive(Debug, Clone, Copy)]
-pub struct CliProgress<T: Sized> {
-    /// A start/initializing function which will be called to setup progress bar.
-    pub start: fn(String, Style) -> Result<T>,
-    /// A update function that will be called upon each step completion.
-    pub update: fn(&T, Option<u64>),
-    /// A function that will be called once to terminate progress.
-    pub stop: fn(&T, String),
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Style {
+pub enum ProgressKind {
     /// Display the progress base on number of bytes.
     Bytes(u64),
     /// Display the progress base on position & length parameters.
@@ -84,99 +42,116 @@ pub enum Style {
         /// Set continuous spinning for a given amount of time.
         auto_tick_duration: Option<Duration>,
     },
+    /// Show no progress bar at all.
+    Hidden,
 }
 
-impl Style {
-    fn pattern(&self) -> &str {
+impl ProgressKind {
+    fn cli_pattern(&self) -> &str {
         match self {
-            Style::Bytes(_) => "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
-            Style::Len(_) => "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})",
-            Style::Spinner{..} => "{spinner:.green} [{elapsed_precise}] {msg}"
+            Self::Bytes(_) => "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
+            Self::Len(_) => "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})",
+            Self::Spinner{..} => "{spinner:.green} [{elapsed_precise}] {msg}",
+            Self::Hidden => "",
+        }
+    }
+
+    pub fn length(&self) -> Option<u64> {
+        match self {
+            Self::Bytes(len) | Self::Len(len) => Some(*len),
+            _ => None,
         }
     }
 }
 
-// TODO: Mark this with cfg(feature = "cli")
-impl CliProgress<CliProgressBar> {
-    /// Create a new progress bar for CLI to indicate download progress.
-    ///
-    /// When `hidden` is set to `true`, no progress bar will be shown.
-    pub fn new(hidden: bool) -> Self {
-        fn start(msg: String, style: Style) -> Result<CliProgressBar> {
-            let apply_custom_style = |pb: &CliProgressBar, pattern: &str| -> Result<()> {
-                pb.set_style(
-                    ProgressStyle::with_template(pattern)?
-                        .with_key(
-                            "eta",
-                            |state: &ProgressState, w: &mut dyn std::fmt::Write| {
-                                write!(w, "{:.1}s", state.eta().as_secs_f64())
-                                    .expect("unable to display progress bar")
-                            },
-                        )
-                        .progress_chars("#>-"),
-                );
-                Ok(())
-            };
-            let pb = match style {
-                Style::Bytes(total) | Style::Len(total) => CliProgressBar::new(total),
-                Style::Spinner { auto_tick_duration } => {
-                    let spinner = CliProgressBar::new_spinner();
-                    if let Some(dur) = auto_tick_duration {
-                        spinner.enable_steady_tick(dur);
-                    }
-                    spinner
-                }
-            };
-            apply_custom_style(&pb, style.pattern())?;
-            pb.set_message(msg);
-            Ok(pb)
-        }
-        fn update(pb: &CliProgressBar, pos: Option<u64>) {
-            if let Some(p) = pos {
-                pb.set_position(p);
-            } else {
-                pb.tick();
-            }
-        }
-        fn stop(pb: &CliProgressBar, msg: String) {
-            pb.finish_with_message(msg);
-        }
+/// Hidden progress indicator, nothing will be shown,
+/// and all [`ProgressHandler`] methods do nothing.
+#[derive(Debug, Clone)]
+pub struct HiddenProgress;
 
-        if hidden {
-            CliProgress {
-                start: |_: String, _: Style| Ok(CliProgressBar::hidden()),
-                update: |_: &CliProgressBar, _: Option<u64>| {},
-                stop: |_: &CliProgressBar, _: String| {},
-            }
-        } else {
-            CliProgress {
-                start,
-                update,
-                stop,
-            }
-        }
+impl ProgressHandler for HiddenProgress {
+    fn start(&mut self, _msg: String, _style: ProgressKind) -> Result<()> {
+        Ok(())
+    }
+    fn finish(&self, _msg: String) -> Result<()> {
+        Ok(())
+    }
+    fn update(&self, _value: Option<u64>) -> Result<()> {
+        Ok(())
     }
 }
 
-impl Default for CliProgress<CliProgressBar> {
+/// Progress indicator for CLI
+#[derive(Debug, Clone)]
+pub struct CliProgress {
+    bar: CliProgressBar,
+    style: ProgressKind,
+}
+
+impl Default for CliProgress {
     fn default() -> Self {
-        Self::new(false)
+        Self {
+            bar: CliProgressBar::hidden(),
+            style: ProgressKind::Hidden,
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::ProgressPos;
+impl ProgressHandler for CliProgress {
+    fn start(&mut self, msg: String, style: ProgressKind) -> Result<()> {
+        // log the starting of the progress
+        info!("{msg}");
 
-    #[test]
-    fn progress_pos_add() {
-        let orig = ProgressPos::new(0.0);
+        let bar = match style {
+            ProgressKind::Bytes(len) | ProgressKind::Len(len) => CliProgressBar::new(len),
+            ProgressKind::Spinner { auto_tick_duration } => {
+                let bar = CliProgressBar::new_spinner();
+                if let Some(interval) = auto_tick_duration {
+                    bar.enable_steady_tick(interval);
+                }
+                bar
+            }
+            ProgressKind::Hidden => CliProgressBar::hidden(),
+        };
 
-        orig.add(1.0);
-        assert_eq!(orig.load(), 1.0);
-        orig.add(2.0);
-        assert_eq!(orig.load(), 3.0);
-        orig.add(10.0);
-        assert_eq!(orig.load(), 13.0);
+        self.bar = bar
+            .with_style(
+                CliProgressStyle::with_template(style.cli_pattern())
+                    .with_context(|| {
+                        format!("Internal error: Invalid style pattern defined for {style:?}")
+                    })?
+                    .with_key(
+                        "eta",
+                        |state: &ProgressState, w: &mut dyn std::fmt::Write| {
+                            write!(w, "{:.1}s", state.eta().as_secs_f64())
+                                .expect("unable to display progress bar")
+                        },
+                    )
+                    .progress_chars("#>-"),
+            )
+            .with_message(msg)
+            .with_position(0);
+        self.style = style;
+
+        Ok(())
+    }
+
+    fn update(&self, value: Option<u64>) -> Result<()> {
+        if let Some(val) = value {
+            self.bar.set_position(val);
+        } else {
+            self.bar.tick();
+        }
+
+        Ok(())
+    }
+
+    fn finish(&self, msg: String) -> Result<()> {
+        self.bar.finish_with_message(msg.clone());
+        // log the starting of the progress.
+        // NB: This need to be done after `finish_with_message` to prevent
+        // showing double progress bar on terminal
+        info!("{msg}");
+        Ok(())
     }
 }

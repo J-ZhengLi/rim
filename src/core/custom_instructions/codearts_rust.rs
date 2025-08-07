@@ -12,7 +12,7 @@ const VSCODE: VSCodeInstaller = VSCodeInstaller {
     binary_name: "codearts-rust"
 };
 
-pub(super) fn install(path: &Path, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
+pub(super) fn install<T>(path: &Path, config: &InstallConfiguration<T>) -> Result<Vec<PathBuf>> {
     VSCODE.install(path, config)
 }
 

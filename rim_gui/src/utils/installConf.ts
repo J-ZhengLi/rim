@@ -1,42 +1,24 @@
 import { ref, Ref } from 'vue';
-import { toChecked, type Component, type RestrictedComponent } from './types/Component';
+import { isRecommended, toChecked, type Component, type RestrictedComponent } from './types/Component';
 import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
-import { AppInfo } from './types/AppInfo';
+import { BaseConfig, defaultBaseConfig } from './common';
 
 class InstallConf {
-  path: Ref<string>;
-  info: Ref<AppInfo | null> = ref(null);
+  config: Ref<BaseConfig>;
   checkComponents: Ref<CheckItem<Component>[]>;
-  isCustomInstall: boolean;
   version: Ref<string>;
   restrictedComponents: Ref<RestrictedComponent[]>;
 
-  constructor(path: string, components: CheckItem<Component>[]) {
-    this.path = ref(path);
-    this.checkComponents = ref(components);
-    this.isCustomInstall = true;
+  constructor() {
+    this.config = ref(defaultBaseConfig);
+    this.checkComponents = ref([]);
     this.version = ref('');
     this.restrictedComponents = ref([]);
   }
 
-  /** The name and version of this application joined as a string. */
-  async appNameWithVersion() {
-    if (this.info.value) {
-      return this.info.value.version ? this.info.value.name + ' ' + this.info.value.version : this.info.value.name;
-    }
-    let info = await this.cacheAppInfo();
-    return info.version ? info.name + ' ' + info.version : info.name;
-  }
-
-  async cacheAppInfo() {
-    let info = await invokeCommand('app_info') as AppInfo;
-    this.info.value = info;
-    return info;
-  }
-
   setPath(newPath: string) {
-    this.path.value = newPath;
+    this.config.value.path = newPath;
   }
 
   setComponents(newComponents: CheckItem<Component>[]) {
@@ -46,10 +28,6 @@ class InstallConf {
 
   setRestrictedComponents(comps: RestrictedComponent[]) {
     this.restrictedComponents.value = comps;
-  }
-
-  setCustomInstall(isCustomInstall: boolean) {
-    this.isCustomInstall = isCustomInstall;
   }
 
   getGroups(): CheckGroup<Component>[] {
@@ -80,24 +58,30 @@ class InstallConf {
         return item.value as Component;
       });
   }
-  
+
+  mapCheckedComponents(callback: (comp: CheckItem<Component>) => CheckItem<Component>) {
+    this.checkComponents.value = this.checkComponents.value.map(callback)
+  }
+
   getRestrictedComponents(): RestrictedComponent[] {
     return this.restrictedComponents.value;
   }
 
-  loadManifest() {
-    invokeCommand("load_manifest_and_ret_version").then((ver) => {
-      if (typeof ver === 'string') {
-        this.version.value = ver;
-      }
-    });
+  async loadManifest(path?: string) {
+    const ver = await invokeCommand("toolkit_version", { path: path });
+    if (typeof ver === 'string') {
+      this.version.value = ver;
+    };
+
+    // make sure the manifest is loaded before loading components
+    // as it requires the manifest to be loaded.
+    await this.loadDefaultConfig();
+    await this.loadComponents();
   }
 
-  async loadDefaultPath() {
-    const defaultPath = await invokeCommand('default_install_dir');
-    if (typeof defaultPath === 'string' && defaultPath.trim() !== '') {
-      this.setPath(defaultPath);
-    }
+  async loadDefaultConfig() {
+    const defaultConfig = await invokeCommand('default_configuration') as BaseConfig;
+    this.config.value = defaultConfig;
   }
 
   async loadComponents() {
@@ -106,10 +90,13 @@ class InstallConf {
     )) as Component[];
     if (Array.isArray(componentList)) {
       componentList.sort((a, b) => {
-        if (a.required && !b.required) {
+        // list pre-selected components at front.
+        let aIsRecommended = isRecommended(a);
+        let bIsRecommended = isRecommended(b);
+        if (aIsRecommended && !bIsRecommended) {
           return -1;
         }
-        if (!a.required && b.required) {
+        if (!aIsRecommended && bIsRecommended) {
           return 1;
         }
         // 名称排序
@@ -120,11 +107,6 @@ class InstallConf {
       this.setComponents(newComponents);
     }
   }
-
-  async loadAll() {
-    await this.loadDefaultPath();
-    await this.loadComponents();
-  }
 }
 
-export const installConf = new InstallConf('', []);
+export const installConf = new InstallConf();

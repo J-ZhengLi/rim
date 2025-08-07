@@ -9,11 +9,12 @@ mod tryit;
 mod uninstall;
 mod update;
 
-use crate::core::{GlobalOpts, Language};
+use crate::core::GlobalOpts;
 use anyhow::{anyhow, bail, Result};
 use clap::error::ErrorKind;
 use clap::{Parser, Subcommand, ValueHint};
 use common::handle_user_choice;
+use rim_common::types::Language;
 use rim_common::utils;
 use std::{
     path::{Path, PathBuf},
@@ -132,6 +133,13 @@ impl ExecStatus {
     setter!(no_pause(self.no_pause, bool));
 }
 
+fn possible_lang() -> Vec<&'static str> {
+    Language::possible_values()
+        .iter()
+        .map(Language::as_str)
+        .collect()
+}
+
 /// Install rustup, rust toolchain, and various tools.
 // NOTE: If you changed anything in this struct, or any other child types that related to
 // this struct, make sure the README doc is updated as well,
@@ -173,7 +181,7 @@ pub struct Installer {
     insecure: bool,
 
     /// Specify another language to display
-    #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
+    #[arg(short, long, value_name = "LANG", value_parser = possible_lang())]
     pub lang: Option<String>,
     /// Set another path to install Rust.
     #[arg(long, value_name = "PATH", value_hint = ValueHint::DirPath)]
@@ -278,7 +286,7 @@ pub struct Manager {
     no_modify_env: bool,
 
     /// Specify another language to display
-    #[arg(short, long, value_name = "LANG", value_parser = Language::possible_values())]
+    #[arg(short, long, value_name = "LANG", value_parser = possible_lang())]
     pub lang: Option<String>,
     #[command(subcommand)]
     pub command: Option<ManagerSubcommands>,
@@ -300,7 +308,7 @@ impl ExecutableCommand for Installer {
             self.no_modify_path,
             self.lang.as_deref(),
         )?;
-        install::execute_installer(self)
+        blocking!(install::execute_installer(self))
     }
 
     #[cfg(feature = "gui")]
@@ -323,7 +331,7 @@ impl ExecutableCommand for Manager {
         let Some(subcmd) = &self.command else {
             return ManagerSubcommands::from_interaction()?.execute();
         };
-        subcmd.execute()
+        subcmd.execute().map(|status| status.no_pause(true))
     }
 
     #[cfg(feature = "gui")]
@@ -493,13 +501,13 @@ impl ManagerSubcommands {
         let maybe_cmd = handle_user_choice!(
             t!("choose_an_option"), 5,
             {
-                1 t!("modify_option") => { Some(Self::Component { command: ComponentCommand::Uninstall { components: vec![] } }) },
+                1 t!("manage_components") => { Some(Self::Component { command: ComponentCommand::Uninstall { components: vec![] } }) },
                 2 t!("update") => {
                     let insecure = handle_user_choice!(
                         t!("choose_an_option"), 1,
                         {
                             1 t!("default") => { false },
-                            2 t!("skip_ssl_check") => { true }
+                            2 t!("disable_ssl_cert_verification") => { true }
                         }
                     );
                     Some(Self::Update { insecure, toolkit_only: false, manager_only: false, component: None, rustup_dist_server: None })
@@ -571,7 +579,7 @@ impl ManagerSubcommands {
                         t!("choose_an_option"), 1,
                         {
                             1 t!("default") => { false },
-                            2 t!("skip_ssl_check") => { true }
+                            2 t!("disable_ssl_cert_verification") => { true }
                         }
                     );
                     let components = component::collect_components_to_add()?;
@@ -623,15 +631,15 @@ fn setup(
     no_modify_path: bool,
     lang: Option<&str>,
 ) -> Result<()> {
+    // Setup logger
+    utils::Logger::new().verbose(verbose).quiet(quiet).setup()?;
+
     // Setup locale
     if let Some(lang_str) = lang {
-        let parsed: Language = lang_str.parse()?;
-        utils::set_locale(parsed.locale_str());
+        utils::set_locale(lang_str.parse()?);
     } else {
         utils::use_current_locale();
     }
-    // Setup logger
-    utils::Logger::new().verbose(verbose).quiet(quiet).setup()?;
     // Setup global options
     GlobalOpts::set(verbose, quiet, yes, no_modify_env, no_modify_path);
 

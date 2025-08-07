@@ -9,6 +9,7 @@ use std::ops::{Deref, DerefMut};
 /// the needs of tools' installation and uninstallation.
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Default, Clone)]
 pub struct ToolMap(IndexMap<String, ToolInfo>);
+#[derive(Default)]
 pub struct ToolMapIter<'a> {
     iter: indexmap::map::Iter<'a, String, ToolInfo>,
 }

@@ -3,17 +3,15 @@
 use crate::common::{self, pnpm_cmd};
 
 use super::TOOLKIT_NAME;
-use anyhow::{bail, Result};
+use anyhow::Result;
 use rim_common::{build_config, exe};
-use std::{env::consts::EXE_SUFFIX, fs, path::PathBuf, process::Command};
+use std::{fs, process::Command};
 
-struct FakeInstallation {
-    manager_bin: Option<PathBuf>,
-}
+struct FakeInstallation;
 
 impl FakeInstallation {
     fn new() -> Self {
-        Self { manager_bin: None }
+        Self
     }
 
     fn fingerprint_content(&self, ver: &str) -> String {
@@ -36,38 +34,36 @@ paths = ['{0}/tools/mingw64']
         )
     }
 
-    fn generate_manager_bin(&mut self, no_gui: bool) -> Result<()> {
-        let (mut cmd, src_bin) = if no_gui {
+    /// Fake a `rim` binary and place it into the fake installation directory,
+    /// which is required to "trick" the sanity check of `rim`'s manager mode.
+    fn generate_manager_bin(&self) -> Result<()> {
+        let dest_bin = exe!(build_config().app_name());
+        let dest_path = super::install_dir().join(dest_bin);
+
+        // create a blank file to fake the installation binary since we only
+        // need it to trick manager mode's `get_installed_dir`.
+        fs::write(dest_path, "")?;
+
+        Ok(())
+    }
+
+    fn command(&self, no_gui: bool) -> Command {
+        if no_gui {
             // use cargo build
             let mut cmd = Command::new("cargo");
-            cmd.arg("build");
+            cmd.env("MODE", "manager").arg("run");
 
-            (cmd, format!("rim-cli{EXE_SUFFIX}"))
+            cmd
         } else {
             common::install_gui_deps();
 
             // use tauri-cli under rim_gui dir
             let mut cmd = pnpm_cmd();
-            cmd.args(["run", "tauri", "build", "-d"]);
+            cmd.env("MODE", "manager")
+                .args(["run", "tauri", "dev", "--"]);
 
-            (cmd, format!("rim-gui{EXE_SUFFIX}"))
-        };
-
-        // build rim
-        let build_status = cmd.status()?;
-        if !build_status.success() {
-            bail!("failed to build manager binary");
+            cmd
         }
-
-        let build_artifact = super::debug_dir().join(src_bin);
-        let dest_bin = exe!(build_config().app_name());
-        let dest_path = super::install_dir().join(dest_bin);
-        // make a copy of rim as manager binary to the fake installation root
-        fs::copy(build_artifact, &dest_path)?;
-
-        self.manager_bin = Some(dest_path);
-
-        Ok(())
     }
 
     fn generate_meta_files(&self) -> Result<()> {
@@ -89,24 +85,12 @@ paths = ['{0}/tools/mingw64']
 }
 
 pub(crate) fn generate_and_run_manager(no_gui: bool, args: &[String]) -> Result<()> {
-    let mut fake = FakeInstallation::new();
+    let fake = FakeInstallation::new();
     fake.generate_meta_files()?;
-    fake.generate_manager_bin(no_gui)?;
-
-    // `fake.manager_bin` cannot be none if the previous `generate_manager_bin`
-    // succeeded, so it's safe to unwrap
-    let manager = &fake.manager_bin.unwrap();
+    fake.generate_manager_bin()?;
 
     let mocked_dist_server = common::path_to_url(super::rim_server_dir());
-    let mocked_rustup_server_path = super::rustup_server_dir();
-    let mut command = Command::new(manager);
-
-    if !no_gui {
-        command.args([
-            "--rustup-dist-server",
-            common::path_to_url(mocked_rustup_server_path).as_str(),
-        ]);
-    }
+    let mut command = fake.command(no_gui);
 
     // run the manager copy
     let status = command

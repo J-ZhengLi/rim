@@ -2,15 +2,15 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use rim_common::types::Proxy;
 use rim_common::types::ToolkitManifest;
 use rim_common::utils;
+use rim_common::utils::HiddenProgress;
+use rim_common::utils::ProgressHandler;
 use url::Url;
 
 use super::check::RUNNER_TOOLCHAIN_NAME;
 use super::components::ToolchainComponent;
 use super::default_rustup_dist_server;
-use super::default_rustup_update_root;
 use super::directories::RimDir;
 use super::install::InstallConfiguration;
 use super::uninstall::UninstallConfiguration;
@@ -64,40 +64,27 @@ impl ToolchainInstaller {
     /// If `first_install` flag was set to `false`, meaning this is likely an
     /// update operation, thus will not try to use offline dist server and
     /// will not try to remove `rustup`'s uninstallation entry on Windows.
-    fn install_toolchain_with_components(
+    async fn install_toolchain_with_components<T: ProgressHandler + Clone + 'static>(
         &self,
-        config: &InstallConfiguration,
+        config: &InstallConfiguration<'_, T>,
         components: &[ToolchainComponent],
         first_install: bool,
     ) -> Result<()> {
         self.ensure_rustup_dist_server_env(config.manifest, first_install)?;
 
-        let rustup = &ensure_rustup(config, self.insecure)?;
-        // if this is the first time installing the tool chain, we need to add the base components
-        // from the manifest.
-        let mut base = if first_install {
-            config.manifest.rust.components.clone()
-        } else {
-            vec![]
-        };
-        base.extend(
-            components
-                .iter()
-                .filter_map(|c| (!c.is_profile).then_some(c.name.clone())),
-        );
-        let components_arg = base.join(",");
+        let rustup = &ensure_rustup(config, self.insecure).await?;
+        let components_arg = components
+            .iter()
+            .filter_map(|c| (!c.is_profile).then_some(c.name.as_str()))
+            .collect::<Vec<_>>()
+            .join(",");
 
-        let version = &config.manifest.rust.channel;
-        let mut cmd = cmd!(
-            rustup,
-            "toolchain",
-            "install",
-            version,
-            "--no-self-update",
-            "-c",
-            &components_arg
-        );
-        if let Some(profile) = config.manifest.rust.profile() {
+        let version = &config.manifest.toolchain.channel;
+        let mut cmd = cmd!(rustup, "toolchain", "install", version, "--no-self-update",);
+        if !components_arg.is_empty() {
+            cmd.args(["-c", &components_arg]);
+        }
+        if let Some(profile) = config.manifest.toolchain.profile() {
             cmd.args(["--profile", profile]);
         }
 
@@ -119,27 +106,29 @@ impl ToolchainInstaller {
     }
 
     /// Install rust toolchain & components via rustup.
-    pub(crate) fn install(
+    pub(crate) async fn install<T: ProgressHandler + Clone + 'static>(
         &self,
-        config: &InstallConfiguration,
+        config: &InstallConfiguration<'_, T>,
         components: &[ToolchainComponent],
     ) -> Result<()> {
         self.install_toolchain_with_components(config, components, true)
+            .await
     }
 
     /// Update rust toolchain by invoking `rustup toolchain add`, then `rustup default`.
-    pub(crate) fn update(
+    pub(crate) async fn update<T: ProgressHandler + Clone + 'static>(
         &self,
-        config: &InstallConfiguration,
+        config: &InstallConfiguration<'_, T>,
         components: &[ToolchainComponent],
     ) -> Result<()> {
         self.install_toolchain_with_components(config, components, false)
+            .await
     }
 
     /// Install components via rustup.
-    pub(crate) fn add_components(
+    pub(crate) async fn add_components<T: ProgressHandler + Clone + 'static>(
         &self,
-        config: &InstallConfiguration,
+        config: &InstallConfiguration<'_, T>,
         components: &[ToolchainComponent],
     ) -> Result<()> {
         if components.is_empty() || components.iter().all(|c| c.is_profile) {
@@ -147,10 +136,10 @@ impl ToolchainInstaller {
         }
 
         self.ensure_rustup_dist_server_env(config.manifest, false)?;
-        let rustup = &ensure_rustup(config, self.insecure)?;
+        let rustup = &ensure_rustup(config, self.insecure).await?;
 
         // check if toolchain is installed
-        let version = &config.manifest.rust.channel;
+        let version = &config.manifest.toolchain.channel;
         let toolchain_list_cmd = cmd!(rustup, "toolchain", "list");
         let toolchain_list_output = utils::command_output(toolchain_list_cmd)?;
         if toolchain_list_output
@@ -179,12 +168,13 @@ impl ToolchainInstaller {
         } else {
             // otherwise install the toolchain with the components
             self.install_toolchain_with_components(config, components, false)
+                .await
         }
     }
 
-    pub(crate) fn remove_components(
+    pub(crate) fn remove_components<T>(
         &self,
-        config: &UninstallConfiguration,
+        config: &UninstallConfiguration<T>,
         components: &[ToolchainComponent],
     ) -> Result<()> {
         if components.is_empty() || components.iter().all(|c| c.is_profile) {
@@ -229,13 +219,13 @@ impl ToolchainInstaller {
     /// Note: We cannot use `rustup self install` anymore because it removes everything in
     /// `cargo/bin` as well, which is not acceptable because it may contains other binaries/link
     /// that we stored that are not part of the rust toolchain.
-    pub(crate) fn uninstall(&self, config: &UninstallConfiguration) -> Result<()> {
-        info!("{}", t!("uninstalling_rust_toolchain"));
-
-        let progress = utils::CliProgress::new(GlobalOpts::get().quiet);
-        let spinner = (progress.start)(
+    pub(crate) fn uninstall<T: ProgressHandler>(
+        &self,
+        config: &mut UninstallConfiguration<T>,
+    ) -> Result<()> {
+        config.progress_handler.start(
             t!("uninstalling_rust_toolchain").to_string(),
-            utils::Style::Spinner {
+            utils::ProgressKind::Spinner {
                 auto_tick_duration: Some(std::time::Duration::from_millis(100)),
             },
         )?;
@@ -286,7 +276,9 @@ impl ToolchainInstaller {
             utils::remove(entry)?;
         }
 
-        (progress.stop)(&spinner, t!("rust_toolchain_uninstalled").to_string());
+        config
+            .progress_handler
+            .finish(t!("rust_toolchain_uninstalled").to_string())?;
         Ok(())
     }
 
@@ -295,7 +287,7 @@ impl ToolchainInstaller {
         manifest: &ToolkitManifest,
         use_offline_server: bool,
     ) -> Result<()> {
-        if use_offline_server && manifest.rust.offline_dist_server.is_some() {
+        if use_offline_server && manifest.toolchain.offline_dist_server.is_some() {
             let local_server = manifest
                 .offline_dist_server()?
                 .unwrap_or_else(|| unreachable!("already checked in if condition"));
@@ -323,7 +315,10 @@ impl ToolchainInstaller {
     }
 }
 
-fn ensure_rustup(config: &InstallConfiguration, insecure: bool) -> Result<PathBuf> {
+async fn ensure_rustup<T: ProgressHandler + Clone + 'static>(
+    config: &InstallConfiguration<'_, T>,
+    insecure: bool,
+) -> Result<PathBuf> {
     let rustup_bin = config.cargo_bin().join(RUSTUP);
     if rustup_bin.exists() {
         return Ok(rustup_bin);
@@ -341,15 +336,7 @@ fn ensure_rustup(config: &InstallConfiguration, insecure: bool) -> Result<PathBu
             let temp_dir = config.create_temp_dir("rustup-init")?;
             let rustup_init = temp_dir.path().join(RUSTUP_INIT);
             // Download rustup-init.
-            download_rustup_init(
-                &rustup_init,
-                config
-                    .rustup_update_root
-                    .as_ref()
-                    .unwrap_or_else(|| default_rustup_update_root()),
-                config.manifest.proxy.as_ref(),
-                insecure,
-            )?;
+            download_rustup_init(&rustup_init, config, insecure).await?;
             (rustup_init, Some(temp_dir))
         };
 
@@ -360,20 +347,29 @@ fn ensure_rustup(config: &InstallConfiguration, insecure: bool) -> Result<PathBu
     Ok(rustup_bin)
 }
 
-fn download_rustup_init(
+async fn download_rustup_init<T: ProgressHandler + Clone + 'static>(
     dest: &Path,
-    server: &Url,
-    proxy: Option<&Proxy>,
+    config: &InstallConfiguration<'_, T>,
     insecure: bool,
 ) -> Result<()> {
     info!("{}", t!("downloading_rustup_init"));
 
-    let download_url = utils::url_join(server, format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")))
-        .context("Failed to init rustup download url.")?;
-    utils::DownloadOpt::new(RUSTUP_INIT, GlobalOpts::get().quiet)
+    let download_url = utils::url_join(
+        config.rustup_update_root(),
+        format!("dist/{}/{RUSTUP_INIT}", env!("TARGET")),
+    )
+    .context("Failed to init rustup download url.")?;
+    let download_opt = if GlobalOpts::get().quiet {
+        utils::DownloadOpt::new(RUSTUP_INIT, Box::new(HiddenProgress))
+    } else {
+        utils::DownloadOpt::new(RUSTUP_INIT, Box::new(config.progress_handler.clone()))
+    };
+
+    download_opt
         .insecure(insecure)
-        .with_proxy(proxy.cloned())
-        .blocking_download(&download_url, dest)
+        .with_proxy(config.manifest.proxy_config().cloned())
+        .download(&download_url, dest)
+        .await
         .context("Failed to download rustup.")
 }
 

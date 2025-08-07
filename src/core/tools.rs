@@ -168,9 +168,9 @@ impl<'a> Tool<'a> {
         Some(tool)
     }
 
-    pub(crate) fn install(
+    pub(crate) fn install<T>(
         &self,
-        config: &InstallConfiguration,
+        config: &InstallConfiguration<T>,
         info: &ToolInfo,
     ) -> Result<ToolRecord> {
         let paths = match self.kind {
@@ -302,7 +302,7 @@ fn cargo_install_or_uninstall(op: &str, args: &[&str], cargo_home: &Path) -> Res
 }
 
 /// Move one path (file/dir) to a new folder with `name` under tools dir.
-fn move_to_tools(config: &InstallConfiguration, name: &str, path: &Path) -> Result<PathBuf> {
+fn move_to_tools<T>(config: &InstallConfiguration<T>, name: &str, path: &Path) -> Result<PathBuf> {
     let dir = config.tools_dir().join(name);
     utils::move_to(path, &dir, true)?;
     Ok(dir)
@@ -311,8 +311,8 @@ fn move_to_tools(config: &InstallConfiguration, name: &str, path: &Path) -> Resu
 /// Install [`ToolKind::DirWithBin`], with a couple steps:
 /// - Move the `tool_dir` to [`tools_dir`](InstallConfiguration::tools_dir).
 /// - Add the `bin_dir` to PATH
-fn install_dir_with_bin_(
-    config: &InstallConfiguration,
+fn install_dir_with_bin_<T>(
+    config: &InstallConfiguration<T>,
     name: &str,
     path: &Path,
 ) -> Result<PathBuf> {
@@ -322,7 +322,10 @@ fn install_dir_with_bin_(
     Ok(dir)
 }
 
-fn install_rule_set(path: &PathExt<'_>, config: &InstallConfiguration) -> Result<Vec<PathBuf>> {
+fn install_rule_set<T>(
+    path: &PathExt<'_>,
+    config: &InstallConfiguration<T>,
+) -> Result<Vec<PathBuf>> {
     let src_dir = path.single()?;
 
     if !config.toolchain_is_installed {
@@ -364,10 +367,10 @@ fn install_rule_set(path: &PathExt<'_>, config: &InstallConfiguration) -> Result
     Ok(vec![runner_dir])
 }
 
-fn install_crate(
+fn install_crate<T>(
     name: &str,
     path: &PathExt<'_>,
-    config: &InstallConfiguration,
+    config: &InstallConfiguration<T>,
 ) -> Result<Vec<PathBuf>> {
     let path = path.single()?;
 

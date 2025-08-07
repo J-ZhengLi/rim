@@ -175,7 +175,7 @@ fn gen_manifest_and_download_packages(args: &VendorArgs, toolkits: &mut Toolkits
             }
         }
         // Then, insert `[rust.offline-dist-server]` value and `[rust.rustup]` section
-        let rust_section = &mut toolkit.manifest.rust;
+        let rust_section = &mut toolkit.manifest.toolchain;
         rust_section.offline_dist_server = Some(TOOLCHAIN_DIRNAME.into());
         // Make a `[rust.rustup]` map, download rustup-init if necessary
         let mut rustup_sources = IndexMap::new();

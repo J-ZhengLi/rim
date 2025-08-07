@@ -1,9 +1,12 @@
 use anyhow::{anyhow, Result};
+use rim_common::utils::CliProgress;
 use std::collections::HashSet;
 use std::path::Path;
 use url::Url;
 
+use crate::cli::common::warn_enforced_config;
 use crate::components::Component;
+use crate::core::directories::RimDir;
 use crate::core::toolkit::Toolkit;
 use crate::core::update::UpdateOpt;
 use crate::core::{get_toolkit_manifest, ToolkitManifestExt};
@@ -27,16 +30,15 @@ pub(super) fn execute(cmd: &ManagerSubcommands) -> Result<ExecStatus> {
         return Ok(ExecStatus::default());
     };
 
-    let update_opt = UpdateOpt::new().insecure(*insecure);
+    let update_opt = UpdateOpt::new(CliProgress::default()).insecure(*insecure);
     if !manager_only {
-        update_opt.update_toolkit(|path| {
-            blocking!(update_toolkit_(
-                path,
-                *insecure,
-                component.as_deref(),
-                rustup_dist_server
-            ))
-        })?;
+        let install_dir = update_opt.install_dir();
+        blocking!(update_toolkit_(
+            install_dir,
+            *insecure,
+            component.as_deref(),
+            rustup_dist_server
+        ))?;
     }
     if !toolkit_only {
         blocking!(update_opt.self_update(false))?;
@@ -79,6 +81,13 @@ async fn update_toolkit_(
             )
         })?;
     let manifest = get_toolkit_manifest(Some(manifest_url), insecure).await?;
+
+    warn_enforced_config!(
+        manifest.config.rustup_dist_server.as_ref(),
+        rustup_dist_server.as_ref(),
+        "rustup-dist-server"
+    );
+
     let new_components = manifest.current_target_components(false)?;
 
     // notify user that we will install the latest update to replace their current installation
@@ -95,9 +104,11 @@ async fn update_toolkit_(
     // let user choose if they want to update installed component only, or want to select more components to install
     if let UpdateOption::Yes(components) = updater.to_update_option(user_selected_comps)? {
         // install update for selected components
-        let config = InstallConfiguration::new(install_dir, &manifest)?
+        let config = InstallConfiguration::new(install_dir, &manifest, CliProgress::default())?
             .with_rustup_dist_server(rustup_dist_server.clone());
-        config.update(components.into_values().cloned().collect())
+        config
+            .update(components.into_values().cloned().collect())
+            .await
     } else {
         Ok(())
     }

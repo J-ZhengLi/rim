@@ -77,12 +77,16 @@ impl ToolInfo {
         }
     }
 
-    /// Get the mutable reference of package source if it's using restricted package source,
+    /// Get the mutable reference of package source, and an optional default value for reference,
+    /// if this tool is using restricted package source,
     /// check [`ToolSource::Restricted`] for more info.
-    pub fn restricted_source_mut(&mut self) -> Option<&mut Option<String>> {
+    pub fn restricted_source_mut(&mut self) -> Option<(&mut Option<String>, &Option<String>)> {
         if let Self::Complex(details) = self {
-            if let Some(ToolSource::Restricted { source, .. }) = &mut details.source {
-                return Some(source);
+            if let Some(ToolSource::Restricted {
+                source, default, ..
+            }) = &mut details.source
+            {
+                return Some((source, default));
             }
         }
         None

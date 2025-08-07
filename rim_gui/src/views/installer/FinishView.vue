@@ -3,31 +3,51 @@ import { ref } from 'vue';
 import { installConf, invokeCommand } from '@/utils/index';
 
 const runApp = ref(true);
+const createShortcut = ref(true);
 
-function closeWindow() {
-  if (runApp.value) {
-    invokeCommand('run_app', { install_dir: installConf.path.value });
-  }
-  invokeCommand('close_window');
+async function closeWindow() {
+  await invokeCommand('post_installation_opts', {
+    installDir: installConf.config.value.path,
+    open: runApp.value,
+    shortcut: createShortcut.value
+  });
 }
 </script>
 
 <template>
-  <div flex="~ col" w="full">
-    <div flex="1" px="12px">
-      <h4>安装完成</h4>
-      <p>安装程序已经将Rust安装到您的电脑中，</p>
-      <p>单击“完成”退出安装程序</p>
-      <base-check-box
-        v-model="runApp"
-        title="安装完成后打开示例项目"
-        mt="12px"
-      ></base-check-box>
-    </div>
-    <div basis="60px" flex="~ items-center justify-end">
-      <base-button theme="primary" mr="12px" @click="closeWindow"
-        >完成并关闭</base-button
-      >
-    </div>
+  <div flex="~ col items-center">
+    <base-card class="info-card">
+      <div flex="~ col items-center" h="full">
+        <div text="center" class="finish-info">
+          <div c="darker-secondary" font="bold" text="4vh">{{ $t('install_finish_info') }}</div>
+          <div c="secondary" text="3vh">{{ $t('post_installation_hint') }}</div>
+        </div>
+        <div flex="~ col" gap="4vh">
+          <base-check-box v-model="runApp" :title="$t('post_installation_open')" />
+          <base-check-box v-model="createShortcut" :title="$t('post_installation_create_shortcut')" />
+        </div>
+        <base-button theme="primary" w="20vw" position="fixed" bottom="5vh" @click="closeWindow()">
+          {{ $t('finish') }}
+        </base-button>
+      </div>
+    </base-card>
   </div>
 </template>
+
+<style lang="css" scoped>
+.finish-info {
+  margin-top: 5vh;
+  margin-bottom: 10vh;
+  display: flex;
+  flex-direction: column;
+  gap: 3vh;
+}
+
+.info-card {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 10%;
+  bottom: 10%;
+}
+</style>

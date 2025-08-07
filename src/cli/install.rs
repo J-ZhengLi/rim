@@ -5,11 +5,11 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use crate::cli::common::{self, Confirm};
+use crate::cli::common::{self, warn_enforced_config, Confirm};
 use crate::cli::GlobalOpts;
 use crate::components::Component;
 use crate::core::install::InstallConfiguration;
-use crate::core::{default_cargo_registry, get_toolkit_manifest, try_it, ToolkitManifestExt};
+use crate::core::{get_toolkit_manifest, try_it, ToolkitManifestExt};
 use crate::default_install_dir;
 
 use super::common::{
@@ -18,12 +18,13 @@ use super::common::{
 use super::{ExecStatus, Installer, ManagerSubcommands};
 
 use anyhow::{bail, Result};
-use rim_common::utils;
+use rim_common::types::ToolkitManifest;
+use rim_common::utils::{self, CliProgress};
 
 /// Perform installer actions.
 ///
 /// This will setup the environment and install user selected components.
-pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
+pub(super) async fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     let Installer {
         prefix,
         registry_url,
@@ -42,14 +43,14 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     }
 
     let manifest_url = manifest_src.as_ref().map(|s| s.to_url()).transpose()?;
-    let mut manifest = blocking!(get_toolkit_manifest(manifest_url, *insecure))?;
+    let mut manifest = get_toolkit_manifest(manifest_url, *insecure).await?;
 
     if *list_components {
         // print a list of available components then return, don't do anything else
         super::list::list_components(false, false, Some(&manifest))?;
         return Ok(ExecStatus::new_executed().no_pause(true));
     }
-
+    warn_enforced_download_source(installer, &manifest);
     manifest.adjust_paths()?;
 
     let component_list = manifest.current_target_components(true)?;
@@ -64,18 +65,16 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     // fill potentially missing package sources
     manifest.fill_missing_package_source(&mut user_opt.components, ask_tool_source)?;
 
-    let (registry_name, registry_value) = registry_url
-        .as_deref()
-        .map(|u| (registry_name.as_str(), u))
-        .unwrap_or(default_cargo_registry());
+    let maybe_registry = registry_url.as_ref().map(|u| (registry_name, u));
     let install_dir = user_opt.prefix;
 
-    InstallConfiguration::new(&install_dir, &manifest)?
-        .with_cargo_registry(registry_name, registry_value)
+    InstallConfiguration::new(&install_dir, &manifest, CliProgress::default())?
+        .with_cargo_registry(maybe_registry)
         .with_rustup_dist_server(rustup_dist_server.clone())
         .with_rustup_update_root(rustup_update_root.clone())
         .insecure(*insecure)
-        .install(user_opt.components)?;
+        .install(user_opt.components)
+        .await?;
 
     let g_opts = GlobalOpts::get();
     if !g_opts.quiet {
@@ -102,6 +101,26 @@ pub(super) fn execute_installer(installer: &Installer) -> Result<ExecStatus> {
     }
 
     Ok(ExecStatus::new_executed())
+}
+
+fn warn_enforced_download_source(installer: &Installer, manifest: &ToolkitManifest) {
+    warn_enforced_config!(
+        manifest.config.rustup_dist_server,
+        installer.rustup_dist_server,
+        "rustup-dist-server"
+    );
+    warn_enforced_config!(
+        manifest.config.rustup_update_root,
+        installer.rustup_update_root,
+        "rustup-update-root"
+    );
+    if manifest.config.cargo_registry.is_some()
+        && installer.registry_url.is_some()
+        && manifest.config.cargo_registry.as_ref().map(|r| &r.index)
+            != installer.registry_url.as_ref()
+    {
+        warn!("{}", t!("enforced_toolkit_config", key = "registry-url"));
+    }
 }
 
 /// Contains customized install options that will be collected from user input.
@@ -178,7 +197,7 @@ impl CustomInstallOpt {
 }
 
 fn read_install_dir_input(default: &str) -> Result<Option<String>> {
-    let dir_input = common::question_str(t!("question_install_dir"), None, default)?;
+    let dir_input = common::question_str(t!("installation_path"), None, default)?;
     // verify path input before proceeding
     if utils::is_root_dir(&dir_input) {
         warn!("{}", t!("notify_root_dir"));
@@ -219,11 +238,12 @@ fn custom_component_choices<'a>(
         .map(|idx| (idx + 1).to_string())
         .collect::<Vec<_>>()
         .join(" ");
-    let choices = common::question_multi_choices(
+    let question = format!(
+        "{}: ({})",
         t!("select_components_to_install"),
-        &list_of_comps,
-        &default_ids,
-    )?;
+        t!("select_components_cli_hint")
+    );
+    let choices = common::question_multi_choices(question, &list_of_comps, &default_ids)?;
     // convert input vec to set for faster lookup
     // Note: user input index are started from 1.
     let index_set: HashSet<usize> = choices.into_iter().collect();
@@ -246,11 +266,7 @@ fn read_component_selections<'a>(
     all_components: &'a [Component],
     user_selected_comps: Option<&[String]>,
 ) -> Result<ComponentChoices<'a>> {
-    let profile_choices = &[
-        t!("install_default"),
-        t!("install_everything"),
-        t!("install_custom"),
-    ];
+    let profile_choices = &[t!("standard"), t!("minimal"), t!("customize")];
     let choice = question_single_choice(t!("question_components_profile"), profile_choices, "1")?;
     let selection = match choice {
         // Default set
@@ -259,7 +275,7 @@ fn read_component_selections<'a>(
         2 => all_components
             .iter()
             .enumerate()
-            .filter(|(_, c)| !c.installed)
+            .filter(|(_, c)| !c.installed && c.required)
             .collect(),
         // Customized set
         3 => custom_component_choices(all_components, user_selected_comps)?,
@@ -271,14 +287,18 @@ fn read_component_selections<'a>(
 
 static SHOW_MISSING_PKG_SRC_ONCE: OnceLock<()> = OnceLock::new();
 
-fn ask_tool_source(name: String) -> Result<String> {
+fn ask_tool_source(name: String, default: Option<&str>) -> Result<String> {
     // print additional info for the first tool
     SHOW_MISSING_PKG_SRC_ONCE.get_or_init(|| {
         let mut stdout = std::io::stdout();
         _ = writeln!(&mut stdout, "\n{}\n", t!("package_source_missing_info"));
     });
 
-    common::question_str(t!("question_package_source", tool = name), None, "")
+    common::question_str(
+        t!("question_package_source", tool = name),
+        None,
+        default.unwrap_or_default(),
+    )
 }
 
 pub(super) fn execute_manager(manager: &ManagerSubcommands) -> Result<ExecStatus> {

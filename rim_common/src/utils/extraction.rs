@@ -9,7 +9,7 @@ use xz2::read::XzDecoder;
 use zip::ZipArchive;
 
 use crate::setter;
-use crate::utils::progress_bar::Style;
+use crate::utils::{ProgressHandler, ProgressKind};
 
 use super::file_system::{ensure_dir, ensure_parent_dir, walk_dir};
 use super::progress_bar::CliProgress;
@@ -90,10 +90,10 @@ impl<'a> Extractable<'a> {
     ///
     /// This will extract file under the `root`, make sure it's an empty folder before using this function.
     pub fn extract_to(&mut self, root: &Path) -> Result<()> {
-        let helper = ExtractHelper {
+        let mut helper = ExtractHelper {
             file_path: self.path,
             output_dir: root,
-            indicator: CliProgress::new(self.quiet),
+            handler: CliProgress::default(),
         };
 
         match &mut self.kind {
@@ -187,33 +187,34 @@ fn filename_matches_keyword<S: AsRef<OsStr>>(path: &Path, keyword: S) -> bool {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct ExtractHelper<'a, T: Sized> {
+struct ExtractHelper<'a, T: ProgressHandler> {
     file_path: &'a Path,
     output_dir: &'a Path,
-    indicator: CliProgress<T>,
+    handler: T,
 }
 
-impl<T: Sized> ExtractHelper<'_, T> {
-    fn start_progress_bar(&self, style: Style) -> Result<T> {
-        (self.indicator.start)(
+impl<T: ProgressHandler> ExtractHelper<'_, T> {
+    fn start_progress_bar(&mut self, style: ProgressKind) -> Result<()> {
+        self.handler.start(
             format!("extracting file '{}'", self.file_path.display()),
             style,
-        )
+        )?;
+        Ok(())
     }
 
-    fn update_progress_bar(&self, bar: &T, prog: Option<u64>) {
-        (self.indicator.update)(bar, prog);
+    fn update_progress_bar(&self, prog: Option<u64>) -> Result<()> {
+        self.handler.update(prog)
     }
 
-    fn end_progress_bar(&self, bar: &T) {
-        (self.indicator.stop)(bar, "extraction complete.".into());
+    fn end_progress_bar(&self) -> Result<()> {
+        self.handler.finish("extraction complete.".into())
     }
 
-    fn extract_zip(&self, archive: &mut ZipArchive<File>) -> Result<()> {
+    fn extract_zip(&mut self, archive: &mut ZipArchive<File>) -> Result<()> {
         let zip_len = archive.len();
 
         // Init progress
-        let bar = self.start_progress_bar(Style::Len(zip_len.try_into()?))?;
+        self.start_progress_bar(ProgressKind::Len(zip_len.try_into()?))?;
 
         for i in 0..zip_len {
             let mut zip_file = archive.by_index(i)?;
@@ -240,14 +241,14 @@ impl<T: Sized> ExtractHelper<'_, T> {
                 }
             }
 
-            self.update_progress_bar(&bar, Some(i.try_into()?));
+            self.update_progress_bar(Some(i.try_into()?))?;
         }
-        self.end_progress_bar(&bar);
+        self.end_progress_bar()?;
 
         Ok(())
     }
 
-    fn extract_7z(&self, archive: &mut SevenZReader<File>) -> Result<()> {
+    fn extract_7z(&mut self, archive: &mut SevenZReader<File>) -> Result<()> {
         let entries = &archive.archive().files;
         let sz_len: u64 = entries
             .iter()
@@ -256,7 +257,7 @@ impl<T: Sized> ExtractHelper<'_, T> {
         let mut extracted_len: u64 = 0;
 
         // Init progress bar
-        let bar = self.start_progress_bar(Style::Bytes(sz_len))?;
+        self.start_progress_bar(ProgressKind::Bytes(sz_len))?;
 
         archive.for_each_entries(|entry, reader| {
             let mut buf = [0_u8; 1024];
@@ -288,30 +289,31 @@ impl<T: Sized> ExtractHelper<'_, T> {
                     out_file.write_all(&buf[..read_size])?;
                     extracted_len += read_size as u64;
                     // Update progress bar
-                    self.update_progress_bar(&bar, Some(extracted_len));
+                    self.update_progress_bar(Some(extracted_len))
+                        .map_err(|anyhow_err| {
+                            sevenz_rust::Error::Other(anyhow_err.to_string().into())
+                        })?;
                 }
             }
-            // NB: sevenz-rust does not support `unix-mode` like `zip` does, so we might ended up
-            // mess up the extracted file's permission... let's hope that never happens.
         })?;
 
-        self.end_progress_bar(&bar);
+        self.end_progress_bar()?;
         Ok(())
     }
 
-    fn extract_tar<R: Read>(&self, archive: &mut tar::Archive<R>) -> Result<()> {
+    fn extract_tar<R: Read>(&mut self, archive: &mut tar::Archive<R>) -> Result<()> {
         #[cfg(unix)]
         archive.set_preserve_permissions(true);
 
         // Init progress bar, use spinner because the length of entries cannot be retrieved.
-        let bar = self.start_progress_bar(Style::Spinner {
+        self.start_progress_bar(ProgressKind::Spinner {
             auto_tick_duration: Some(std::time::Duration::from_millis(100)),
         })?;
 
         archive.unpack(self.output_dir)?;
 
         // Stop progress bar's progress
-        self.end_progress_bar(&bar);
+        self.end_progress_bar()?;
         Ok(())
     }
 }

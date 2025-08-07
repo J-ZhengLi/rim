@@ -18,24 +18,25 @@ export default defineConfig({
   theme: {
     colors: {
       // 背景色
-      back: '#f5f5f5',
+      'secondary-btn': '#f8f8f8',
       'disabled-bg': '#eeeeee',
 
       // 主色
-      primary: '#526ecc',
+      primary: '#5b98d8',
       success: '#50d4ab',
       warning: '#fbb175',
       danger: '#f66f6a',
       info: '#909399',
-      'light-primary': '#788ed7',
+      'light-primary': '#e3f1ff',
       'deep-primary': '#40569f',
 
       // 文字色相关
       header: '#252b3a',
-      regular: '#575d6c',
-      secondary: '#8a8e99',
+      regular: '#444',
+      'darker-secondary': '#6a6a6a',
+      secondary: '#878787',
       placeholder: '#adb0b8',
-      disabled: '#c0c4cc',
+      disabled: '#888',
       reverse: '#ffffff',
       active: '#5e7ce0',
 

@@ -1,8 +1,9 @@
 use crate::components;
-use crate::core::{parser::dist_manifest::DistManifest, GlobalOpts};
+use crate::core::parser::dist_manifest::DistManifest;
 use crate::fingerprint::InstallationRecord;
 use anyhow::Result;
 use rim_common::types::ToolkitManifest;
+use rim_common::utils::HiddenProgress;
 use rim_common::{types::TomlParser, utils};
 use semver::Version;
 use serde::Serialize;
@@ -120,7 +121,7 @@ impl TryFrom<&ToolkitManifest> for Toolkit {
 /// The collection will always be cached to reduce the number of server requests.
 // TODO: track how many times this function was called, are all server requests necessary?
 // if not, cached them locally.
-pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>> {
+pub async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>> {
     let dist_server = super::rim_dist_server();
 
     // download dist manifest from server
@@ -128,7 +129,8 @@ pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>>
     info!("{} {dist_m_filename}", t!("fetching"));
     let dist_m_url = utils::url_join(&dist_server, format!("dist/{dist_m_filename}"))?;
     let dist_m_file = utils::make_temp_file("dist-manifest-", None)?;
-    utils::DownloadOpt::new("distribution manifest", GlobalOpts::get().quiet)
+    // this file is very small, no need for progress bar.
+    utils::DownloadOpt::new("distribution manifest", Box::new(HiddenProgress))
         .insecure(insecure)
         .download(&dist_m_url, dist_m_file.path())
         .await?;
@@ -152,8 +154,6 @@ pub(crate) async fn toolkits_from_server(insecure: bool) -> Result<Vec<Toolkit>>
 
 /// Return a list of all toolkits that are not currently installed.
 pub async fn installable_toolkits(reload_cache: bool, insecure: bool) -> Result<Vec<Toolkit>> {
-    info!("{}", t!("checking_toolkit_updates"));
-
     let all_toolkits = toolkits_from_server(insecure).await?;
     let installable = if let Some(installed) = Toolkit::installed(reload_cache).await? {
         let installed: tokio::sync::MutexGuard<'_, Toolkit> = installed.lock().await;
@@ -176,8 +176,6 @@ pub async fn latest_installable_toolkit(
     installed: &Toolkit,
     insecure: bool,
 ) -> Result<Option<Toolkit>> {
-    info!("{}", t!("checking_toolkit_updates"));
-
     let Some(maybe_latest) = toolkits_from_server(insecure)
         .await?
         .into_iter()

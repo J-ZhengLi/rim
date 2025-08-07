@@ -1,5 +1,5 @@
 use anyhow::Result;
-use rim_common::utils::{self, Progress};
+use rim_common::utils::{self, ProgressHandler};
 use std::{collections::HashMap, path::PathBuf};
 
 use super::{
@@ -25,51 +25,51 @@ pub(crate) trait Uninstallation {
 }
 
 /// Contains every information that the uninstallation process needs.
-pub struct UninstallConfiguration<'a> {
+pub struct UninstallConfiguration<T> {
     /// The installation directory that holds every tools, configuration files,
     /// including the manager binary.
     pub(crate) install_dir: PathBuf,
     pub(crate) install_record: InstallationRecord,
-    pub(crate) progress_indicator: Option<Progress<'a>>,
+    pub(crate) progress_handler: T,
 }
 
-impl RimDir for UninstallConfiguration<'_> {
+impl<T> RimDir for UninstallConfiguration<T> {
     fn install_dir(&self) -> &std::path::Path {
         self.install_dir.as_path()
     }
 }
 
-impl RimDir for &UninstallConfiguration<'_> {
+impl<T> RimDir for &UninstallConfiguration<T> {
     fn install_dir(&self) -> &std::path::Path {
         self.install_dir.as_path()
     }
 }
 
-impl<'a> UninstallConfiguration<'a> {
-    pub fn init(progress: Option<Progress<'a>>) -> Result<Self> {
+impl<T: ProgressHandler> UninstallConfiguration<T> {
+    pub fn init(handler: T) -> Result<Self> {
         let install_record = InstallationRecord::load_from_config_dir()?;
         Ok(Self {
             install_dir: install_record.install_dir.clone(),
             install_record,
-            progress_indicator: progress,
+            progress_handler: handler,
         })
     }
 
-    pub(crate) fn inc_progress(&self, val: f32) -> Result<()> {
-        if let Some(prog) = &self.progress_indicator {
-            prog.inc(Some(val))?;
-        }
-        Ok(())
+    pub(crate) fn inc_progress(&self, val: u64) -> Result<()> {
+        self.progress_handler.update_master(Some(val))
     }
 
     pub fn uninstall(mut self, remove_self: bool) -> Result<()> {
+        self.progress_handler
+            .start_master(t!("uninstalling").into(), utils::ProgressKind::Len(100))?;
+
         // remove all tools.
         info!("{}", t!("uninstalling_third_party_tools"));
-        self.remove_tools(InstallationRecord::load_from_config_dir()?.tools, 40.0)?;
+        self.remove_tools(InstallationRecord::load_from_config_dir()?.tools, 40)?;
 
         // Remove rust toolchain via rustup.
         if self.install_record.rust.is_some() {
-            if let Err(e) = ToolchainInstaller::init(&self).uninstall(&self) {
+            if let Err(e) = ToolchainInstaller::init(&self).uninstall(&mut self) {
                 // if user has manually uninstall rustup, this will fails,
                 // then we can assume it has been removed.
                 // TODO: add an error type to indicate `rustup` cannot be found
@@ -78,7 +78,7 @@ impl<'a> UninstallConfiguration<'a> {
             self.install_record.remove_rust_record();
             self.install_record.write()?;
         }
-        self.inc_progress(40.0)?;
+        self.inc_progress(40)?;
 
         // remove the manager binary itself or update install record
         if remove_self {
@@ -86,7 +86,7 @@ impl<'a> UninstallConfiguration<'a> {
             if !GlobalOpts::get().no_modify_env() {
                 info!("{}", t!("uninstall_env_config"));
                 self.remove_rustup_env_vars()?;
-                self.inc_progress(10.0)?;
+                self.inc_progress(10)?;
             } else {
                 info!("{}", t!("skip_env_modification"));
             }
@@ -100,8 +100,10 @@ impl<'a> UninstallConfiguration<'a> {
             self.install_record.remove_toolkit_meta();
             self.install_record.write()?;
         }
-        self.inc_progress(10.0)?;
+        self.inc_progress(10)?;
 
+        self.progress_handler
+            .finish_master(t!("uninstall_finished").into())?;
         Ok(())
     }
 
@@ -109,7 +111,7 @@ impl<'a> UninstallConfiguration<'a> {
     pub fn remove_toolchain_components(
         &mut self,
         components: &[ToolchainComponent],
-        weight: f32,
+        weight: u64,
     ) -> Result<()> {
         if components.is_empty() {
             return Ok(());
@@ -124,7 +126,7 @@ impl<'a> UninstallConfiguration<'a> {
     }
 
     /// Uninstall a selection of tools
-    pub fn remove_tools(&mut self, tools: HashMap<String, ToolRecord>, weight: f32) -> Result<()> {
+    pub fn remove_tools(&mut self, tools: HashMap<String, ToolRecord>, weight: u64) -> Result<()> {
         let mut tools_to_uninstall = vec![];
         for (name, tool_detail) in &tools {
             let Some(tool) = Tool::from_installed(name, tool_detail) else {
@@ -139,7 +141,7 @@ impl<'a> UninstallConfiguration<'a> {
         if tools_to_uninstall.is_empty() {
             return self.inc_progress(weight);
         }
-        let progress_dt = weight / tools_to_uninstall.len() as f32;
+        let progress_dt = weight / tools_to_uninstall.len() as u64;
 
         // in previous builds (< 0.6.0), we didn't support dependencies handling,
         // instead, we sorted the tools by its kind. Therefore we use a fallback

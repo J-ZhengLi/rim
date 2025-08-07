@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useCustomRouter } from '@/router/index';
-import { invokeCommand, managerConf, ManagerOperation } from '@/utils';
+import { managerConf, ManagerOperation } from '@/utils';
 import { computed, ref, watch } from 'vue';
 import Label from './components/Label.vue';
 const { routerBack, routerPush } = useCustomRouter();
 
 const isUninstallManger = ref(false);
-const installDir = computed(() => managerConf.path);
+const installDir = computed(() => managerConf.config.value.path);
 
 watch(isUninstallManger, (val: boolean) => {
   if (val) {
@@ -19,9 +19,7 @@ watch(isUninstallManger, (val: boolean) => {
 const installed = computed(() => managerConf.getInstalled());
 
 function handleUninstall() {
-  invokeCommand('uninstall_toolkit', {
-    remove_self: isUninstallManger.value,
-  }).then(() => routerPush('/manager/progress'));
+  routerPush('/manager/progress');
 }
 </script>
 <template>
@@ -30,7 +28,7 @@ function handleUninstall() {
       <h1>卸载</h1>
       <p>即将卸载以下产品</p>
     </div>
-    <scroll-box mx="12px" flex="1">
+    <base-card mx="12px" flex="1">
       <Label
         m="0"
         :label="installed?.name || ''"
@@ -46,7 +44,7 @@ function handleUninstall() {
       >
         <Label :label="item.displayName" :old-ver="item.version"></Label>
       </div>
-    </scroll-box>
+    </base-card>
     <div m="l-2em t-0.5em" h="2em">
       <base-check-box v-model="isUninstallManger" title="同时卸载此管理工具" />
     </div>

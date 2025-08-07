@@ -2,7 +2,6 @@ use anyhow::Result;
 use chrono::Local;
 use fern::colors::{Color, ColoredLevelConfig};
 use log::LevelFilter;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
@@ -65,7 +64,9 @@ impl Logger {
     /// - If [`quiet`](Logger::quiet) was called with `true`, this will not output any message
     ///   on `stdout`, but will still output them into log file.
     pub fn setup(self) -> Result<()> {
-        let mut dispatch = fern::Dispatch::new().level(LevelFilter::Trace);
+        let mut dispatch = fern::Dispatch::new()
+            .level(LevelFilter::Trace)
+            .level_for("tao", LevelFilter::Error);
         let filter_log_for_output = move |md: &log::Metadata| -> bool {
             md.level() <= self.level && md.level() != LevelFilter::Trace
         };
@@ -84,7 +85,7 @@ impl Logger {
                         .to_lowercase(),
                 ));
             })
-            .chain(io::stdout());
+            .chain(std::io::stdout());
         dispatch = dispatch.chain(stdout);
         // log to file (detailed trace with timestamp)
         let file_config = fern::Dispatch::new()

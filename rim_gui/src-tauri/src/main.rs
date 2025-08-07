@@ -2,80 +2,55 @@
 extern crate rust_i18n;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate rim_common;
 
+mod command;
 mod common;
 mod consts;
 mod error;
 mod installer_mode;
 mod manager_mode;
-mod notification;
-
-use std::path::PathBuf;
-use std::sync::OnceLock;
+mod progress;
 
 use anyhow::Result;
-use rim::{cli::ExecutableCommand, configuration::Configuration, AppInfo, Mode};
+use rim::{cli::ExecutableCommand, Mode};
 use rim_common::utils;
+use std::sync::mpsc::{self, Receiver};
 
-i18n!("../../locales", fallback = "en");
-
-static INSTALL_DIR: OnceLock<PathBuf> = OnceLock::new();
+i18n!("../../locales", fallback = "en-US");
 
 fn main() -> Result<()> {
     utils::use_current_locale();
 
-    let mode = Mode::detect(
-        Some(Box::new(|installer| {
-            if let Some(dir) = installer.install_dir() {
-                _ = INSTALL_DIR.set(dir.to_path_buf());
-            }
-        })),
-        None,
-    );
-    let msg_recv = common::setup_logger();
+    let mode = Mode::detect(None, None);
+    let msg_recv = setup_logger();
     match mode {
         Mode::Manager(maybe_args) => {
             run_cli_else_hide_console(&maybe_args)?;
-
-            if let Err(e) = handle_autostart() {
-                // log the error but do NOT abort the program
-                error!("unable to setup autostart: {e}");
-            }
             manager_mode::main(msg_recv, maybe_args)?;
         }
         Mode::Installer(maybe_args) => {
             run_cli_else_hide_console(&maybe_args)?;
-            installer_mode::main(msg_recv, maybe_args)?;
+            installer_mode::main(msg_recv)?;
         }
     }
     Ok(())
 }
 
-// TODO: add user setting for this
-fn handle_autostart() -> Result<()> {
-    // Load configuration to check if autostart is allowed
-    let allow_autostart = Configuration::load_from_config_dir().autostart;
-
-    let cur_exe = std::env::current_exe()?;
-    let Some(exe_path) = cur_exe.to_str() else {
-        log::error!("the path to this application contains invalid UTF-8 character");
-        return Ok(());
-    };
-
-    let auto = auto_launch::AutoLaunchBuilder::new()
-        .set_app_name(AppInfo::name())
-        .set_app_path(exe_path)
-        .set_use_launch_agent(true)
-        .build()?;
-
-    if allow_autostart {
-        auto.enable()?;
-    } else if auto.is_enabled().unwrap_or_default() {
-        auto.disable()?;
+/// Configure the logger to use a communication channel ([`mpsc`]),
+/// allowing us to send logs across threads.
+///
+/// This will return a log message's receiver which can be used to emitting
+/// messages onto [`tauri::Window`]
+fn setup_logger() -> Receiver<String> {
+    let (msg_sender, msg_recvr) = mpsc::channel::<String>();
+    if let Err(e) = utils::Logger::new().sender(msg_sender).setup() {
+        // TODO: make this error more obvious
+        eprintln!(
+            "Unable to setup logger, cause: {e}\n\
+            The program will continues to run, but it might not functioning correctly."
+        );
     }
-    Ok(())
+    msg_recvr
 }
 
 /// This GUI program supports commandline interface as well, so if:

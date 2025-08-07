@@ -1,55 +1,44 @@
+use std::env;
 use std::path::Path;
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, OnceLock};
-use std::{env, sync::atomic::AtomicBool};
+use std::sync::OnceLock;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use rim_common::types::TomlParser;
+use rim_common::utils::{HiddenProgress, ProgressHandler};
 use rim_common::{build_config, utils};
 use semver::Version;
-use tokio::sync::Notify;
+use serde::Serialize;
 use url::Url;
 
 use super::directories::RimDir;
 use super::parser::release_info::ReleaseInfo;
 use super::{AppInfo, GlobalOpts};
-use crate::configuration::{Configuration, UpdateTarget};
 use crate::toolkit;
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
 static LATEST_RELEASE: OnceLock<ReleaseInfo> = OnceLock::new();
 
 #[derive(Default)]
-pub struct UpdateOpt {
+pub struct UpdateOpt<T> {
     insecure: bool,
+    progress_handler: T,
 }
 
-impl RimDir for UpdateOpt {
+impl<T> RimDir for UpdateOpt<T> {
     fn install_dir(&self) -> &Path {
         AppInfo::get_installed_dir()
     }
 }
 
-impl UpdateOpt {
-    pub fn new() -> Self {
-        Self { insecure: false }
+impl<T: ProgressHandler + Clone + 'static> UpdateOpt<T> {
+    pub fn new(handler: T) -> Self {
+        Self {
+            insecure: false,
+            progress_handler: handler,
+        }
     }
 
     setter!(insecure(self.insecure, bool));
-
-    /// Calls a function to update toolkit.
-    ///
-    /// This is just a callback wrapper (for now), you still have to provide a function to do the
-    /// internal work.
-    // TODO: find a way to generalize this, so we can write a shared logic here instead of
-    // creating update functions for both CLI and GUI.
-    pub fn update_toolkit<F>(&self, callback: F) -> Result<()>
-    where
-        F: FnOnce(&Path) -> Result<()>,
-    {
-        let dir = self.install_dir();
-        callback(dir).context("unable to update toolkit")
-    }
 
     /// Update self when applicable.
     ///
@@ -57,7 +46,7 @@ impl UpdateOpt {
     /// Otherwise, this function will check whether if the current version is older
     /// than the latest one, if not, return `Ok(false)` indicates no update has been done.
     pub async fn self_update(&self, skip_check: bool) -> Result<bool> {
-        if !skip_check && !check_self_update(self.insecure).await?.update_needed() {
+        if !skip_check && !self.check_self_update().await.update_needed() {
             info!(
                 "{}",
                 t!(
@@ -75,9 +64,9 @@ impl UpdateOpt {
 
         let app_name = &build_config().app_name();
         let src_name = exe!(format!("{app_name}{cli}"));
-        let latest_version = &latest_manager_release(self.insecure).await?.version;
+        let latest_version = &self.latest_manager_release().await?.version;
         let download_url = parse_download_url(&format!(
-            "manager/archive/{latest_version}/{}/{src_name}",
+            "managerUpdateOpt/archive/{latest_version}/{}/{src_name}",
             env!("TARGET"),
         ))?;
 
@@ -93,9 +82,12 @@ impl UpdateOpt {
         // dest file don't need the `-cli` suffix to confuse users
         let dest_name = exe!(app_name);
         let newer_manager = temp_root.path().join(dest_name);
-        utils::DownloadOpt::new("latest manager", GlobalOpts::get().quiet)
-            .download(&download_url, &newer_manager)
-            .await?;
+        let opt = if GlobalOpts::get().quiet {
+            utils::DownloadOpt::new("latest manager", Box::new(HiddenProgress))
+        } else {
+            utils::DownloadOpt::new("latest manager", Box::new(self.progress_handler.clone()))
+        };
+        opt.download(&download_url, &newer_manager).await?;
 
         // replace the current executable
         self_replace::self_replace(newer_manager)?;
@@ -103,25 +95,55 @@ impl UpdateOpt {
         info!("{}", t!("self_update_complete"));
         Ok(true)
     }
-}
 
-/// Try to get the manager's latest release information.
-///
-/// This will try to access the internet upon first call in order to
-/// read the `release.toml` file from the server, and the result will be "cached" after.
-async fn latest_manager_release(insecure: bool) -> Result<&'static ReleaseInfo> {
-    if let Some(release_info) = LATEST_RELEASE.get() {
-        return Ok(release_info);
+    /// Try to get the manager's latest release information.
+    ///
+    /// This will try to access the internet upon first call in order to
+    /// read the `release.toml` file from the server, and the result will be "cached" after.
+    async fn latest_manager_release(&self) -> Result<&'static ReleaseInfo> {
+        if let Some(release_info) = LATEST_RELEASE.get() {
+            return Ok(release_info);
+        }
+
+        let download_url = parse_download_url(&format!("manager/{}", ReleaseInfo::FILENAME))?;
+        let opt = if GlobalOpts::get().quiet {
+            utils::DownloadOpt::new("manager release info", Box::new(HiddenProgress))
+        } else {
+            utils::DownloadOpt::new(
+                "manager release info",
+                Box::new(self.progress_handler.clone()),
+            )
+        };
+        let raw = opt.insecure(self.insecure).read(&download_url).await?;
+        let release_info = ReleaseInfo::from_str(&raw)?;
+
+        Ok(LATEST_RELEASE.get_or_init(|| release_info))
     }
 
-    let download_url = parse_download_url(&format!("manager/{}", ReleaseInfo::FILENAME))?;
-    let raw = utils::DownloadOpt::new("manager release info", GlobalOpts::get().quiet)
-        .insecure(insecure)
-        .read(&download_url)
-        .await?;
-    let release_info = ReleaseInfo::from_str(&raw)?;
+    /// Check self(manager) updates.
+    pub async fn check_self_update(&self) -> UpdateKind<Version> {
+        info!("{}", t!("checking_manager_updates"));
 
-    Ok(LATEST_RELEASE.get_or_init(|| release_info))
+        let latest_version = match self.latest_manager_release().await {
+            Ok(release) => release.version.clone(),
+            Err(e) => {
+                warn!("{}: {e}", t!("fetch_latest_manager_version_failed"));
+                return UpdateKind::Uncertain;
+            }
+        };
+
+        // safe to unwrap, otherwise cargo would fails the build
+        let cur_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+
+        if cur_version < latest_version {
+            UpdateKind::Newer {
+                current: cur_version,
+                latest: latest_version,
+            }
+        } else {
+            UpdateKind::UnNeeded
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -131,21 +153,23 @@ pub enum UpdateKind<T: Sized> {
     UnNeeded,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct UpdatePayload {
+    /// The version string of this update.
     pub version: String,
-    pub url: Option<String>,
+    /// Optional data to pass to the front-end.
+    pub data: Option<String>,
 }
 
 impl UpdatePayload {
     pub fn new<S: Into<String>>(version: S) -> Self {
         Self {
             version: version.into(),
-            url: None,
+            data: None,
         }
     }
 
-    setter!(with_payload(self.url, Option<String>));
+    setter!(with_data(self.data, Option<String>));
 }
 
 impl<T> UpdateKind<T> {
@@ -154,102 +178,19 @@ impl<T> UpdateKind<T> {
     }
 }
 
-static UPDATE_CHECKER_PAUSED: AtomicBool = AtomicBool::new(false);
-static UPDATE_CHECKER_PAUSE_NOTIFIER: OnceLock<Arc<Notify>> = OnceLock::new();
-/// An abstract struct that temporarily blocks the update checker task.
-///
-/// Since update check is running inside an infinite loop with an async task.
-/// In order to pause it, we need a [`Notify`] struct to help blocks the future,
-/// and can be resumed per demand.
-pub struct UpdateCheckBlocker;
-
-impl UpdateCheckBlocker {
-    fn inner_notify() -> &'static Arc<Notify> {
-        UPDATE_CHECKER_PAUSE_NOTIFIER.get_or_init(|| Arc::new(Notify::new()))
-    }
-    pub fn block() {
-        UPDATE_CHECKER_PAUSED.store(true, Ordering::Relaxed);
-        Self::inner_notify().notify_waiters();
-    }
-    pub fn unblock() {
-        UPDATE_CHECKER_PAUSED.store(false, Ordering::Relaxed);
-    }
-    pub fn is_blocked() -> bool {
-        UPDATE_CHECKER_PAUSED.load(Ordering::Relaxed)
-    }
-    pub async fn pause_if_blocked() {
-        if Self::is_blocked() {
-            Self::inner_notify().notified().await;
-        }
-    }
-}
-
-/// Check self(manager) updates.
-///
-/// This will also read an [`Updates`] configuration to see whether
-/// the update should be checked.
-///
-/// # Error
-/// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
-/// status of updates checker.
-pub async fn check_self_update(insecure: bool) -> Result<UpdateKind<Version>> {
-    info!("{}", t!("checking_manager_updates"));
-
-    let mut updates_checker = Configuration::load_from_config_dir();
-    // we mark it first then check, it sure seems pretty weird, but it sure preventing
-    // infinite loop running in a background thread.
-    updates_checker.update.mark_checked(UpdateTarget::Manager);
-    updates_checker.write()?;
-
-    let latest_version = match latest_manager_release(insecure).await {
-        Ok(release) => release.version.clone(),
-        Err(e) => {
-            warn!("{}: {e}", t!("fetch_latest_manager_version_failed"));
-            return Ok(UpdateKind::Uncertain);
-        }
-    };
-    if updates_checker.update_skipped(UpdateTarget::Manager, latest_version.to_string()) {
-        return Ok(UpdateKind::UnNeeded);
-    }
-
-    // safe to unwrap, otherwise cargo would fails the build
-    let cur_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
-
-    let res = if cur_version < latest_version {
-        UpdateKind::Newer {
-            current: cur_version,
-            latest: latest_version,
-        }
-    } else {
-        UpdateKind::UnNeeded
-    };
-    Ok(res)
-}
-
 /// Check toolkit updates.
-///
-/// This will also read an [`Updates`] configuration to see whether
-/// the update should be checked.
-///
-/// # Error
-/// Return `Err` if we can't change the [`last-run`](crate::updates::UpdateConf::last_run)
-/// status of updates checker.
-pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePayload>> {
-    let mut update_checker = Configuration::load_from_config_dir();
-    // we mark it first then check, it sure seems pretty weird, but it sure preventing
-    // infinite loop running in a background thread.
-    update_checker.update.mark_checked(UpdateTarget::Toolkit);
-    update_checker.write()?;
+pub async fn check_toolkit_update(insecure: bool) -> UpdateKind<UpdatePayload> {
+    info!("{}", t!("checking_toolkit_updates"));
 
     let mutex = match toolkit::Toolkit::installed(false).await {
         Ok(Some(installed)) => installed,
         Ok(None) => {
             info!("{}", t!("no_toolkit_installed"));
-            return Ok(UpdateKind::UnNeeded);
+            return UpdateKind::UnNeeded;
         }
         Err(e) => {
             warn!("{}: {e}", t!("fetch_latest_toolkit_version_failed"));
-            return Ok(UpdateKind::Uncertain);
+            return UpdateKind::Uncertain;
         }
     };
     let installed = &*mutex.lock().await;
@@ -259,24 +200,19 @@ pub async fn check_toolkit_update(insecure: bool) -> Result<UpdateKind<UpdatePay
         Ok(Some(tk)) => tk,
         Ok(None) => {
             info!("{}", t!("no_available_updates", toolkit = &installed.name));
-            return Ok(UpdateKind::UnNeeded);
+            return UpdateKind::UnNeeded;
         }
         Err(e) => {
             warn!("{}: {e}", t!("fetch_latest_toolkit_version_failed"));
-            return Ok(UpdateKind::Uncertain);
+            return UpdateKind::Uncertain;
         }
     };
 
-    if update_checker.update_skipped(UpdateTarget::Toolkit, &latest_toolkit.version) {
-        return Ok(UpdateKind::UnNeeded);
-    }
-
-    let res = UpdateKind::Newer {
+    UpdateKind::Newer {
         current: UpdatePayload::new(&installed.version),
         latest: UpdatePayload::new(&latest_toolkit.version)
-            .with_payload(latest_toolkit.manifest_url.clone()),
-    };
-    Ok(res)
+            .with_data(latest_toolkit.manifest_url.clone()),
+    }
 }
 
 fn parse_download_url(source_path: &str) -> Result<Url> {

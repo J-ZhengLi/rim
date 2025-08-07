@@ -1,10 +1,10 @@
 import { ref, Ref, shallowRef } from 'vue';
-import { KitItem } from './types/KitItem';
+import { KitItem } from './types/Toolkit';
 import { Component, ComponentType, componentUtils } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
 import { invokeCommand } from './invokeCommand';
-import { AppInfo } from './types/AppInfo';
+import { BaseConfig, defaultBaseConfig } from './common';
 
 type Target = {
   operation: ManagerOperation;
@@ -12,31 +12,19 @@ type Target = {
 };
 
 class ManagerConf {
-  path: Ref<string> = ref('');
-  info: Ref<AppInfo | null> = ref(null);
+  config: Ref<BaseConfig>;
   private _availableKits: Ref<KitItem[]> = ref([]);
   private _installedKit: Ref<KitItem | null> = ref(null);
   private _current: Ref<KitItem | null> = ref(null);
   private _target: Ref<Target> = ref({ operation: ManagerOperation.Update, components: [] });
 
-  constructor() { }
-
-  /** The name of this application. */
-  async appName() {
-    if (this.info.value) {
-      return this.info.value.name;
-    }
-    let info = await this.cacheAppInfo();
-    return info.name;
+  constructor() {
+    this.config = ref(defaultBaseConfig);
   }
 
-  /** The name and version of this application joined as a string. */
-  async appNameWithVersion() {
-    if (this.info.value) {
-      return this.info.value.version ? this.info.value.name + ' ' + this.info.value.version : this.info.value.name;
-    }
-    let info = await this.cacheAppInfo();
-    return info.version ? info.name + ' ' + info.version : info.name;
+  public async setConf() {
+    let conf = await invokeCommand('get_configuration') as BaseConfig;
+    this.config.value = conf;
   }
 
   public getKits(): KitItem[] {
@@ -154,8 +142,9 @@ class ManagerConf {
     this._installedKit.value = installed;
   }
 
-  public setCurrent(current: KitItem): void {
+  public async setCurrent(current: KitItem) {
     this._current.value = current;
+    await this.setConf();
   }
 
   public setOperation(operation: Target['operation']): void {
@@ -169,22 +158,11 @@ class ManagerConf {
     );
   }
 
-  async cacheAppInfo() {
-    let info = await invokeCommand('app_info') as AppInfo;
-    this.info.value = info;
-    return info;
-  }
-
-  async loadConf() {
-    let dir = await invokeCommand('get_install_dir');
-    if (typeof dir === 'string' && dir.trim() !== '') {
-      this.path.value = dir;
-    }
-
+  async load() {
     await this.reloadKits();
     // since this function is called immediately after app start, we call these functions
     // to check updates in background then ask user if they what to install it.
-    await invokeCommand('check_updates_in_background');
+    await invokeCommand('check_updates_on_startup');
   }
 
   async loadInstalledKit() {

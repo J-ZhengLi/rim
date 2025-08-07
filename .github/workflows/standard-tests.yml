@@ -33,9 +33,24 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy,rustfmt
+
+    # Manually detect if locale files has been changed,
+    # so that we can trigger locale file check later.
+    # This check is too simple thus I don't think it worth having a dedicated workflow.
+    - name: Check if locale files changed
+      id: check_locales
+      run: |
+        git fetch origin ${{ github.event.before }} --depth=1
+        CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^locales/' || true)
+        CHANGED=$(echo "$CHANGED" | tr '\n' ',')
+        echo "changed=$CHANGED" >> "$GITHUB_OUTPUT"
+      shell: bash
     
     - name: formatting check
       run: cargo fmt --all --check
+    - name: Run locale-specific tests
+      if: steps.check_locales.outputs.changed != ''
+      run: cargo dev locale check
     - name: clippy check
       run: cargo clippy --no-deps --workspace --exclude rim-gui -- -D warnings
     - name: build

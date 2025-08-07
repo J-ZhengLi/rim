@@ -6,29 +6,22 @@ identifier = "xuanwu-rust"
 # For GUI
 home_page_url = 'https://xuanwu.beta.atomgit.com/'
 
+# Default download sources
 rustup_dist_server = 'https://xuanwu.base.atomgit.com'
 rustup_update_root = 'https://xuanwu.base.atomgit.com/rustup'
 rim_dist_server = 'https://rust-mirror.obs.cn-north-4.myhuaweicloud.com'
-
-[cargo]
-registry_name = 'xuanwu-sparse'
-registry_url = 'sparse+https://xuanwu.base.atomgit.com/index/'
+registry = { name = 'xuanwu-sparse', index = 'sparse+https://xuanwu.base.atomgit.com/index/' }
 
 [locale.en-US]
+logo_text = "XuanWu"
 vendor = "Rust China Community"
 product = "Rust China Community Distribution"
-installer_title = "Rust China Community Distribution Installer"
-manager_title = "Rust China Community Distribution Manager"
+app_name = "Rust Installation Manager"
 content_source = "Content source: Rust China Community, Rust Native Community, Third-party open source community"
 
 [locale.zh-CN]
+logo_text = "旋武社区"
 vendor = "Rust 中国社区"
 product = "Rust 中国社区发行版"
-installer_title = "Rust 中国社区发行版安装工具"
-manager_title = "Rust 中国社区发行版管理工具"
+app_name = "Rust 安装管理器"
 content_source = "内容来源：Rust 中国社区，Rust 原生社区，第三方开源社区"
-
-[override.bisheng]
-rustup_dist_server = 'https://rust-dist.obs.cn-north-4.myhuaweicloud.com/bisheng'
-rustup_update_root = 'https://xuanwu.base.atomgit.com/rustup'
-rim_dist_server = 'https://rust-mirror.obs.cn-north-4.myhuaweicloud.com'

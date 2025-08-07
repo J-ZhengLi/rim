@@ -3,14 +3,13 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
-use indicatif::ProgressBar;
 use reqwest::{header, Client};
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
-use super::progress_bar::{CliProgress, Style};
 use crate::types::Proxy as CrateProxy;
+use crate::utils::{ProgressHandler, ProgressKind};
 use crate::{build_config, setter};
 
 fn default_proxy() -> reqwest::Proxy {
@@ -18,12 +17,11 @@ fn default_proxy() -> reqwest::Proxy {
         .no_proxy(reqwest::NoProxy::from_env())
 }
 
-#[derive(Debug)]
-pub struct DownloadOpt<T: Sized> {
+pub struct DownloadOpt {
     /// The verbose name of the file to download.
     pub name: String,
     /// Download progress handler, aka a progress bar.
-    pub handler: CliProgress<T>,
+    pub progress_handler: Box<dyn ProgressHandler>,
     /// Option to skip SSL certificate verification when downloading.
     pub insecure: bool,
     /// Proxy configurations for download.
@@ -32,12 +30,11 @@ pub struct DownloadOpt<T: Sized> {
     resume: bool,
 }
 
-impl DownloadOpt<ProgressBar> {
-    pub fn new<S: ToString>(name: S, no_progress_bar: bool) -> Self {
-        let handler = CliProgress::new(no_progress_bar);
+impl DownloadOpt {
+    pub fn new<S: ToString>(name: S, handler: Box<dyn ProgressHandler>) -> Self {
         Self {
             name: name.to_string(),
-            handler,
+            progress_handler: handler,
             insecure: false,
             proxy: None,
             resume: false,
@@ -107,7 +104,7 @@ impl DownloadOpt<ProgressBar> {
         }
     }
     /// Consume self, and download from given `Url` to `Path`.
-    pub async fn download(self, url: &Url, path: &Path) -> Result<()> {
+    pub async fn download(mut self, url: &Url, path: &Path) -> Result<()> {
         debug!("ready to download from '{}'", url.as_str());
         if url.scheme() == "file" {
             fs::copy(
@@ -131,28 +128,20 @@ impl DownloadOpt<ProgressBar> {
             .content_length()
             .ok_or_else(|| anyhow!("unable to get file length of '{url}'"))?;
 
-        let maybe_indicator = (self.handler.start)(
+        self.progress_handler.start(
             format!("downloading '{}'", &self.name),
-            Style::Bytes(total_size),
-        )
-        .ok();
+            ProgressKind::Bytes(total_size),
+        )?;
 
         while let Some(chunk) = resp.chunk().await? {
             file.write_all(&chunk).await?;
 
             downloaded_bytes = min(downloaded_bytes + chunk.len() as u64, total_size);
-            if let Some(indicator) = &maybe_indicator {
-                (self.handler.update)(indicator, Some(downloaded_bytes));
-            }
+            self.progress_handler.update(Some(downloaded_bytes))?;
         }
 
-        if let Some(indicator) = &maybe_indicator {
-            (self.handler.stop)(
-                indicator,
-                format!("'{}' successfully downloaded.", &self.name),
-            );
-        }
-
+        self.progress_handler
+            .finish(format!("'{}' successfully downloaded.", &self.name))?;
         Ok(())
     }
 
