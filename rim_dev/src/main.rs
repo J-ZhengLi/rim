@@ -3,6 +3,7 @@
 
 mod common;
 mod dist;
+mod locales;
 mod mocked;
 mod run;
 mod toolkits_parser;
@@ -10,6 +11,7 @@ mod vendor;
 
 use anyhow::{anyhow, Context, Result};
 use dist::DIST_HELP;
+use locales::LocaleCommand;
 use mocked::server;
 use run::RunMode;
 use std::env;
@@ -31,6 +33,7 @@ Commands:
     vendor          Download packages for offline package build
     mock-server
                     Generate a mocked rustup dist server
+    l, locale       Sort or check the locale JSON files
 "#;
 const MOCK_HELP: &str = r#"
 Generate a mocked rustup dist server and rim dist server
@@ -65,6 +68,7 @@ enum DevCmd {
         all_targets: bool,
         clear: bool,
     },
+    Locale(LocaleCommand),
 }
 
 impl DevCmd {
@@ -89,6 +93,7 @@ impl DevCmd {
                 server::generate_rim_server_files()?;
                 server::generate_rustup_server_files(root)?
             }
+            Self::Locale(cmd) => locales::run(cmd)?,
         }
         Ok(())
     }
@@ -212,11 +217,20 @@ fn main() -> Result<ExitCode> {
             Some("-r" | "--root") => DevCmd::Mock {
                 root: Some(args.next().expect("missing arg value for 'root'").into()),
             },
-            Some("-h" | "--help") => {
+            // includes '-h', '--help', and all other unspecified input to show help
+            Some(_) => {
                 writeln!(&mut stdout, "{MOCK_HELP}")?;
                 return Ok(ExitCode::SUCCESS);
             }
-            _ => DevCmd::Mock { root: None },
+            None => DevCmd::Mock { root: None },
+        },
+        "l" | "locale" => match args.next().as_deref() {
+            Some("c" | "check") => DevCmd::Locale(LocaleCommand::Check),
+            Some("f" | "fmt") => DevCmd::Locale(LocaleCommand::Fmt),
+            _ => {
+                locales::print_help(&mut stdout)?;
+                return Ok(ExitCode::SUCCESS);
+            }
         },
         s => {
             writeln!(
