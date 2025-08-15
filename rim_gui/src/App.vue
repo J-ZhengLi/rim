@@ -14,14 +14,14 @@ const navItems = computed(() => [
     name: t('manage_toolkit'),
     showDot: ref(false),
   },
-  {
-    name: t('manage_components'),
-    showDot: ref(false),
-  },
-  {
-    name: t!('misc'),
-    showDot: ref(false),
-  },
+  // {
+  //   name: t('manage_components'),
+  //   showDot: ref(false),
+  // },
+  // {
+  //   name: t!('misc'),
+  //   showDot: ref(false),
+  // },
 ]);
 const selectedIndex = ref(0)
 const navRefs = ref<HTMLElement[]>([])

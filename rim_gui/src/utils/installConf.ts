@@ -1,8 +1,7 @@
 import { ref, Ref } from 'vue';
 import { isRecommended, toChecked, type Component, type RestrictedComponent } from './types/Component';
-import { invokeCommand } from './invokeCommand';
 import { CheckGroup, CheckItem } from './types/CheckBoxGroup';
-import { BaseConfig, defaultBaseConfig } from './common';
+import { BaseConfig, defaultBaseConfig, invokeCommand } from './common';
 
 class InstallConf {
   config: Ref<BaseConfig>;
