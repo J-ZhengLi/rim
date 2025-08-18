@@ -90,7 +90,7 @@ impl PathExt<'_> {
         }
     }
 
-    pub fn iter(&self) -> PathIterator {
+    pub fn iter(&self) -> PathIterator<'_> {
         PathIterator {
             index: 0,
             inner: self,

@@ -3,8 +3,7 @@ import { KitItem } from './types/Toolkit';
 import { Component, ComponentType, componentUtils } from './types/Component';
 import { CheckGroup, CheckGroupItem } from './types/CheckBoxGroup';
 import LabelComponent from '@/views/manager/components/Label.vue';
-import { invokeCommand } from './invokeCommand';
-import { BaseConfig, defaultBaseConfig } from './common';
+import { BaseConfig, defaultBaseConfig, invokeCommand } from './common';
 
 type Target = {
   operation: ManagerOperation;

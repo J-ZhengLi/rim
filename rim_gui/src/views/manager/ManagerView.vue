@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { invokeCommand, KitItem, managerConf, ManagerOperation } from '@/utils';
+import { invokeCommand, KitItem, managerConf, ManagerOperation, getAppNameWithVersion } from '@/utils';
 import { computed, onMounted, ref, watch } from 'vue';
 import { event } from '@tauri-apps/api';
 import { useCustomRouter } from '@/router';
 import { CliPayload, ToolkitUpdatePayload } from '@/utils/types/payloads';
-import { getAppNameWithVersion } from '@/utils/common';
 import { useI18n } from 'vue-i18n';
 
 const { routerPush } = useCustomRouter();
