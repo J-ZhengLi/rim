@@ -6,8 +6,6 @@ use std::{env, fs};
 
 use tempfile::TempDir;
 
-use crate::t;
-
 static GLOBAL_ROOT_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 fn global_root_dir() -> &'static Path {
@@ -15,7 +13,8 @@ fn global_root_dir() -> &'static Path {
         option_env!("RIM_TARGET_TMPDIR")
             .map(PathBuf::from)
             .unwrap_or_else(|| {
-                let mut path = t!(env::current_exe());
+                let mut path =
+                    env::current_exe().expect("unable to get the path of current executable");
                 path.pop(); // chop off exe name
                 path.pop(); // chop off "deps"
                 path.push("tmp");

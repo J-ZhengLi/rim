@@ -1,5 +1,3 @@
-use rim_test_support::prelude::*;
-
 #[rim_test]
 fn target_override() {
     let target = env!("TARGET");

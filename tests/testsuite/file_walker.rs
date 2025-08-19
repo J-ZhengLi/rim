@@ -1,6 +1,5 @@
 use rim_common::utils;
 use rim_test_support::paths;
-use rim_test_support::prelude::*;
 
 #[rim_test]
 fn walk_dir_recursive() {

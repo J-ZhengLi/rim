@@ -15,7 +15,7 @@ name = "rim-cli"
 path = "src/bin/rim_cli.rs"
 
 [workspace]
-members = ["rim_gui/src-tauri", "rim_dev", "rim_common"]
+members = ["rim_gui/src-tauri", "rim_dev", "rim_common", "rim_test/*"]
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use rim_common::{build_config, exe};
-use rim_test_support::{prelude::*, process::TestProcess};
+use rim_test_support::process::TestProcess;
 
 use crate::rim_cli::default_install;
 
