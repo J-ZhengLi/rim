@@ -32,7 +32,7 @@ Options:
   -l, --lang <LANG>
           Specify another language to display
           
-          [possible values: cn, en]
+          [possible values: zh-CN, en-US]
 
   -h, --help
           Print help (see a summary with '-h')

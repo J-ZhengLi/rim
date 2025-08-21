@@ -198,7 +198,7 @@ auto-check-toolkit-updates = true
         let expected = conf.to_toml().unwrap();
         assert_eq!(
             expected,
-            r#"language = "CN"
+            r#"language = "zh-CN"
 
 [update]
 manager-update-channel = "beta"
@@ -210,7 +210,7 @@ auto-check-toolkit-updates = false
 
     #[test]
     fn lang_config() {
-        let input = "language = \"CN\"\n[update]";
+        let input = "language = \"zh-CN\"\n[update]";
 
         let expected = Configuration::from_str(input).unwrap();
         assert_eq!(expected.language, Some(Language::CN));
@@ -219,7 +219,7 @@ auto-check-toolkit-updates = false
         let back_to_str = toml::to_string(&expected).unwrap();
         assert_eq!(
             back_to_str,
-            "language = \"CN\"\n\n\
+            "language = \"zh-CN\"\n\n\
             [update]\n\
             manager-update-channel = \"stable\"\n\
             auto-check-manager-updates = true\n\

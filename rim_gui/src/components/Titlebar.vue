@@ -159,7 +159,7 @@ watch(locale, (_) => refreshLabels());
             </div>
         </div>
     </div>
-    <base-panel :show="isPanelShown" @close="isPanelShown = false">
+    <base-panel :show="isPanelShown" @close="isPanelShown = false" height="80%">
         <component :is="layoutToShow" />
     </base-panel>
 </template>

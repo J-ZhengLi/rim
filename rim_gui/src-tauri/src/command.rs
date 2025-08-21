@@ -132,8 +132,8 @@ pub(crate) async fn set_manager_update_channel(channel: ReleaseChannel) -> Resul
 }
 
 #[tauri::command]
-/// Check self update and show update confirmation dialog if needed.
-pub(crate) async fn check_manager_update(app: AppHandle) -> Result<()> {
+/// Check self update and return `true` if new update is available.
+pub(crate) async fn check_manager_update(app: AppHandle) -> Result<bool> {
     let update_opt = UpdateOpt::new(GuiProgress::new(app.clone()));
 
     if let UpdateKind::Newer { current, latest } = update_opt.check_self_update().await {
@@ -142,6 +142,8 @@ pub(crate) async fn check_manager_update(app: AppHandle) -> Result<()> {
             MANAGER_UPDATE_NOTICE,
             (current, latest),
         )?;
+        Ok(true)
+    } else {
+        Ok(false)
     }
-    Ok(())
 }

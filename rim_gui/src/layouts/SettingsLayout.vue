@@ -12,7 +12,7 @@
 
         <!-- Main Panel -->
         <main class="main-content" ref="mainContentRef">
-            <section ref="generalRef" class="setting-section">
+            <section ref="generalRef">
                 <h2>{{ $t('general') }}</h2>
                 <div class="setting-options">
                     <label>
@@ -41,7 +41,7 @@
                 </div>
             </section>
 
-            <section ref="updateRef" class="setting-section">
+            <section ref="updateRef">
                 <h2>{{ $t('update') }}</h2>
                 <div class="setting-options">
                     <label>
@@ -53,7 +53,10 @@
                     <base-check-box v-model="autoCheckToolkitUpdate" :title="$t('auto_check_toolkit_updates')"
                         labelAlignment="left" />
                     <label>
-                        <span class="label-text">{{ $t('check_manager_updates') }}</span>
+                        <p class="label-text">
+                            {{ $t('check_manager_updates') }}
+                            <div c-secondary text="0.8em" v-if="isLatestManager">{{ $t('latest_version_already') }}</div>
+                        </p>
                         <base-button w="12vw" theme="primary" @click="checkManagerUpdates">
                             <spinner v-if="isChecking" />
                             <span v-else>{{ $t('check') }}</span>
@@ -77,6 +80,7 @@ const generalRef = ref<HTMLElement | null>(null);
 const updateRef = ref<HTMLElement | null>(null);
 const mainContentRef = ref<HTMLElement | null>(null);
 const isChecking = ref(false);
+const isLatestManager = ref(false);
 
 const langOptions = computed<DropdownItem[]>(() => {
     return availableLocales.map((loc) => {
@@ -111,7 +115,12 @@ function langName(lang: string): string {
 
 function checkManagerUpdates() {
     isChecking.value = true;
-    invokeCommand('check_manager_update').then(() => isChecking.value = false);
+    invokeCommand('check_manager_update').then((res) => {
+        isChecking.value = false;
+        if (typeof res === 'boolean') {
+            isLatestManager.value = !res;
+        }
+    });
 }
 
 // RIM configuration but without `language` as it was already handled by `i18n.ts`
@@ -187,13 +196,13 @@ watch(rimUpdateChannel, (val) => {
     flex: 1;
     overflow-y: auto;
     padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2rem;
 }
 
-.setting-section {
-    margin-bottom: 3rem;
-}
-
-.setting-section h2 {
+h2 {
     margin-bottom: 1rem;
     border-bottom: 1px solid #ddd;
     padding-bottom: 1rem;

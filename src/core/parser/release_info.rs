@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn version_info() {
-        let input = "version = '1.2.3'";
+        let input = "version = '1.2.3-beta.1'";
         let release = Releases::from_str(input).unwrap();
         let version = release.version();
 
