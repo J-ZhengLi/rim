@@ -1,12 +1,9 @@
-use std::process::Command;
-
-use anyhow::{bail, Result};
-use rim_common::utils;
-
 use crate::{
     common,
     mocked::{self, installation, manager, server},
 };
+use anyhow::{bail, Result};
+use std::process::Command;
 
 pub(super) const RUN_HELP: &str = r#"
 Build and run RIM for testing purpose
@@ -57,8 +54,6 @@ impl RunMode {
 
         // replace home env to prevent modifying the actually HOME var
         let home = mocked::mocked_home();
-        // remove previous artifacts including configs
-        utils::remove(home)?;
         std::env::set_var("HOME", home);
         #[cfg(windows)]
         std::env::set_var("USERPROFILE", home);
@@ -84,12 +79,9 @@ impl RunMode {
             Self::Manager { no_gui } => {
                 // a mocked server is needed to run most of function in manager
                 server::generate_rim_server_files()?;
-
                 // generate a fake manager binary with higher version so we
                 // can test the self update.
-                if args.iter().any(|arg| arg == "update") {
-                    manager::generate()?;
-                }
+                manager::generate()?;
 
                 installation::generate_and_run_manager(*no_gui, args)?;
             }

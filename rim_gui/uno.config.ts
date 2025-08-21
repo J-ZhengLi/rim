@@ -28,7 +28,7 @@ export default defineConfig({
       danger: '#f66f6a',
       info: '#909399',
       'light-primary': '#e3f1ff',
-      'deep-primary': '#40569f',
+      'deep-primary': '#4c7add',
 
       // 文字色相关
       header: '#252b3a',

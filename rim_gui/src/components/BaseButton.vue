@@ -35,8 +35,8 @@ const themeClasses = computed(() => {
 
 <style scoped>
 button {
-  padding: 0.3em 0.5em;
-  font-size: clamp(100%, 3vh, 20px);
+  padding: 0.4em;
+  font-size: clamp(10px, 2.6vh, 20px);
   border-radius: 100px;
   min-width: 100px;
   border: none;

@@ -1,19 +1,27 @@
 <template>
     <div class="with-background" id="background">
-        <div>
+        <div v-if="animated">
             <div v-for="(bubble, index) in bubbles" :key="index" class="bubble" :style="{
                 '--x': `${bubble.x}px`,
                 '--y': `${bubble.y}px`,
                 '--size': `${bubble.size}px`,
                 '--blur': `${bubble.blur}px`,
                 '--hue': bubble.hue
-            }"><slot></slot></div>
+            }"></div>
         </div>
     </div>
 </template>
 
 <script lang="ts" setup>
 import { onMounted, onUnmounted, Ref, ref } from 'vue';
+
+const props = defineProps({
+  animated: {
+    type: Boolean,
+    default: true,
+  }
+});
+
 // bubble controls
 const bubbles: Ref<Bubble[]> = ref([]);
 const containerSize = ref({ width: 0, height: 0 });
@@ -30,21 +38,21 @@ interface Bubble {
 
 // Initialize bubbles with random properties
 function initBubbles() {
-  const count = 5; // Number of bubbles
+  const count = 3; // Number of bubbles
   // a random scale within [-1, -0.5] and [0.5, 1] to prevent frozen bubbles
   const randomSpeedScale = (): number => {
     const rand = Math.random();
     return rand < 0.5 ? 0.5 + rand : -1 + rand - 0.5;
   };
-  const size = containerSize.value.height / 1.8 + Math.random() * 100;
+  const size = containerSize.value.height / 1.5 + Math.random() * 100;
   bubbles.value = Array.from({ length: count }, () => ({
     x: Math.random() * (containerSize.value.width - size),
     y: Math.random() * (containerSize.value.height - size),
     size: size,
     blur: 5 + Math.random() * 15, // slight random blur
     hue: 185 + Math.random() * 35,  // blueish hue
-    vx: randomSpeedScale() * 0.5, // Horizontal velocity
-    vy: randomSpeedScale() * 0.5, // Vertical velocity
+    vx: randomSpeedScale() * 0.25, // Horizontal velocity
+    vy: randomSpeedScale() * 0.25, // Vertical velocity
   }));
 }
 
@@ -70,6 +78,9 @@ function animate() {
 
 // Handle window resize
 function handleResize() {
+  if (!props.animated) {
+    return;
+  }
   containerSize.value = {
     width: window.innerWidth,
     height: window.innerHeight

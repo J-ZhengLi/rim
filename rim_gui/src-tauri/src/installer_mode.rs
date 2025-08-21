@@ -8,7 +8,7 @@ use tauri::{AppHandle, Builder};
 use url::Url;
 
 use crate::command::with_shared_commands;
-use crate::common::{self, cached_manifest, BaseConfiguration, TOOLKIT_MANIFEST};
+use crate::common::{self, expected_manifest, BaseConfiguration, TOOLKIT_MANIFEST};
 use crate::error::Result;
 use rim::components::Component;
 use rim::{get_toolkit_manifest, ToolkitManifestExt};
@@ -40,7 +40,13 @@ pub(super) fn main(msg_recv: Receiver<String>) -> Result<()> {
 
 #[tauri::command]
 async fn default_configuration() -> BaseConfiguration {
-    BaseConfiguration::new(rim::default_install_dir(), &*cached_manifest().read().await)
+    let manifest = if let Some(cached) = TOOLKIT_MANIFEST.get() {
+        Some(&*cached.read().await)
+    } else {
+        warn!("missing cached toolkit manifest when fetching configuration");
+        None
+    };
+    BaseConfiguration::new(rim::default_install_dir(), manifest)
 }
 
 /// Check if the given path could be used for installation, and return the reason if not.
@@ -61,7 +67,7 @@ fn check_install_path(path: String) -> Option<String> {
 /// Get full list of supported components
 #[tauri::command]
 async fn get_component_list() -> Result<Vec<Component>> {
-    let components = cached_manifest()
+    let components = expected_manifest()
         .read()
         .await
         .current_target_components(true)?;
@@ -93,20 +99,26 @@ async fn load_toolkit(path: Option<&Path>) -> Result<Option<String>> {
     //    Update the cached one.
     // 3. No manifest was cached:
     //    Load one and cache it.
-    if let Some(existing) = TOOLKIT_MANIFEST.get() {
+    let version = if let Some(existing) = TOOLKIT_MANIFEST.get() {
         let read_guard = existing.read().await;
+        let version = read_guard.version.clone();
         if read_guard.path.as_deref() != path {
             drop(read_guard); // dropping read guard to avoid dead lock.
             *existing.write().await = load_toolkit_(path).await?;
             debug!("manifest updated");
         }
+        version
     } else {
         let manifest = load_toolkit_(path).await?;
-        TOOLKIT_MANIFEST.get_or_init(|| AsyncRwLock::new(manifest));
+        let version = manifest.version.clone();
+        // Safe to unwrap, `set` only return `Err` if the lock is already initialized,
+        // which couldn't be the case since we already checked with `TOOLKIT_MANIFEST.get()`
+        TOOLKIT_MANIFEST.set(AsyncRwLock::new(manifest)).unwrap();
         debug!("manifest initialized");
-    }
+        version
+    };
 
-    Ok(cached_manifest().read().await.version.clone())
+    Ok(version)
 }
 
 // Make sure this function is called first after launch.
@@ -162,7 +174,7 @@ async fn updated_package_sources(
     raw: Vec<RestrictedComponent>,
     mut selected: Vec<Component>,
 ) -> Result<Vec<Component>> {
-    let mut manifest = cached_manifest().write().await;
+    let mut manifest = expected_manifest().write().await;
     manifest.fill_missing_package_source(&mut selected, |name, _| {
         raw.iter()
             .find(|rc| rc.name == name)

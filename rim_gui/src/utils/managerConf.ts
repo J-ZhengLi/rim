@@ -170,7 +170,7 @@ class ManagerConf {
     ) as KitItem | undefined;
     if (installed) {
       this.setInstalled(installed);
-      this.setCurrent(installed);
+      await this.setCurrent(installed);
     }
   }
 

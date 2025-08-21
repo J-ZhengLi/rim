@@ -14,14 +14,14 @@ const navItems = computed(() => [
     name: t('manage_toolkit'),
     showDot: ref(false),
   },
-  // {
-  //   name: t('manage_components'),
-  //   showDot: ref(false),
-  // },
-  // {
-  //   name: t!('misc'),
-  //   showDot: ref(false),
-  // },
+  {
+    name: t('manage_components'),
+    showDot: ref(false),
+  },
+  {
+    name: t!('misc'),
+    showDot: ref(false),
+  },
 ]);
 const selectedIndex = ref(0)
 const navRefs = ref<HTMLElement[]>([])
@@ -73,9 +73,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <background />
+  <background :animated="true"/>
   <Titlebar :showTitle="!managerMode" :bottomBorder="managerMode">
-    <template #nav v-if="managerMode">
+    <template #nav v-if="false">
+    <!-- <template #nav v-if="managerMode"> -->
       <nav class="nav-container">
         <ul class="nav-list">
           <li v-for="(item, index) in navItems" :key="index" class="nav-item"

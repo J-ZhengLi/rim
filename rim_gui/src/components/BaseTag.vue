@@ -21,7 +21,7 @@ withDefaults(
   font-weight: 500;
   line-height: 1.25rem;
   color: #fff;
-  border-radius: 0.25rem;
+  border-radius: 99px;
   vertical-align: middle;
 }
 .tag.default {

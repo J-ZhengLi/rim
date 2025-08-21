@@ -16,7 +16,7 @@ export interface ProgressPayload {
     length?: number,
 }
 
-export interface ToolkitUpdatePayload {
+export interface UpdatePayload {
     version: string,
     data?: string,
 }

@@ -1,12 +1,13 @@
 <template>
     <transition name="panel">
-        <div v-if="props.show" class="panel-backdrop" @click.self="emit('close')">
+        <div v-if="props.show" class="panel-backdrop" @click.self="hide">
             <div class="panel-content" :style="{
                 width: width,
                 height: height,
             }">
                 <slot></slot>
             </div>
+            <div v-if="clickToHide" class="panel-close-hint">{{ $t('close_panel_hint') }}</div>
         </div>
     </transition>
 </template>
@@ -15,7 +16,7 @@
 const props = defineProps({
     show: {
         type: Boolean,
-        required: true
+        default: true,
     },
     width: {
         type: String,
@@ -25,9 +26,19 @@ const props = defineProps({
         type: String,
         default: 'auto'
     },
+    clickToHide: {
+        type: Boolean,
+        default: true,
+    }
 });
 
 const emit = defineEmits(['close']);
+
+function hide() {
+    if (props.clickToHide) {
+        emit('close');
+    }
+}
 </script>
 
 <style scoped>
@@ -38,8 +49,8 @@ const emit = defineEmits(['close']);
     width: 100vw;
     height: 100vh;
     backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 999;
@@ -55,6 +66,11 @@ const emit = defineEmits(['close']);
     overflow: auto;
     padding: 2%;
     position: relative;
+}
+
+.panel-close-hint {
+    margin-top: 2px;
+    color: rgba(0, 0, 0, 0.3);
 }
 
 /* Enter/leave animations */

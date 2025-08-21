@@ -1,9 +1,18 @@
+use std::sync::OnceLock;
+
 use crate::common;
+use crate::consts::{MANAGER_UPDATE_NOTICE, MANAGER_WINDOW_LABEL};
 use crate::error::Result;
+use crate::progress::GuiProgress;
 use rim::components::Component;
+use rim::update::{UpdateKind, UpdateOpt};
 use rim::{AppInfo, GlobalOpts};
+use rim_common::types::{Configuration, ReleaseChannel};
 use rim_common::{build_config, utils};
-use tauri::{async_runtime, Window};
+use tauri::{async_runtime, AppHandle, Manager, Window};
+use tokio::sync::Mutex;
+
+static SAVED_RIM_CONF: OnceLock<Mutex<Configuration>> = OnceLock::new();
 
 /// Generate tauri command handler with shared commands.
 macro_rules! with_shared_commands {
@@ -16,6 +25,11 @@ macro_rules! with_shared_commands {
             $crate::command::get_home_page_url,
             $crate::command::get_build_cfg_locale_str,
             $crate::command::install_toolkit,
+            $crate::command::get_rim_configuration,
+            $crate::command::set_auto_check_manager_updates,
+            $crate::command::set_auto_check_toolkit_updates,
+            $crate::command::set_manager_update_channel,
+            $crate::command::check_manager_update,
             $($additional_cmd),*
         ]
     };
@@ -70,14 +84,64 @@ pub(crate) async fn install_toolkit(
     components_list: Vec<Component>,
     config: Option<common::BaseConfiguration>,
 ) -> Result<()> {
-    let manifest_guard = common::cached_manifest().read().await;
+    let manifest_guard = common::expected_manifest().read().await;
     let cfg = if let Some(cfg) = config {
         cfg
     } else {
-        common::BaseConfiguration::new(AppInfo::get_installed_dir(), &manifest_guard)
+        common::BaseConfiguration::new(AppInfo::get_installed_dir(), Some(&manifest_guard))
     };
 
     GlobalOpts::set(false, false, false, false, !cfg.add_to_path);
     common::install_toolkit_(window, components_list, cfg, &manifest_guard, false).await?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) async fn get_rim_configuration() -> Configuration {
+    let guard = &*saved_rim_conf().lock().await;
+    guard.clone()
+}
+
+// saved configuration for update purpose
+fn saved_rim_conf() -> &'static Mutex<Configuration> {
+    SAVED_RIM_CONF.get_or_init(|| Mutex::new(Configuration::load_from_config_dir()))
+}
+
+#[tauri::command]
+pub(crate) async fn set_auto_check_manager_updates(yes: bool) -> Result<()> {
+    let mut rim_conf = saved_rim_conf().lock().await;
+    rim_conf.update.auto_check_manager_updates = yes;
+    rim_conf.write()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) async fn set_auto_check_toolkit_updates(yes: bool) -> Result<()> {
+    let mut rim_conf = saved_rim_conf().lock().await;
+    rim_conf.update.auto_check_toolkit_updates = yes;
+    rim_conf.write()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub(crate) async fn set_manager_update_channel(channel: ReleaseChannel) -> Result<()> {
+    let mut rim_conf = saved_rim_conf().lock().await;
+    rim_conf.update.manager_update_channel = channel;
+    rim_conf.write()?;
+    Ok(())
+}
+
+#[tauri::command]
+/// Check self update and show update confirmation dialog if needed.
+pub(crate) async fn check_manager_update(app: AppHandle) -> Result<()> {
+    let update_opt = UpdateOpt::new(GuiProgress::new(app.clone()));
+
+    if let UpdateKind::Newer { current, latest } = update_opt.check_self_update().await {
+        app.emit_to(
+            MANAGER_WINDOW_LABEL,
+            MANAGER_UPDATE_NOTICE,
+            (current, latest),
+        )?;
+    }
     Ok(())
 }

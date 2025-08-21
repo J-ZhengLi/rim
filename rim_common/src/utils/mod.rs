@@ -20,7 +20,6 @@ use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
     sync::{LazyLock, Mutex},
-    time::Duration,
 };
 
 use anyhow::Result;
@@ -229,13 +228,6 @@ pub fn set_locale(lang: Language) {
 pub fn build_cfg_locale(key: &str) -> &str {
     let cur_locale = &*CURRENT_LOCALE.lock().unwrap();
     crate::cfg_locale!(cur_locale.locale_str(), key)
-}
-
-/// Waits until `duration` has elapsed.
-///
-/// Note: Use this in `async` context rather than [`std::thread::sleep`].
-pub async fn async_sleep(duration: Duration) {
-    tokio::time::sleep(duration).await;
 }
 
 /// Check if the current operation system has desktop environment running.

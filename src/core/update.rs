@@ -4,19 +4,19 @@ use std::sync::OnceLock;
 
 use anyhow::Result;
 use rim_common::types::TomlParser;
-use rim_common::utils::{HiddenProgress, ProgressHandler};
+use rim_common::utils::{HiddenProgress, LinkKind, ProgressHandler};
 use rim_common::{build_config, utils};
 use semver::Version;
 use serde::Serialize;
 use url::Url;
 
 use super::directories::RimDir;
-use super::parser::release_info::ReleaseInfo;
+use super::parser::release_info::Releases;
 use super::{AppInfo, GlobalOpts};
 use crate::toolkit;
 
 /// Caching the latest manager release info, reduce the number of time accessing the server.
-static LATEST_RELEASE: OnceLock<ReleaseInfo> = OnceLock::new();
+static LATEST_RELEASE: OnceLock<Releases> = OnceLock::new();
 
 #[derive(Default)]
 pub struct UpdateOpt<T> {
@@ -42,6 +42,9 @@ impl<T: ProgressHandler + Clone + 'static> UpdateOpt<T> {
 
     /// Update self when applicable.
     ///
+    /// Note: After the update, this binary of this application will be scheduled to replace,
+    /// so make sure to terminate the application after success ASAP.
+    ///
     /// Latest version check can be disabled by passing `skip_check` as `false`.
     /// Otherwise, this function will check whether if the current version is older
     /// than the latest one, if not, return `Ok(false)` indicates no update has been done.
@@ -64,16 +67,12 @@ impl<T: ProgressHandler + Clone + 'static> UpdateOpt<T> {
 
         let app_name = &build_config().app_name();
         let src_name = exe!(format!("{app_name}{cli}"));
-        let latest_version = &self.latest_manager_release().await?.version;
+        let latest_version = self.latest_manager_release().await?.version();
         let download_url = parse_download_url(&format!(
-            "managerUpdateOpt/archive/{latest_version}/{}/{src_name}",
+            "manager/archive/{latest_version}/{}/{src_name}",
             env!("TARGET"),
         ))?;
 
-        info!(
-            "{}",
-            t!("downloading_latest_manager", version = latest_version)
-        );
         // creates another directory under `temp` folder, it will be used to hold a
         // newer version of the manager binary, which will then replacing the current running one.
         let temp_root = tempfile::Builder::new()
@@ -90,22 +89,61 @@ impl<T: ProgressHandler + Clone + 'static> UpdateOpt<T> {
         opt.download(&download_url, &newer_manager).await?;
 
         // replace the current executable
-        self_replace::self_replace(newer_manager)?;
-
-        info!("{}", t!("self_update_complete"));
+        self.self_replace_including_links(&newer_manager)?;
+        info!("{}", t!("self_update_finished"));
         Ok(true)
+    }
+
+    fn self_replace_including_links(&self, replace_by: &Path) -> Result<()> {
+        // before self-replacing, we need to check if `self` is a hard-link or not
+        let app_name = exe!(build_config().app_name());
+
+        let current_exe = env::current_exe()?;
+        let master_bin = self.install_dir().join(&app_name);
+        let shortname_link = self.cargo_bin().join(exe!("rim"));
+        let fullname_link = self.cargo_bin().join(&app_name);
+
+        // handle links
+        match utils::is_link_of(&current_exe, &master_bin)? {
+            // User is running one of the symlinks,
+            // do nothing since `self_replace` will handle it.
+            LinkKind::Symbolic => {}
+            // User might be running the actual RIM, then we need to replace
+            // the links if they are not symbolic links.
+            // (This will also create new links if those are missing)
+            LinkKind::Unlinked => {
+                if !(shortname_link.is_symlink() && fullname_link.is_symlink()) {
+                    // replace both of the proxies to the new one
+                    utils::copy_file(replace_by, &shortname_link)?;
+                    utils::copy_file(replace_by, &fullname_link)?;
+                }
+            }
+            // User is running a hard-link of the actual RIM (typically on Windows),
+            // then we should replace the other link, then the actual RIM before `self_replace`.
+            LinkKind::Hard => {
+                if current_exe == shortname_link {
+                    utils::copy_file(replace_by, &fullname_link)?;
+                } else if current_exe == fullname_link {
+                    utils::copy_file(replace_by, &shortname_link)?;
+                }
+                utils::copy_file(replace_by, &master_bin)?;
+            }
+        }
+
+        self_replace::self_replace(replace_by)?;
+        Ok(())
     }
 
     /// Try to get the manager's latest release information.
     ///
     /// This will try to access the internet upon first call in order to
     /// read the `release.toml` file from the server, and the result will be "cached" after.
-    async fn latest_manager_release(&self) -> Result<&'static ReleaseInfo> {
+    async fn latest_manager_release(&self) -> Result<&'static Releases> {
         if let Some(release_info) = LATEST_RELEASE.get() {
             return Ok(release_info);
         }
 
-        let download_url = parse_download_url(&format!("manager/{}", ReleaseInfo::FILENAME))?;
+        let download_url = parse_download_url(&format!("manager/{}", Releases::FILENAME))?;
         let opt = if GlobalOpts::get().quiet {
             utils::DownloadOpt::new("manager release info", Box::new(HiddenProgress))
         } else {
@@ -115,17 +153,21 @@ impl<T: ProgressHandler + Clone + 'static> UpdateOpt<T> {
             )
         };
         let raw = opt.insecure(self.insecure).read(&download_url).await?;
-        let release_info = ReleaseInfo::from_str(&raw)?;
+        let release_info = Releases::from_str(&raw)?;
 
         Ok(LATEST_RELEASE.get_or_init(|| release_info))
     }
 
     /// Check self(manager) updates.
-    pub async fn check_self_update(&self) -> UpdateKind<Version> {
+    pub async fn check_self_update(&self) -> UpdateKind<UpdatePayload> {
         info!("{}", t!("checking_manager_updates"));
 
-        let latest_version = match self.latest_manager_release().await {
-            Ok(release) => release.version.clone(),
+        let latest_version = match self
+            .latest_manager_release()
+            .await
+            .map(|release| release.version())
+        {
+            Ok(version) => version.clone(),
             Err(e) => {
                 warn!("{}: {e}", t!("fetch_latest_manager_version_failed"));
                 return UpdateKind::Uncertain;
@@ -137,8 +179,8 @@ impl<T: ProgressHandler + Clone + 'static> UpdateOpt<T> {
 
         if cur_version < latest_version {
             UpdateKind::Newer {
-                current: cur_version,
-                latest: latest_version,
+                current: UpdatePayload::new(cur_version),
+                latest: UpdatePayload::new(latest_version),
             }
         } else {
             UpdateKind::UnNeeded
@@ -162,9 +204,9 @@ pub struct UpdatePayload {
 }
 
 impl UpdatePayload {
-    pub fn new<S: Into<String>>(version: S) -> Self {
+    pub fn new<S: ToString>(version: S) -> Self {
         Self {
-            version: version.into(),
+            version: version.to_string(),
             data: None,
         }
     }

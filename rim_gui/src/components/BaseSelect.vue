@@ -96,7 +96,6 @@ document.addEventListener('click', closeOnClickOutside);
     background: rgba(255, 255, 255, .7);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, .6), 0 8px 16px rgba(0, 0, 0, .12);
     backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
     font-size: clamp(100%, 2vh, 20px);
     padding: 0.3rem 1rem;
     box-sizing: border-box;

@@ -263,9 +263,11 @@ impl ToolchainInstaller {
             if entry.ends_with("bin") {
                 // in this bin dir, remove rustup and its proxies only
                 // remove proxies first, then remove rustup itself.
-                let proxies_to_rm = utils::walk_dir(&entry, false)?
-                    .into_iter()
-                    .filter(|p| utils::is_link_of(p, &rustup_bin).unwrap_or_default());
+                let proxies_to_rm = utils::walk_dir(&entry, false)?.into_iter().filter(|p| {
+                    utils::is_link_of(p, &rustup_bin)
+                        .unwrap_or_default()
+                        .is_linked()
+                });
                 for link in proxies_to_rm {
                     utils::remove(link)?;
                 }
@@ -352,7 +354,7 @@ async fn download_rustup_init<T: ProgressHandler + Clone + 'static>(
     config: &InstallConfiguration<'_, T>,
     insecure: bool,
 ) -> Result<()> {
-    info!("{}", t!("downloading_rustup_init"));
+    info!("{}", t!("downloading", file = "rustup-init"));
 
     let download_url = utils::url_join(
         config.rustup_update_root(),

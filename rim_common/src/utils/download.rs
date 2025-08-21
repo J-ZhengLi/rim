@@ -5,7 +5,7 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context, Result};
 use reqwest::{header, Client};
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use url::Url;
 
 use crate::types::Proxy as CrateProxy;
@@ -103,17 +103,40 @@ impl DownloadOpt {
             );
         }
     }
+
+    async fn copy(mut self, src: &Path, dest: &Path) -> Result<()> {
+        let mut src_file = fs::File::open(src).await?;
+        let mut dst_file = fs::File::create(dest).await?;
+
+        let mut buf = vec![0u8; 8192];
+        let total_size = src_file.metadata().await?.len();
+        self.progress_handler.start(
+            t!("downloading", file = &self.name).into(),
+            ProgressKind::Bytes(total_size),
+        )?;
+
+        loop {
+            let bytes = src_file.read(&mut buf).await?;
+            if bytes == 0 {
+                break; // EOF
+            }
+            dst_file.write_all(&buf[..bytes]).await?;
+            self.progress_handler.update(Some(bytes as u64))?;
+        }
+
+        dst_file.flush().await?;
+        self.progress_handler
+            .finish(t!("download_success", file = &self.name).into())?;
+        Ok(())
+    }
+
     /// Consume self, and download from given `Url` to `Path`.
     pub async fn download(mut self, url: &Url, path: &Path) -> Result<()> {
-        debug!("ready to download from '{}'", url.as_str());
         if url.scheme() == "file" {
-            fs::copy(
-                url.to_file_path()
-                    .map_err(|_| anyhow!("unable to convert to file path for url '{url}'"))?,
-                path,
-            )
-            .await?;
-            return Ok(());
+            let src = url
+                .to_file_path()
+                .map_err(|_| anyhow!("unable to convert to file path for url '{url}'"))?;
+            return self.copy(&src, path).await;
         }
 
         if self.insecure {
@@ -129,7 +152,7 @@ impl DownloadOpt {
             .ok_or_else(|| anyhow!("unable to get file length of '{url}'"))?;
 
         self.progress_handler.start(
-            format!("downloading '{}'", &self.name),
+            t!("downloading", file = &self.name).into(),
             ProgressKind::Bytes(total_size),
         )?;
 
@@ -141,7 +164,7 @@ impl DownloadOpt {
         }
 
         self.progress_handler
-            .finish(format!("'{}' successfully downloaded.", &self.name))?;
+            .finish(t!("download_success", file = &self.name).into())?;
         Ok(())
     }
 

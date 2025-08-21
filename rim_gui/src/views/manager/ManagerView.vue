@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { invokeCommand, KitItem, managerConf, ManagerOperation, getAppNameWithVersion } from '@/utils';
-import { computed, onMounted, ref, watch } from 'vue';
+import { invokeCommand, KitItem, managerConf, ManagerOperation } from '@/utils';
+import { computed, onMounted, ref } from 'vue';
 import { event } from '@tauri-apps/api';
 import { useCustomRouter } from '@/router';
-import { CliPayload, ToolkitUpdatePayload } from '@/utils/types/payloads';
-import { useI18n } from 'vue-i18n';
+import { CliPayload, UpdatePayload } from '@/utils/types/payloads';
 
 const { routerPush } = useCustomRouter();
-const { locale } = useI18n();
 
 const installedKit = computed(() => managerConf.getInstalled());
 const availableKits = computed(() => managerConf.getKits());
-const footerText = ref('');
 const latestToolkitUrl = ref('');
 
 const displayFormat = ref<'list' | 'card'>('list');
@@ -32,13 +29,7 @@ function onCardClick(url: string) {
   if (displayFormat.value === 'card') install(url)
 }
 
-async function refreshLabels() {
-  footerText.value = (await getAppNameWithVersion()).join(' ');
-}
-
 onMounted(async () => {
-  await refreshLabels();
-
   event.listen('change-view', (event) => {
     let payload = event.payload as CliPayload;
     if (payload.command === 'Uninstall') {
@@ -48,15 +39,13 @@ onMounted(async () => {
   });
 
   event.listen('toolkit:update-available', (event) => {
-    let payload = event.payload as ToolkitUpdatePayload[];
+    let payload = event.payload as UpdatePayload[];
     let maybeUrl = payload[1].data;
     if (maybeUrl) {
       latestToolkitUrl.value = maybeUrl;
     }
   });
 });
-
-watch(locale, async (_newVal) => await refreshLabels());
 </script>
 
 <template>
@@ -122,8 +111,6 @@ watch(locale, async (_newVal) => await refreshLabels());
         </base-card>
       </div>
     </section>
-
-    <div class="footer-label">{{ footerText }}</div>
   </div>
 </template>
 
