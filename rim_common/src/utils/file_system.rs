@@ -364,15 +364,30 @@ where
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub enum LinkKind {
+    #[default]
+    Unlinked,
+    Symbolic,
+    Hard,
+}
+
+impl LinkKind {
+    /// Return `true` if this is a linked file, including `symlink` or `hard-link`.
+    pub fn is_linked(&self) -> bool {
+        matches!(self, Self::Hard | Self::Symbolic)
+    }
+}
+
 /// Checks if `maybe_link` is a (symbolic or hard) link to the `source`.
-pub fn is_link_of<P, Q>(maybe_link: P, source: Q) -> Result<bool>
+pub fn is_link_of<P, Q>(maybe_link: P, source: Q) -> Result<LinkKind>
 where
     P: AsRef<Path>,
     Q: AsRef<Path>,
 {
     if maybe_link.as_ref() == source.as_ref() {
-        // same file, return false
-        Ok(false)
+        // same file,not linked
+        Ok(LinkKind::Unlinked)
     } else if maybe_link
         .as_ref()
         .read_link()
@@ -388,14 +403,18 @@ where
         .unwrap_or_default()
     {
         // sym link to source, return true
-        Ok(true)
+        Ok(LinkKind::Symbolic)
     } else {
         // check if the two files are hard-linked, which means that they have same file id,
         // but not in the exact same path.
         let maybe_link_fid = file_id::get_file_id(maybe_link)?;
         let source_fid = file_id::get_file_id(source)?;
 
-        Ok(maybe_link_fid == source_fid)
+        if maybe_link_fid == source_fid {
+            Ok(LinkKind::Hard)
+        } else {
+            Ok(LinkKind::Unlinked)
+        }
     }
 }
 

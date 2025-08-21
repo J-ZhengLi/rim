@@ -159,7 +159,7 @@ watch(locale, (_) => refreshLabels());
             </div>
         </div>
     </div>
-    <base-panel :show="isPanelShown" @close="isPanelShown = false">
+    <base-panel :show="isPanelShown" @close="isPanelShown = false" height="80%">
         <component :is="layoutToShow" />
     </base-panel>
 </template>
@@ -192,7 +192,7 @@ watch(locale, (_) => refreshLabels());
 .titlebar-logo-text {
     margin-left: 10px;
     font-weight: bold;
-    font-size: 2.5vw;
+    font-size: 4vh;
 }
 
 .titlebar-buttons {
@@ -246,7 +246,6 @@ watch(locale, (_) => refreshLabels());
     border: 2px solid transparent;
     box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 16px 32px rgba(0, 0, 0, .12);
     backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     overflow: hidden;
     list-style: none;
     transform-origin: top center;

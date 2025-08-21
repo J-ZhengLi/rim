@@ -60,6 +60,5 @@ export async function getAppNameWithVersion(): Promise<[string, string]> {
     return ver.split(' ')[0];
   };
   const info = await invokeCommand('app_info') as AppInfo;
-  console.log(info);
   return [info.name, shortenVersion(info.version)];
 }

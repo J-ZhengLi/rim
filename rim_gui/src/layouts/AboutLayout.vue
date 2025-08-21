@@ -12,10 +12,10 @@
             <span c-regular>{{ rimVersion }}</span>
             <base-button mt="1rem" @click="showContributors = true">{{ $t('contributors') }}</base-button>
         </base-card>
-        <base-panel :show="showContributors">
+        <base-panel :show="showContributors" :clickToHide="false">
             <div class="contributors">
                 <h2>{{ $t('contributors') }}</h2>
-                <div v-if="loading">Loading...</div>
+                <div v-if="loading">{{ $t('loading') }}...</div>
 
                 <div v-else class="grid">
                     <a v-for="c in contributors" :key="c.login" :href="c.html_url" class="avatar" target="_blank"

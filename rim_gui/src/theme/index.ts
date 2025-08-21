@@ -5,8 +5,6 @@ import BaseCheckBox from '../components/BaseCheckBox.vue';
 import BaseProgress from '../components/BaseProgress.vue';
 import BaseTag from '@/components/BaseTag.vue';
 import Titlebar from '../components/Titlebar.vue';
-import LoadingMask from '../components/LoadingMask.vue';
-import BaseToast from '@/components/BaseToast.vue';
 import BaseCard from '@/components/BaseCard.vue';
 import Background from '@/components/Background.vue';
 import Inputton from '@/components/Inputton.vue';
@@ -17,6 +15,7 @@ import LabeledInput from '@/components/LabeledInput.vue';
 import BasePanel from '@/components/BasePanel.vue';
 import BaseSelect from '@/components/BaseSelect.vue';
 import LockIndicator from '@/components/LockIndicator.vue';
+import Spinner from '@/components/Spinner.vue';
 
 export default {
   install(app: App) {
@@ -26,8 +25,6 @@ export default {
     app.component('base-progress', BaseProgress);
     app.component('base-tag', BaseTag);
     app.component('titlebar', Titlebar);
-    app.component('loading-mask', LoadingMask);
-    app.component('base-toast', BaseToast);
     app.component('base-card', BaseCard);
     app.component('background', Background);
     app.component('inputton', Inputton);
@@ -38,5 +35,6 @@ export default {
     app.component('base-panel', BasePanel);
     app.component('base-select', BaseSelect);
     app.component('lock-indicator', LockIndicator);
+    app.component('spinner', Spinner);
   },
 };

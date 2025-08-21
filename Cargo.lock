@@ -3555,7 +3555,7 @@ dependencies = [
 
 [[package]]
 name = "rim"
-version = "0.9.0"
+version = "0.9.0-beta"
 dependencies = [
  "anyhow",
  "cc",
@@ -3586,7 +3586,7 @@ dependencies = [
 
 [[package]]
 name = "rim-gui"
-version = "0.9.0"
+version = "0.9.0-beta"
 dependencies = [
  "anyhow",
  "fern",

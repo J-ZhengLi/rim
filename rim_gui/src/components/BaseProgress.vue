@@ -1,6 +1,10 @@
 <template>
   <div flex="~ items-center justify-between">
-    <div class="progress-bar">
+    
+    <div v-if="kind === 'spinner'" w="full" my="1rem" flex="~ justify-center">
+      <spinner v-if="kind === 'spinner'" size="30px" color="blue" class="progress-spinner" />
+    </div>
+    <div v-else class="progress-bar">
       <div class="progress-fill"
         :class="{ 'progress-transition': transition }"
         :style="{ width: valuePercentage(kind, value, length) + '%' }"></div>
@@ -79,6 +83,10 @@ function formatBytes(bytes: number): string {
 </script>
 
 <style scoped>
+.progress-spinner {
+  height: 100%;
+}
+
 .progress-bar {
   width: 100%;
   height: 100%;
@@ -87,7 +95,6 @@ function formatBytes(bytes: number): string {
   background: rgba(255, 255, 255, .4);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 16px 32px rgba(0, 0, 0, .12);
   backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
   outline: 0;
   margin-inline: 1vw;
 }

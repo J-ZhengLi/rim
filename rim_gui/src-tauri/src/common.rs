@@ -19,16 +19,19 @@ use tauri::{App, AppHandle, Manager, Window, WindowUrl};
 use tokio::sync::RwLock as AsyncRwLock;
 use url::Url;
 
+/// A cached toolkit manifest.
+///
+/// This is a read-write lock wrapped under `OnceLock`, which means it can be changed after initialization.
 pub(crate) static TOOLKIT_MANIFEST: OnceLock<AsyncRwLock<ToolkitManifest>> = OnceLock::new();
 
-/// Retrieve cached toolset manifest when it was certainly cached.
+/// Retrieve cached toolkit manifest when it was certainly cached.
 ///
 /// # Panic
 /// Will panic if the manifest is not cached.
-pub(crate) fn cached_manifest() -> &'static AsyncRwLock<ToolkitManifest> {
+pub(crate) fn expected_manifest() -> &'static AsyncRwLock<ToolkitManifest> {
     TOOLKIT_MANIFEST
         .get()
-        .expect("toolset manifest should be loaded by now")
+        .expect("toolset manifest must be loaded by now, this is a bug.")
 }
 
 fn spawn_gui_update_thread(window: Window, msg_recv: Receiver<String>) {
@@ -220,6 +223,12 @@ impl<T> From<T> for EnforceableOption<T> {
     }
 }
 
+impl From<&str> for EnforceableOption<String> {
+    fn from(value: &str) -> Self {
+        Self(value.to_string(), false)
+    }
+}
+
 /// The configuration options to install a toolkit.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -238,31 +247,30 @@ impl BaseConfiguration {
     ///
     /// Some options might be enforced by the toolkit manifest,
     /// this why we need to access it when returning the base configuration.
-    pub(crate) fn new<P: Into<PathBuf>>(path: P, manifest: &ToolkitManifest) -> Self {
+    pub(crate) fn new<P: Into<PathBuf>>(path: P, manifest: Option<&ToolkitManifest>) -> Self {
         let rustup_dist_server = manifest
-            .config
-            .rustup_dist_server
-            .clone()
+            .and_then(|m| m.config.rustup_dist_server.clone())
             .map(|u| EnforceableOption(u, true))
             .unwrap_or_else(|| rim::default_rustup_dist_server().clone().into());
         let rustup_update_root = manifest
-            .config
-            .rustup_update_root
-            .clone()
+            .and_then(|m| m.config.rustup_update_root.clone())
             .map(|u| EnforceableOption(u, true))
             .unwrap_or_else(|| rim::default_rustup_update_root().clone().into());
-        let cargo_registry_name = manifest
-            .config
-            .cargo_registry
-            .as_ref()
-            .map(|r| EnforceableOption(r.name.clone(), true))
-            .unwrap_or_else(|| rim::default_cargo_registry().0.to_string().into());
-        let cargo_registry_value = manifest
-            .config
-            .cargo_registry
-            .as_ref()
-            .map(|r| EnforceableOption(r.index.clone(), true))
-            .unwrap_or_else(|| rim::default_cargo_registry().1.to_string().into());
+
+        let registry = manifest.and_then(|m| m.config.cargo_registry.clone());
+        let (cargo_registry_name, cargo_registry_value) = registry
+            .map(|r| {
+                (
+                    EnforceableOption(r.name, true),
+                    EnforceableOption(r.index, true),
+                )
+            })
+            .unwrap_or_else(|| {
+                (
+                    rim::default_cargo_registry().0.into(),
+                    rim::default_cargo_registry().1.into(),
+                )
+            });
 
         BaseConfiguration {
             path: path.into(),

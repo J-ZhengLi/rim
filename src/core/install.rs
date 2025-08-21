@@ -268,7 +268,7 @@ impl<'a, T: ProgressHandler + Clone + 'static> InstallConfiguration<'a, T> {
         // Note: we are creating two symlinks binary, one have the fullname,
         // and one with shorter name (rim)
         let link_full = self.cargo_bin().join(manager_name);
-        let link_short = self.cargo_bin().join(exe!(env!("CARGO_PKG_NAME")));
+        let link_short = self.cargo_bin().join(exe!("rim"));
         utils::create_link(&manager_exe, &link_full)
             .with_context(|| format!("unable to create a link as '{}'", link_full.display()))?;
         utils::create_link(&manager_exe, &link_short)

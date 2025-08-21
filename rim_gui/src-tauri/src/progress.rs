@@ -69,7 +69,8 @@ impl ProgressHandler for GuiProgress {
     }
 
     fn update(&self, value: Option<u64>) -> anyhow::Result<()> {
-        self.handle.emit_all(SUB_PROGRESS_UPDATE_EVENT, value)?;
+        self.handle
+            .emit_all(SUB_PROGRESS_UPDATE_EVENT, value.unwrap_or(1))?;
         Ok(())
     }
 
@@ -90,7 +91,8 @@ impl ProgressHandler for GuiProgress {
     }
 
     fn update_master(&self, value: Option<u64>) -> anyhow::Result<()> {
-        self.handle.emit_all(MAIN_PROGRESS_UPDATE_EVENT, value)?;
+        self.handle
+            .emit_all(MAIN_PROGRESS_UPDATE_EVENT, value.unwrap_or(1))?;
         Ok(())
     }
 

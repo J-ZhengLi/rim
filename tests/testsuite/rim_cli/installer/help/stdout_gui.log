@@ -31,7 +31,7 @@ Options:
   -l, --lang <LANG>
           Specify another language to display
           
-          [possible values: cn, en]
+          [possible values: zh-CN, en-US]
 
       --prefix <PATH>
           Set another path to install Rust

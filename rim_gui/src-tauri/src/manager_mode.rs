@@ -1,16 +1,19 @@
 use crate::command::with_shared_commands;
-use crate::common::{cached_manifest, BaseConfiguration, TOOLKIT_MANIFEST};
-use crate::consts::{MANAGER_UPDATE_NOTICE, MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_NOTICE};
+use crate::common::{BaseConfiguration, TOOLKIT_MANIFEST};
+use crate::consts::{MANAGER_WINDOW_LABEL, TOOLKIT_UPDATE_NOTICE};
 use crate::progress::GuiProgress;
 use crate::{common, error::Result};
 use anyhow::Context;
+use rim::update::UpdateOpt;
 use rim::{get_toolkit_manifest, AppInfo};
 use rim::{
     toolkit::{self, Toolkit},
-    update::{self, UpdateOpt},
+    update,
 };
 use rim_common::types::Configuration;
+use rim_common::utils::{ProgressHandler, ProgressKind};
 use std::sync::mpsc::Receiver;
+use std::time::Duration;
 use tauri::{AppHandle, Builder, Manager};
 use tokio::sync::RwLock;
 use url::Url;
@@ -37,6 +40,7 @@ pub(super) fn main(
             uninstall_toolkit,
             check_updates_on_startup,
             get_toolkit_from_url,
+            self_update,
         ])
         .setup(|app| {
             common::setup_manager_window(app, msg_recv, maybe_args)?;
@@ -49,8 +53,13 @@ pub(super) fn main(
 
 #[tauri::command]
 async fn get_configuration() -> BaseConfiguration {
-    let manifest_guard = cached_manifest().read().await;
-    BaseConfiguration::new(AppInfo::get_installed_dir(), &manifest_guard)
+    let manifest = if let Some(cached) = TOOLKIT_MANIFEST.get() {
+        Some(&*cached.read().await)
+    } else {
+        warn!("missing cached toolkit manifest when fetching configuration");
+        None
+    };
+    BaseConfiguration::new(AppInfo::get_installed_dir(), manifest)
 }
 
 #[tauri::command]
@@ -73,21 +82,6 @@ async fn uninstall_toolkit(window: tauri::Window, remove_self: bool) -> Result<(
 }
 
 #[tauri::command]
-/// Check self update and show update confirmation dialog if needed.
-async fn check_manager_update(app: &AppHandle) -> Result<()> {
-    let update_opt = UpdateOpt::new(GuiProgress::new(app.clone()));
-
-    if let update::UpdateKind::Newer { current, latest } = update_opt.check_self_update().await {
-        app.emit_to(
-            MANAGER_WINDOW_LABEL,
-            MANAGER_UPDATE_NOTICE,
-            (current, latest),
-        )?;
-    }
-    Ok(())
-}
-
-#[tauri::command]
 /// Check toolkit update and show update confirmation dialog if needed.
 async fn check_toolkit_update(app: &AppHandle) -> Result<()> {
     if let update::UpdateKind::Newer { current, latest } = update::check_toolkit_update(false).await
@@ -105,11 +99,11 @@ async fn check_toolkit_update(app: &AppHandle) -> Result<()> {
 async fn check_updates_on_startup(app: AppHandle) -> Result<()> {
     let conf = Configuration::load_from_config_dir();
 
-    if conf.update.auto_check_manager_updates {
-        check_manager_update(&app).await?;
-    }
     if conf.update.auto_check_toolkit_updates {
         check_toolkit_update(&app).await?;
+    }
+    if conf.update.auto_check_manager_updates {
+        crate::command::check_manager_update(app).await?;
     }
 
     Ok(())
@@ -139,34 +133,31 @@ async fn get_toolkit_from_url(url: String) -> Result<Toolkit> {
     Ok(toolkit)
 }
 
-// async fn do_self_update(app: &AppHandle) -> Result<()> {
-//     let window = app.get_window(MANAGER_WINDOW_LABEL);
-//     // block UI interaction, and show loading toast
-//     if let Some(win) = &window {
-//         win.emit(LOADING_TEXT, t!("self_update_in_progress"))?;
-//     }
+#[tauri::command]
+async fn self_update(app: AppHandle) -> Result<()> {
+    let mut progress = GuiProgress::new(app.clone());
 
-//     // do self update, skip version check because it should already
-//     // been checked using `update::check_self_update`
-//     if let Err(e) = UpdateOpt::new(GuiProgress::new(app.clone()))
-//         .self_update(true)
-//         .await
-//     {
-//         return Err(anyhow::anyhow!("failed when performing self update: {e}").into());
-//     }
+    progress.start_master(
+        t!("self_update_in_progress").to_string(),
+        ProgressKind::Spinner {
+            auto_tick_duration: None,
+        },
+    )?;
 
-//     if let Some(win) = &window {
-//         // schedule restart with 3 seconds timeout
-//         win.emit(LOADING_FINISHED, true)?;
-//         for eta in (1..=3).rev() {
-//             win.emit(LOADING_TEXT, t!("self_update_finished", eta = eta))?;
-//             utils::async_sleep(Duration::from_secs(1)).await;
-//         }
-//         win.emit(LOADING_TEXT, "")?;
-//     }
+    // do self update, skip version check because it should already
+    // been checked using `update::check_self_update`
+    if let Err(e) = UpdateOpt::new(progress.clone()).self_update(true).await {
+        return Err(anyhow::anyhow!("failed when performing self update: {e}").into());
+    }
 
-//     // restart app
-//     app.restart();
+    // schedule restart with certain amount of time
+    const COUNTDOWN_TIMER: u8 = 10;
+    for i in (0..COUNTDOWN_TIMER).rev() {
+        progress.finish_master(t!("self_update_finished_wait", timer = i).to_string())?;
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 
-//     Ok(())
-// }
+    // restart app
+    app.restart();
+    Ok(())
+}

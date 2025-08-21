@@ -130,9 +130,9 @@ fn check_locales(locales: Vec<LocaleHelper>) -> Result<()> {
     let mut should_fail = false;
 
     for helper in &locales {
-        // helper.check_typos()?;
-        should_fail =
-            should_fail || helper.contains_missing_keys(&all_keys) || helper.contains_typos()?;
+        let missing_keys = helper.contains_missing_keys(&all_keys);
+        let has_typos = helper.contains_typos()?;
+        should_fail = should_fail || missing_keys || has_typos;
     }
 
     if should_fail {

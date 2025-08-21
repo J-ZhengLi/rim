@@ -5,9 +5,10 @@ use crate::setter;
 use crate::{dirs::rim_config_dir, types::TomlParser};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use std::str::FromStr;
 
-#[derive(Debug, Deserialize, Serialize, Default, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Default, PartialEq, Eq, Clone)]
 pub struct Configuration {
     pub language: Option<Language>,
     pub update: UpdateConfig,
@@ -29,7 +30,7 @@ impl Configuration {
 
     /// Loading from [`rim_config_dir`] or return default.
     ///
-    /// This guarantee to return a [`VersionSkip`] object,
+    /// This guarantee to return an object,
     /// even if the file does not exists, the default will got returned.
     pub fn load_from_config_dir() -> Self {
         Self::try_load_from_config_dir().unwrap_or_default()
@@ -43,7 +44,7 @@ impl Configuration {
     setter!(set_language(self.language, val: Language) { Some(val) });
     setter!(set_manager_update_channel(
         self.update.manager_update_channel,
-        UpdateChannel
+        ReleaseChannel
     ));
     setter!(set_auto_check_manager_updates(
         self.update.auto_check_manager_updates,
@@ -58,22 +59,16 @@ impl Configuration {
 #[derive(Debug, Deserialize, Serialize, Default, PartialEq, Eq, Clone, Copy)]
 #[non_exhaustive]
 pub enum Language {
+    #[serde(rename = "zh-CN")]
     CN,
     #[default]
+    #[serde(rename = "en-US")]
     EN,
 }
 
 impl Language {
     pub fn possible_values() -> &'static [Language] {
         &[Self::CN, Self::EN]
-    }
-    /// Returns the string representation of this enum,
-    /// this will be the same one that parsed from commandline input.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::CN => "cn",
-            Self::EN => "en",
-        }
     }
     /// This is the `str` used for setting locale,
     /// make sure the values match the filenames under `<root>/locales`.
@@ -99,22 +94,28 @@ impl FromStr for Language {
 }
 
 /// App update channel.
-#[derive(Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Deserialize, Serialize, PartialEq, Eq, Hash, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 #[non_exhaustive]
-pub enum UpdateChannel {
+pub enum ReleaseChannel {
     #[default]
     Stable,
     Beta,
 }
 
+impl Display for ReleaseChannel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{self:?}").to_lowercase())
+    }
+}
+
 /// Representing the configuration for update checker.
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct UpdateConfig {
     /// Channel of manager (app) updates to check, i.e. "stable", "beta"
     #[serde(default)]
-    pub manager_update_channel: UpdateChannel,
+    pub manager_update_channel: ReleaseChannel,
     /// Automatically checking for manager (app) updates.
     #[serde(default = "bool_true")]
     pub auto_check_manager_updates: bool,
@@ -132,7 +133,7 @@ fn bool_true() -> bool {
 impl Default for UpdateConfig {
     fn default() -> Self {
         Self {
-            manager_update_channel: UpdateChannel::default(),
+            manager_update_channel: ReleaseChannel::default(),
             auto_check_manager_updates: true,
             auto_check_toolkit_updates: true,
         }
@@ -146,7 +147,7 @@ impl UpdateConfig {
 
     setter!(manager_update_channel(
         self.manager_update_channel,
-        UpdateChannel
+        ReleaseChannel
     ));
     setter!(auto_check_manager_updates(
         self.auto_check_manager_updates,
@@ -190,14 +191,14 @@ auto-check-toolkit-updates = true
     fn configured_serialization() {
         let conf = Configuration::new()
             .set_language(Language::CN)
-            .set_manager_update_channel(UpdateChannel::Beta)
+            .set_manager_update_channel(ReleaseChannel::Beta)
             .set_auto_check_manager_updates(false)
             .set_auto_check_toolkit_updates(false);
 
         let expected = conf.to_toml().unwrap();
         assert_eq!(
             expected,
-            r#"language = "CN"
+            r#"language = "zh-CN"
 
 [update]
 manager-update-channel = "beta"
@@ -209,7 +210,7 @@ auto-check-toolkit-updates = false
 
     #[test]
     fn lang_config() {
-        let input = "language = \"CN\"\n[update]";
+        let input = "language = \"zh-CN\"\n[update]";
 
         let expected = Configuration::from_str(input).unwrap();
         assert_eq!(expected.language, Some(Language::CN));
@@ -218,7 +219,7 @@ auto-check-toolkit-updates = false
         let back_to_str = toml::to_string(&expected).unwrap();
         assert_eq!(
             back_to_str,
-            "language = \"CN\"\n\n\
+            "language = \"zh-CN\"\n\n\
             [update]\n\
             manager-update-channel = \"stable\"\n\
             auto-check-manager-updates = true\n\

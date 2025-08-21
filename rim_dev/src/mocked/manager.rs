@@ -1,4 +1,5 @@
 use anyhow::Result;
+use rim_common::types::BuildConfig;
 use std::{env::consts::EXE_SUFFIX, fs, path::PathBuf, process::Command};
 
 struct FakeRim {
@@ -70,30 +71,37 @@ edition = \"2021\"
 }
 
 /// Generate a `release.toml` for self update, that the version will always be newer.
-fn gen_release_toml(version: &str) -> Result<()> {
+fn gen_release_toml(version: &MockedRimVersion) -> Result<()> {
     let release_toml = super::manager_dir().join("release.toml");
 
-    let desired_content = format!("version = '{version}'");
+    let desired_content = format!(
+        "version = '{}'
+[beta]
+version = '{}'",
+        version.stable, version.beta
+    );
     fs::write(release_toml, desired_content)?;
     Ok(())
 }
 
-/// Generate a target version base on the current workspace version.
+struct MockedRimVersion {
+    stable: String,
+    beta: String,
+}
+
+/// Generate mocked release version base on the current rim version.
 ///
-/// The target version will always be one major release ahead of the current version,
+/// The mocked stable version will always be one major release ahead of the current version,
 /// so if the current version is `1.0.0`, the target version will be `2.0.0`.
-fn mocked_ws_version() -> String {
+/// And the mocked beta version will always be two major release ahead,
+/// which will be `3.0.0-beta` in the same context.
+fn mocked_rim_versions() -> MockedRimVersion {
     let ws_manifest_content = include_str!("../../../Cargo.toml");
     let cur_ver = ws_manifest_content
         .lines()
         .find_map(|line| {
-            let trimed = line.trim();
-            if let Some((_, ver_with_quote)) = trimed
-                .starts_with("version")
-                .then_some(trimed.split_once('='))
-                .flatten()
-            {
-                Some(ver_with_quote.trim_matches([' ', '\'', '"']))
+            if let Some((_, ver_with_quote)) = line.trim().split_once("version = ") {
+                Some(ver_with_quote.trim_matches(['\'', '"']))
             } else {
                 None
             }
@@ -101,20 +109,24 @@ fn mocked_ws_version() -> String {
         .unwrap_or_else(|| unreachable!("'version' field is required in any cargo manifest"));
 
     // safe to unwrap the below lines, otherwise cargo would fails the build.
-    let (major, rest) = cur_ver.split_once('.').unwrap();
+    let raw_ver = cur_ver.split('-').next().unwrap();
+    let (major, rest) = raw_ver.split_once('.').unwrap();
     let major_number: usize = major.parse().unwrap();
 
-    format!("{}.{rest}", major_number + 1)
+    let stable = format!("{}.{rest}", major_number + 1);
+    let beta = format!("{}.{rest}-beta", major_number + 2);
+
+    MockedRimVersion { stable, beta }
 }
 
 /// Generate mocked manager binary for self updating tests.
 pub(crate) fn generate() -> Result<()> {
-    let target_ver = mocked_ws_version();
+    let vers = mocked_rim_versions();
 
-    gen_release_toml(&target_ver)?;
+    gen_release_toml(&vers)?;
     // Generate mocked binaries
-    // TODO: make the name configurable
-    FakeRim::new(&target_ver).build("xuanwu-rust")?;
-
+    let identifier = &BuildConfig::load().identifier;
+    FakeRim::new(&vers.stable).build(identifier)?;
+    FakeRim::new(&vers.beta).build(identifier)?;
     Ok(())
 }

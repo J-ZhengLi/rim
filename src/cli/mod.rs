@@ -136,7 +136,7 @@ impl ExecStatus {
 fn possible_lang() -> Vec<&'static str> {
     Language::possible_values()
         .iter()
-        .map(Language::as_str)
+        .map(Language::locale_str)
         .collect()
 }
 

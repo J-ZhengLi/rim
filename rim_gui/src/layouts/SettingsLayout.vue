@@ -12,38 +12,56 @@
 
         <!-- Main Panel -->
         <main class="main-content" ref="mainContentRef">
-            <section ref="generalRef" class="setting-section">
+            <section ref="generalRef">
                 <h2>{{ $t('general') }}</h2>
                 <div class="setting-options">
                     <label>
                         <div flex="~ item-center" w="20vw">
-                            <svg width="20px" height="20px" mr="1rem" py="2px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12Z" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                <path d="M13 2.04932C13 2.04932 16 5.99994 16 11.9999C16 17.9999 13 21.9506 13 21.9506" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                <path d="M11 21.9506C11 21.9506 8 17.9999 8 11.9999C8 5.99994 11 2.04932 11 2.04932" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                <path d="M2.62964 15.5H21.3704" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                <path d="M2.62964 8.5H21.3704" stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <svg width="20px" height="20px" mr="1rem" py="2px" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12Z"
+                                    stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                </path>
+                                <path d="M13 2.04932C13 2.04932 16 5.99994 16 11.9999C16 17.9999 13 21.9506 13 21.9506"
+                                    stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                </path>
+                                <path d="M11 21.9506C11 21.9506 8 17.9999 8 11.9999C8 5.99994 11 2.04932 11 2.04932"
+                                    stroke="#000000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                </path>
+                                <path d="M2.62964 15.5H21.3704" stroke="#000000" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M2.62964 8.5H21.3704" stroke="#000000" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round"></path>
                             </svg>
                             <span class="label-text">{{ $t('language') }}</span>
                         </div>
-                        <base-select width="12vw" :items="langOptions" v-model="settings.language" />
+                        <base-select width="12vw" :items="langOptions" v-model="language" />
                     </label>
                 </div>
             </section>
 
-            <section ref="updateRef" class="setting-section">
+            <section ref="updateRef">
                 <h2>{{ $t('update') }}</h2>
                 <div class="setting-options">
                     <label>
                         <span class="label-text">{{ $t('manager_update_channel') }}</span>
-                        <base-select width="12vw" :items="updateChannels" v-model="settings.rimUpdateChannel" />
+                        <base-select width="12vw" :items="updateChannels" v-model="rimUpdateChannel" />
                     </label>
+                    <base-check-box v-model="autoCheckRimUpdate" :title="$t('auto_check_manager_updates')"
+                        labelAlignment="left" />
+                    <base-check-box v-model="autoCheckToolkitUpdate" :title="$t('auto_check_toolkit_updates')"
+                        labelAlignment="left" />
                     <label>
-                        <span class="label-text">{{ $t('check_manager_updates') }}</span>
-                        <base-button w="12vw" theme="primary">{{ $t('check') }}</base-button>
+                        <p class="label-text">
+                            {{ $t('check_manager_updates') }}
+                            <div c-secondary text="0.8em" v-if="isLatestManager">{{ $t('latest_version_already') }}</div>
+                        </p>
+                        <base-button w="12vw" theme="primary" @click="checkManagerUpdates">
+                            <spinner v-if="isChecking" />
+                            <span v-else>{{ $t('check') }}</span>
+                        </base-button>
                     </label>
-                    <base-check-box v-model="settings.autoCheckRimUpdate" :title="$t('auto_check_manager_updates')" labelAlignment="left" />
-                    <base-check-box v-model="settings.autoCheckToolkitUpdate" :title="$t('auto_check_toolkit_updates')" labelAlignment="left" />
                 </div>
             </section>
         </main>
@@ -53,7 +71,7 @@
 <script setup lang="ts">
 import { DropdownItem } from '@/components/BaseSelect.vue';
 import { invokeCommand } from '@/utils';
-import { ref, reactive, watch, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 const { locale, availableLocales, t } = useI18n();
@@ -61,6 +79,8 @@ const { locale, availableLocales, t } = useI18n();
 const generalRef = ref<HTMLElement | null>(null);
 const updateRef = ref<HTMLElement | null>(null);
 const mainContentRef = ref<HTMLElement | null>(null);
+const isChecking = ref(false);
+const isLatestManager = ref(false);
 
 const langOptions = computed<DropdownItem[]>(() => {
     return availableLocales.map((loc) => {
@@ -82,14 +102,6 @@ const scrollToSection = (section: 'general' | 'update') => {
     }
 };
 
-// Reactive settings model
-const settings = reactive({
-    language: locale.value,
-    autoCheckRimUpdate: true,
-    autoCheckToolkitUpdate: true,
-    rimUpdateChannel: 'stable',
-});
-
 function langName(lang: string): string {
     switch (lang) {
         case 'en-US':
@@ -101,11 +113,52 @@ function langName(lang: string): string {
     }
 }
 
-// Automatically apply settings on change
-watch(settings, (current) => {
-    locale.value = current.language;
-    invokeCommand('set_locale', { language: current.language });
-}, { deep: true });
+function checkManagerUpdates() {
+    isChecking.value = true;
+    invokeCommand('check_manager_update').then((res) => {
+        isChecking.value = false;
+        if (typeof res === 'boolean') {
+            isLatestManager.value = !res;
+        }
+    });
+}
+
+// RIM configuration but without `language` as it was already handled by `i18n.ts`
+interface Configuration {
+    update: {
+        'auto-check-manager-updates': boolean,
+        'auto-check-toolkit-updates': boolean,
+        'manager-update-channel': 'stable' | 'beta',
+    }
+}
+
+// setting options
+const language = ref(locale.value);
+const autoCheckRimUpdate = ref(true);
+const autoCheckToolkitUpdate = ref(true);
+const rimUpdateChannel = ref(updateChannels.value[0].value);
+
+onMounted(async () => {
+    // load RIM configuration
+    const rimConf = await invokeCommand('get_rim_configuration') as Configuration;
+    autoCheckRimUpdate.value = rimConf.update['auto-check-manager-updates'];
+    autoCheckToolkitUpdate.value = rimConf.update['auto-check-toolkit-updates'];
+    rimUpdateChannel.value = rimConf.update['manager-update-channel'];
+});
+
+watch(language, (current) => {
+    locale.value = current;
+    invokeCommand('set_locale', { language: current });
+});
+watch(autoCheckRimUpdate, (val) => {
+    invokeCommand('set_auto_check_manager_updates', { yes: val });
+});
+watch(autoCheckToolkitUpdate, (val) => {
+    invokeCommand('set_auto_check_toolkit_updates', { yes: val });
+});
+watch(rimUpdateChannel, (val) => {
+    invokeCommand('set_manager_update_channel', { channel: val });
+});
 </script>
 
 <style scoped>
@@ -143,13 +196,13 @@ watch(settings, (current) => {
     flex: 1;
     overflow-y: auto;
     padding: 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2rem;
 }
 
-.setting-section {
-    margin-bottom: 3rem;
-}
-
-.setting-section h2 {
+h2 {
     margin-bottom: 1rem;
     border-bottom: 1px solid #ddd;
     padding-bottom: 1rem;
