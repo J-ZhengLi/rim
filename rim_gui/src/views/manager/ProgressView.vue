@@ -6,7 +6,7 @@ import { useCustomRouter } from '@/router/index';
 import { ProgressPayload } from '@/utils/types/payloads';
 import { managerConf, invokeCommand, ManagerOperation } from '@/utils';
 
-const { routerPush, routerPushAndClearCache } = useCustomRouter();
+const { routerBack, routerPush, routerPushAndClearCache } = useCustomRouter();
 
 // ===== progress bar related section =====
 const progress = ref(0);
@@ -19,27 +19,40 @@ const subProgressPayload = ref<ProgressPayload | null>(null);
 
 const output: Ref<string[]> = ref([]);
 const scrollBox: Ref<HTMLElement | null> = ref(null);
+const showBackButton = ref(false);
 
 // TODO: We can merge managerConf and installConf together, then
 // we can use this view for both install/update/uninstall since
 // the layout of this view is technically the same.
 async function performOperation() {
-  switch (managerConf.getOperation()) {
-    case ManagerOperation.UninstallAll:
-      await invokeCommand('uninstall_toolkit', { remove_self: true })
-      break;
-    case ManagerOperation.UninstallToolkit:
-      await invokeCommand('uninstall_toolkit', { remove_self: false })
-      break;
-    case ManagerOperation.Update:
-      await invokeCommand('install_toolkit', {
-        componentsList: managerConf.getTargetComponents(),
-        config: managerConf.config.value,
-      });
-      break;
-    default:
-      break;
+  try {
+    switch (managerConf.getOperation()) {
+      case ManagerOperation.UninstallAll:
+        await invokeCommand('uninstall_toolkit', { remove_self: true })
+        break;
+      case ManagerOperation.UninstallToolkit:
+        await invokeCommand('uninstall_toolkit', { remove_self: false })
+        break;
+      case ManagerOperation.Update:
+        await invokeCommand('install_toolkit', {
+          componentsList: managerConf.getTargetComponents(),
+          config: managerConf.config.value,
+        });
+        break;
+      default:
+        break;
+    }
+  } catch (_) {
+    showBackButton.value = true;
   }
+}
+
+function back() {
+    showBackButton.value = false;
+    progress.value = 0;
+    mainProgressPayload.value = null;
+
+    routerBack();
 }
 
 async function complete() {
@@ -167,7 +180,9 @@ watch(() => managerConf.getOperation(), (newOp) => {
         </div>
       </base-card>
     </base-details>
-    <page-nav-buttons :nextLabel="progress < 100 ? undefined : $t('next')" :hideNext="progress < 100"
-      @next-clicked="complete" />
+    <page-nav-buttons
+      :nextLabel="progress < 100 ? undefined : $t('next')" :backLabel="showBackButton ? $t('back') : ''"
+      @next-clicked="complete"
+      @back-clicked="back" />
   </div>
 </template>

@@ -201,6 +201,13 @@ impl Mode {
             Ok("manager") => Self::manager(manager_callback),
             // fallback to installer mode
             Ok(_) => Self::installer(installer_callback),
+            Err(_)
+                if utils::lowercase_program_name()
+                    .map(|n| n.contains("installer"))
+                    .unwrap_or_default() =>
+            {
+                Self::installer(installer_callback)
+            }
             Err(_) => {
                 if InstallationRecord::load_from_config_dir().is_ok() {
                     Self::manager(manager_callback)
