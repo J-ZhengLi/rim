@@ -340,7 +340,7 @@ pub(crate) fn show_confirmation(
 
     writeln!(&mut stdout, "\n{}\n", t!("current_option"))?;
     if let Some(dir) = install_dir {
-        writeln!(&mut stdout, "{}:\n\t{dir}", t!("install_dir"))?;
+        writeln!(&mut stdout, "{}:\n\t{dir}", t!("installation_path"))?;
     }
     writeln!(
         &mut stdout,

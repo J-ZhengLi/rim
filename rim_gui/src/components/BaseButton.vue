@@ -39,6 +39,7 @@ button {
   font-size: clamp(10px, 2.6vh, 20px);
   border-radius: 100px;
   min-width: 100px;
+  min-height: 2rem;
   border: none;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .6), 0 8px 16px rgba(0, 0, 0, .12);
   font-weight: bold;

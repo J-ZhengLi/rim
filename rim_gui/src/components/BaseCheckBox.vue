@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { title, hint, disabled, isGroup, labelComponent, labelComponentProps, labelAlignment } = defineProps<{
+const props = defineProps<{
   title?: string;
   hint?: string;
   disabled?: boolean;
@@ -8,13 +8,11 @@ const { title, hint, disabled, isGroup, labelComponent, labelComponentProps, lab
   labelComponentProps?: Object;
   labelAlignment?: 'right' | 'left';
 }>();
-
 const emit = defineEmits(['titleClick']);
-
 const isChecked = defineModel<boolean>();
 
 const toggleCheck = () => {
-  if (disabled) {
+  if (props.disabled) {
     return;
   }
 
@@ -31,29 +29,30 @@ const toggleCheck = () => {
           <span :class="isGroup ? 'cb-label-group' : 'cb-label'" v-else>{{ title }}</span>
         </slot>
       </span>
-      <span class="checkbox"
-        :class="{
-          'c-active': isGroup,
-          'bg-active border-active': isChecked,
-          'bg-disabled-bg': disabled,
-          'hover:b-active': !disabled,
-          'cursor-not-allowed': disabled,
-        }" @click="toggleCheck">
+      <span class="checkbox" :class="{
+        'c-active': isGroup,
+        'bg-active border-active': isChecked,
+        'bg-disabled-bg': disabled,
+        'hover:b-active': !disabled,
+        'cursor-not-allowed': disabled,
+      }" @click="toggleCheck">
         <slot name="icon">
-          <i class="i-mdi:check" v-if="isChecked" c="active" />
+          <svg style="width: 1.3vw" v-if="isChecked" viewBox="0 0 24 24" fill="none" class="w-full h-full"
+            stroke="active" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
         </slot>
       </span>
     </template>
 
     <template v-else>
-      <span class="checkbox"
-        :class="{
-          'c-active': isGroup,
-          'bg-active border-active': isChecked,
-          'bg-disabled-bg': disabled,
-          'hover:b-active': !disabled,
-          'cursor-not-allowed': disabled,
-        }" @click="toggleCheck">
+      <span class="checkbox" :class="{
+        'c-active': isGroup,
+        'bg-active border-active': isChecked,
+        'bg-disabled-bg': disabled,
+        'hover:b-active': !disabled,
+        'cursor-not-allowed': disabled,
+      }" @click="toggleCheck">
         <slot name="icon">
           <i class="i-mdi:check" v-if="isChecked" c="active" />
         </slot>
@@ -87,10 +86,12 @@ const toggleCheck = () => {
   border-radius: 25%;
   cursor: pointer;
 }
+
 .cb-label {
   font-weight: 500;
   font-size: clamp(0.5rem, 2.5vh, 1.5rem);
 }
+
 .cb-label-group {
   --uno: 'c-active';
   font-weight: bold;

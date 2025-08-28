@@ -17,19 +17,26 @@ pub(super) fn execute(subcommand: &ManagerSubcommands) -> Result<ExecStatus> {
     let installed = config.install_record.print_installation();
 
     // Ask confirmation
-    let prompt = if !keep_self {
+    let prompt: String = if !keep_self {
         let app_name = &build_config().app_name();
         if installed.trim().is_empty() {
-            t!("uninstall_self_confirmation", app = app_name)
+            t!("uninstall_confirmation", name = app_name).into()
         } else {
-            t!(
-                "uninstall_all_confirmation",
-                app = app_name,
-                list = installed
+            format!(
+                "{}\n\n{installed}\n",
+                t!("uninstall_all_confirmation", app = app_name)
             )
         }
     } else {
-        t!("uninstall_confirmation", list = installed)
+        let toolkit_name = config
+            .install_record
+            .name
+            .clone()
+            .unwrap_or_else(|| t!("toolkit").to_string());
+        format!(
+            "{}\n\n{installed}\n",
+            t!("uninstall_confirmation", name = toolkit_name)
+        )
     };
     if !common::confirm(prompt, false)? {
         return Ok(ExecStatus::new_executed());
