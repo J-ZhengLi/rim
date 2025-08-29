@@ -62,11 +62,13 @@ impl RunMode {
             Self::Installer { no_gui } => {
                 let status = if *no_gui {
                     Command::new("cargo")
+                        .env("MODE", "installer")
                         .args(["run", "--"])
                         .args(args)
                         .status()?
                 } else {
                     common::pnpm_cmd()
+                        .env("MODE", "installer")
                         .args(["run", "tauri", "dev", "--"])
                         .args(args)
                         .status()?
