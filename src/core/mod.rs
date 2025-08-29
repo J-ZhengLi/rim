@@ -143,6 +143,7 @@ impl GlobalOpts {
 ///   does initial setup and install rust toolkit for the user.
 /// - In [`Manager`](Mode::Manager) mode, this program can be used for
 ///   updating, uninstalling toolkit etc.
+#[derive(Debug)]
 pub enum Mode {
     Manager(Result<Box<cli::Manager>>),
     Installer(Result<Box<cli::Installer>>),
